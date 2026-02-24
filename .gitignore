@@ -1,3 +1,8 @@
+# Logs
+.run-logs/
+.runlogs/
+*.log
+
 # Node / frontend
 app/node_modules/
 app/dist/
@@ -5,17 +10,25 @@ app/.vite/
 app/.cache/
 
 # Python / backend
-backend/.venv/
-backend/venv/
-backend/__pycache__/
-backend/**/*.pyc
+app/backend/.venv/
+app/backend/venv/
+app/backend/**/__pycache__/
+app/backend/**/*.pyc
+
+# Local databases / temp test data
+app/backend/project_local.db
+app/backend/tests/*.sqlite3
+
+# Env files
+.env
+.env.*
+app/.env
+app/.env.*
+app/backend/.env
+app/backend/.env.*
 
 # IDE / OS
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-
-# Env files
-.env
-.env.*

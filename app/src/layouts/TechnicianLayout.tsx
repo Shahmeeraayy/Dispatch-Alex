@@ -23,9 +23,9 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
-  { path: '/tech/available-jobs', label: 'Available', icon: ClipboardList },
-  { path: '/tech/my-jobs', label: 'My Jobs', icon: UserCheck },
-  { path: '/tech/schedule', label: 'Schedule', icon: Calendar },
+  { path: '/tech/jobs', label: 'Jobs', icon: ClipboardList },
+  { path: '/tech/current-job', label: 'Current Job', icon: UserCheck },
+  { path: '/tech/history', label: 'History', icon: Calendar },
   { path: '/tech/profile', label: 'Profile', icon: User },
 ];
 

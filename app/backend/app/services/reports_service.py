@@ -54,6 +54,11 @@ def _duration_label(minutes: float) -> str:
 def _normalize_job_status(value: Optional[str]) -> str:
     status = (value or "").strip().lower()
     mapping = {
+        "admin_review": "Admin Preview",
+        "admin_preview": "Admin Preview",
+        "ready_for_tech": "Pending",
+        "pending_admin_confirmation": "Pending Admin Confirmation",
+        "pending_review": "Pending Review",
         "pending": "Pending",
         "scheduled": "Scheduled",
         "in_progress": "In Progress",
@@ -151,17 +156,18 @@ class ReportsService:
             .filter(Job.created_at >= start_dt, Job.created_at <= end_dt)
             .all()
         )
-        completed_jobs_in_range = [row for row in jobs_in_range if (row.status or "").strip().upper() == "COMPLETED"]
+        completed_jobs_in_range = [row for row in jobs_in_range if _normalize_job_status(row.status) == "Completed"]
 
         pending_approval_rows = (
             self.db.query(Job, Dealership)
             .outerjoin(Dealership, Job.dealership_id == Dealership.id)
             .filter(Job.invoice_id.is_(None))
-            .filter((Job.status == "COMPLETED") | (Job.status == "completed"))
             .all()
         )
         pending_approval_jobs = sum(
-            1 for job, dealership in pending_approval_rows if _is_pending_approval_eligible(job, dealership)
+            1
+            for job, dealership in pending_approval_rows
+            if _normalize_job_status(job.status) == "Completed" and _is_pending_approval_eligible(job, dealership)
         )
 
         active_techs = [
@@ -272,7 +278,7 @@ class ReportsService:
         tech_rows: list[TechnicianPerformanceRow] = []
         for row in all_techs:
             tech_jobs = jobs_by_tech.get(row.id, [])
-            completed = [item for item in tech_jobs if (item.status or "").strip().upper() == "COMPLETED"]
+            completed = [item for item in tech_jobs if _normalize_job_status(item.status) == "Completed"]
             durations = []
             for item in completed:
                 completed_at = item.completed_at or item.updated_at
@@ -302,7 +308,7 @@ class ReportsService:
         dealership_rows: list[DealershipPerformanceRow] = []
         for row in all_dealerships:
             dealership_jobs = jobs_by_dealership.get(row.id, [])
-            completed = [item for item in dealership_jobs if (item.status or "").strip().upper() == "COMPLETED"]
+            completed = [item for item in dealership_jobs if _normalize_job_status(item.status) == "Completed"]
             durations = []
             for item in completed:
                 completed_at = item.completed_at or item.updated_at

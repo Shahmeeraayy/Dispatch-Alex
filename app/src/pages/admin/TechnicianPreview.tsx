@@ -6,11 +6,11 @@ import { useAuth } from '@/contexts/AuthContext';
 // Import Technician Pages
 import AvailableJobsPage from '@/pages/technician/AvailableJobs';
 import MyJobsPage from '@/pages/technician/MyJobs';
-import SchedulePage from '@/pages/technician/Schedule';
+import JobHistoryPage from '@/pages/technician/JobHistory';
 import ProfilePage from '@/pages/technician/Profile';
 
 interface TechPreviewProps {
-    view: 'available-jobs' | 'my-jobs' | 'schedule' | 'profile';
+    view: 'jobs' | 'current-job' | 'history' | 'profile';
 }
 
 export default function TechnicianPreview({ view }: TechPreviewProps) {
@@ -62,9 +62,9 @@ export default function TechnicianPreview({ view }: TechPreviewProps) {
 
             {/* Technician Portal Content */}
             <div>
-                {view === 'available-jobs' && <AvailableJobsPage />}
-                {view === 'my-jobs' && <MyJobsPage />}
-                {view === 'schedule' && <SchedulePage />}
+                {view === 'jobs' && <AvailableJobsPage />}
+                {view === 'current-job' && <MyJobsPage />}
+                {view === 'history' && <JobHistoryPage />}
                 {view === 'profile' && <ProfilePage />}
             </div>
         </div>

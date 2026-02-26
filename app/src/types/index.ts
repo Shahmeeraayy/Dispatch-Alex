@@ -5,9 +5,12 @@ export type UserRole = 'admin' | 'technician';
 
 // Job Status
 export type JobStatus =
+  | 'UNKNOWN'
+  | 'ADMIN_PREVIEW'
+  | 'READY_FOR_TECH'
+  | 'PENDING_ADMIN_CONFIRMATION'
   | 'PENDING_REVIEW'
-  | 'READY_FOR_TECH_ACCEPTANCE'
-  | 'DISPATCHING'
+  | 'PENDING'
   | 'SCHEDULED'
   | 'IN_PROGRESS'
   | 'DELAYED'

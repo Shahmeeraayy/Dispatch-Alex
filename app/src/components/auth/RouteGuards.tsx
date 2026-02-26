@@ -5,12 +5,10 @@ import type { UserRole } from '@/types';
 
 const defaultPathByRole: Record<UserRole, string> = {
   admin: '/admin',
-  technician: '/tech/available-jobs',
+  technician: '/tech/jobs',
 };
 
-function loginPathForRole(role: UserRole) {
-  return role === 'admin' ? '/admin/login' : '/tech/login';
-}
+const CANONICAL_LOGIN_PATH = '/login';
 
 export function RequireRole({ role, children }: { role: UserRole; children: ReactNode }) {
   const { user, isAuthenticated, hasBackendTechnicianToken } = useAuth();
@@ -19,7 +17,7 @@ export function RequireRole({ role, children }: { role: UserRole; children: Reac
   if (!isAuthenticated || !user) {
     return (
       <Navigate
-        to={loginPathForRole(role)}
+        to={CANONICAL_LOGIN_PATH}
         replace
         state={{ from: `${location.pathname}${location.search}` }}
       />
@@ -33,7 +31,7 @@ export function RequireRole({ role, children }: { role: UserRole; children: Reac
   if (role === 'technician' && !hasBackendTechnicianToken) {
     return (
       <Navigate
-        to={loginPathForRole(role)}
+        to={CANONICAL_LOGIN_PATH}
         replace
         state={{ from: `${location.pathname}${location.search}` }}
       />
@@ -61,11 +59,11 @@ export function HomeRoute() {
   const { user, isAuthenticated, hasBackendTechnicianToken } = useAuth();
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to={CANONICAL_LOGIN_PATH} replace />;
   }
 
   if (user.role === 'technician' && !hasBackendTechnicianToken) {
-    return <Navigate to="/tech/login" replace />;
+    return <Navigate to={CANONICAL_LOGIN_PATH} replace />;
   }
 
   return <Navigate to={defaultPathByRole[user.role]} replace />;

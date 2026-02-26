@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Text, Uuid
+from sqlalchemy import JSON, Column, Date, DateTime, ForeignKey, Numeric, String, Text, Time, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -14,6 +14,8 @@ class Job(Base):
     job_code = Column(String(50), unique=True, nullable=False)
     status = Column(String(50), nullable=False)
     assigned_tech_id = Column(Uuid(as_uuid=True), ForeignKey("technicians.id"), nullable=True)
+    pre_assigned_technician_id = Column(Uuid(as_uuid=True), ForeignKey("technicians.id"), nullable=True)
+    pre_assignment_reason = Column(String(64), nullable=True)
     skill_id = Column(Uuid(as_uuid=True), ForeignKey("skills.id"), nullable=True)
     zone_id = Column(Uuid(as_uuid=True), ForeignKey("zones.id"), nullable=True)
     dealership_id = Column(Uuid(as_uuid=True), ForeignKey("dealerships.id"), nullable=True)
@@ -36,6 +38,10 @@ class Job(Base):
     tax_rate = Column(Numeric(8, 5), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     invoice_id = Column(Uuid(as_uuid=True), ForeignKey("invoices.id"), nullable=True)
+    requested_service_date = Column(Date, nullable=True)
+    requested_service_time = Column(Time, nullable=True)
+    source_system = Column(String(32), nullable=True)
+    source_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 

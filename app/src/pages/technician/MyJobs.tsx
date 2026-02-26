@@ -5,8 +5,6 @@ import {
     User,
     Briefcase,
     MapPin,
-    ChevronDown,
-    ChevronUp,
     Play,
     CheckCircle2,
     XCircle,
@@ -16,8 +14,20 @@ import {
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { MOCK_SERVICES } from '../admin/Services';
-import { MOCK_DEALERSHIPS } from '../admin/Dealerships';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+    completeTechnicianMyJob,
+    delayTechnicianMyJob,
+    fetchAdminTechnicianJobsFeed,
+    fetchTechnicianJobsFeed,
+    getStoredAdminToken,
+    getStoredTechnicianToken,
+    refuseTechnicianMyJob,
+    startTechnicianMyJob,
+    type BackendTechnicianJobFeedItem,
+} from '@/lib/backend-api';
+import { DISPATCH_JOB_STATUS, normalizeDispatchJobStatus } from '@/lib/job-status';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -41,7 +51,7 @@ import {
 
 // --- Types ---
 
-type JobStatus = 'scheduled' | 'in_progress' | 'delayed' | 'completed';
+type JobStatus = 'scheduled' | 'in_progress' | 'delayed' | 'completed' | 'unknown';
 type Urgency = 'low' | 'normal' | 'high' | 'critical';
 
 interface MyJob {
@@ -56,65 +66,51 @@ interface MyJob {
     allowed_actions: ('start' | 'done' | 'delay' | 'refuse')[];
 }
 
-// --- Mock Data ---
+const mapBackendFeedItemToMyJob = (item: BackendTechnicianJobFeedItem): MyJob | null => {
+    const status = normalizeDispatchJobStatus(item.status);
+    if (
+        status === DISPATCH_JOB_STATUS.CANCELLED
+        || status === DISPATCH_JOB_STATUS.ADMIN_PREVIEW
+        || status === DISPATCH_JOB_STATUS.PENDING_ADMIN_CONFIRMATION
+        || status === DISPATCH_JOB_STATUS.PENDING_REVIEW
+        || status === DISPATCH_JOB_STATUS.READY_FOR_TECH
+    ) {
+        return null;
+    }
 
-const generateMockMyJobs = (): MyJob[] => {
-    const services = MOCK_SERVICES.map(s => s.name);
-    const dealers = MOCK_DEALERSHIPS.map(d => d.name);
-    const zones = ['Québec', 'Lévis', 'Donnacona', 'St-Raymond'];
+    const mappedStatus: JobStatus =
+        status === DISPATCH_JOB_STATUS.SCHEDULED ? 'scheduled'
+            : status === DISPATCH_JOB_STATUS.IN_PROGRESS ? 'in_progress'
+                : status === DISPATCH_JOB_STATUS.DELAYED ? 'delayed'
+                    : status === DISPATCH_JOB_STATUS.COMPLETED ? 'completed'
+                        : 'unknown';
 
-    return [
-        {
-            job_id: 'job-1',
-            job_code: 'SM2-2024-1001',
-            dealership_name: dealers[Math.floor(Math.random() * dealers.length)] || 'Audi de Quebec',
-            service_name: services[Math.floor(Math.random() * services.length)] || 'Bande pare-brise teintée',
-            job_status: 'in_progress',
-            urgency: 'high',
-            zone: zones[Math.floor(Math.random() * zones.length)],
-            allowed_actions: ['done', 'delay'],
-        },
-        {
-            job_id: 'job-2',
-            job_code: 'SM2-2024-1005',
-            dealership_name: dealers[Math.floor(Math.random() * dealers.length)] || 'Toyota Ste-Foy',
-            service_name: services[Math.floor(Math.random() * services.length)] || 'Démarreur 2-Way – Audi',
-            job_status: 'scheduled',
-            urgency: 'normal',
-            scheduled_time: new Date(Date.now() + 3600000).toISOString(),
-            zone: zones[Math.floor(Math.random() * zones.length)],
-            allowed_actions: ['start', 'delay', 'refuse'],
-        },
-        {
-            job_id: 'job-3',
-            job_code: 'SM2-2024-1008',
-            dealership_name: dealers[Math.floor(Math.random() * dealers.length)] || 'Honda Donnacona',
-            service_name: services[Math.floor(Math.random() * services.length)] || 'Main-d’œuvre – régulier',
-            job_status: 'delayed',
-            urgency: 'critical',
-            scheduled_time: new Date(Date.now() - 1800000).toISOString(),
-            zone: zones[Math.floor(Math.random() * zones.length)],
-            allowed_actions: ['start', 'refuse'],
-        },
-        {
-            job_id: 'job-4',
-            job_code: 'SM2-2024-0998',
-            dealership_name: dealers[Math.floor(Math.random() * dealers.length)] || 'Audi de Quebec',
-            service_name: services[Math.floor(Math.random() * services.length)] || 'PPF capot 12" + ailes',
-            job_status: 'completed',
-            zone: zones[Math.floor(Math.random() * zones.length)],
-            allowed_actions: [],
-        },
-        {
-            job_id: 'job-5',
-            job_code: 'SM2-2024-0995',
-            dealership_name: dealers[Math.floor(Math.random() * dealers.length)] || 'Toyota Ste-Foy',
-            service_name: services[Math.floor(Math.random() * services.length)] || 'Teintage complet – standard',
-            job_status: 'completed',
-            zone: zones[Math.floor(Math.random() * zones.length)],
-            allowed_actions: [],
-        },
-    ];
+    const allowedActions: MyJob['allowed_actions'] =
+        mappedStatus === 'in_progress'
+            ? ['done', 'delay']
+            : mappedStatus === 'delayed'
+                ? ['start', 'refuse']
+                : mappedStatus === 'completed'
+                    ? []
+                    : mappedStatus === 'unknown'
+                        ? []
+                        : ['start', 'delay', 'refuse'];
+
+    const scheduledTime = item.requested_service_date
+        ? `${item.requested_service_date}T${(item.requested_service_time || '09:00:00').slice(0, 8)}`
+        : undefined;
+
+    return {
+        job_id: item.id,
+        job_code: item.job_code,
+        dealership_name: item.dealership_name || 'Unknown Dealership',
+        service_name: item.service_name || 'Service Request',
+        job_status: mappedStatus,
+        urgency: 'normal',
+        scheduled_time: scheduledTime,
+        zone: item.zone_name || 'Unspecified',
+        allowed_actions: allowedActions,
+    };
 };
 
 // --- Components ---
@@ -125,6 +121,7 @@ function StatusBadge({ status }: { status: JobStatus }) {
         in_progress: 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700',
         delayed: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700',
         completed: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600',
+        unknown: 'bg-zinc-100 text-zinc-700 border-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700',
     };
 
     const labels: Record<JobStatus, string> = {
@@ -132,6 +129,7 @@ function StatusBadge({ status }: { status: JobStatus }) {
         in_progress: 'In Progress',
         delayed: 'Delayed',
         completed: 'Completed',
+        unknown: 'Unknown',
     };
 
     return (
@@ -192,9 +190,19 @@ function JobCard({
         setActionLoading(null);
     };
 
-    const formatScheduledTime = (isoString: string): string => {
+    const formatScheduledDateTime = (isoString: string): string => {
         const date = new Date(isoString);
-        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const formattedDate = date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+        });
+        const formattedTime = date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+        });
+        return `${formattedDate} • ${formattedTime}`;
     };
 
     return (
@@ -233,7 +241,7 @@ function JobCard({
                     {job.scheduled_time && (
                         <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                             <Clock className="w-4 h-4" />
-                            <span className="font-medium">{formatScheduledTime(job.scheduled_time)}</span>
+                            <span className="font-medium">{formatScheduledDateTime(job.scheduled_time)}</span>
                         </div>
                     )}
                 </div>
@@ -331,15 +339,15 @@ function BottomNav({
     activeTab,
     routeBase,
 }: {
-    activeTab: 'available' | 'my-jobs' | 'schedule' | 'profile';
+    activeTab: 'jobs' | 'current-job' | 'history' | 'profile';
     routeBase: string;
 }) {
     const navigate = useNavigate();
 
     const tabs = [
-        { id: 'available', label: 'Available', icon: Briefcase, path: `${routeBase}/available-jobs` },
-        { id: 'my-jobs', label: 'My Jobs', icon: Calendar, path: `${routeBase}/my-jobs` },
-        { id: 'schedule', label: 'Schedule', icon: Clock, path: `${routeBase}/schedule` },
+        { id: 'jobs', label: 'Jobs', icon: Briefcase, path: `${routeBase}/jobs` },
+        { id: 'current-job', label: 'Current Job', icon: Calendar, path: `${routeBase}/current-job` },
+        { id: 'history', label: 'History', icon: Clock, path: `${routeBase}/history` },
         { id: 'profile', label: 'Profile', icon: User, path: `${routeBase}/profile` },
     ] as const;
 
@@ -377,12 +385,17 @@ function BottomNav({
 
 // --- Main Component ---
 
-export default function MyJobsPage() {
+export default function MyJobsPage({
+    viewMode = 'current',
+}: {
+    viewMode?: 'current' | 'history';
+}) {
     const { techId: previewTechId } = useParams();
     const routeBase = previewTechId ? `/admin/tech-preview/${previewTechId}` : '/tech';
+    const { user } = useAuth();
     const [jobs, setJobs] = useState<MyJob[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showCompleted, setShowCompleted] = useState(false);
+    const isHistoryMode = viewMode === 'history';
 
     // Modals
     const [delayModalOpen, setDelayModalOpen] = useState(false);
@@ -403,28 +416,87 @@ export default function MyJobsPage() {
     const [confirmLoading, setConfirmLoading] = useState(false);
 
     useEffect(() => {
-        fetchJobs();
-    }, [previewTechId]);
+        void fetchJobs();
+    }, [previewTechId, user?.id, user?.role]);
+
+    useEffect(() => {
+        if (previewTechId) return;
+        const intervalId = setInterval(() => {
+            void fetchJobs();
+        }, 10000);
+        const onFocus = () => { void fetchJobs(); };
+        window.addEventListener('focus', onFocus);
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener('focus', onFocus);
+        };
+    }, [previewTechId, user?.id, user?.role]);
 
     const fetchJobs = async () => {
         setLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setJobs(generateMockMyJobs());
+        if (previewTechId) {
+            const adminToken = getStoredAdminToken();
+            if (!adminToken) {
+                setJobs([]);
+                setLoading(false);
+                return;
+            }
+            try {
+                const feed = await fetchAdminTechnicianJobsFeed(adminToken, previewTechId);
+                const mapped = feed.my_jobs
+                    .map(mapBackendFeedItemToMyJob)
+                    .filter((job): job is MyJob => job !== null);
+                setJobs(mapped);
+            } catch {
+                setJobs([]);
+            }
+            setLoading(false);
+            return;
+        }
+
+        const token = getStoredTechnicianToken();
+        if (!token || user?.role !== 'technician') {
+            setJobs([]);
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const feed = await fetchTechnicianJobsFeed(token);
+            const mapped = feed.my_jobs
+                .map(mapBackendFeedItemToMyJob)
+                .filter((job): job is MyJob => job !== null);
+            setJobs(mapped);
+        } catch {
+            setJobs([]);
+        }
         setLoading(false);
     };
 
-    const activeJobs = jobs.filter(j => ['scheduled', 'in_progress', 'delayed'].includes(j.job_status));
+    const activeJobs = jobs.filter(j => ['scheduled', 'in_progress', 'delayed', 'unknown'].includes(j.job_status));
     const completedJobs = jobs.filter(j => j.job_status === 'completed');
 
     // Handlers
     const handleStart = async (jobId: string) => {
-        console.log('Start job:', jobId);
-        // In production: API call to start job
-        setJobs(prev => prev.map(j =>
-            j.job_id === jobId
-                ? { ...j, job_status: 'in_progress' as JobStatus, allowed_actions: ['done', 'delay'] }
-                : j
-        ));
+        if (previewTechId) {
+            setJobs(prev => prev.map(j =>
+                j.job_id === jobId
+                    ? { ...j, job_status: 'in_progress' as JobStatus, allowed_actions: ['done', 'delay'] }
+                    : j
+            ));
+            return;
+        }
+
+        const token = getStoredTechnicianToken();
+        if (!token || user?.role !== 'technician') return;
+
+        try {
+            await startTechnicianMyJob(token, jobId);
+            await fetchJobs();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to start job.';
+            toast.error(message);
+        }
     };
 
     const handleDone = (jobId: string) => {
@@ -436,15 +508,25 @@ export default function MyJobsPage() {
         if (!selectedJobId) return;
 
         setConfirmLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        console.log('Complete job:', selectedJobId);
-        // In production: API call to complete job
-        setJobs(prev => prev.map(j =>
-            j.job_id === selectedJobId
-                ? { ...j, job_status: 'completed' as JobStatus, allowed_actions: [] }
-                : j
-        ));
+        if (previewTechId) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            setJobs(prev => prev.map(j =>
+                j.job_id === selectedJobId
+                    ? { ...j, job_status: 'completed' as JobStatus, allowed_actions: [] }
+                    : j
+            ));
+        } else {
+            const token = getStoredTechnicianToken();
+            if (token && user?.role === 'technician') {
+                try {
+                    await completeTechnicianMyJob(token, selectedJobId);
+                    await fetchJobs();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Failed to complete job.';
+                    toast.error(message);
+                }
+            }
+        }
 
         setConfirmLoading(false);
         setDoneModalOpen(false);
@@ -466,15 +548,28 @@ export default function MyJobsPage() {
         if (!minutes || minutes <= 0) return;
 
         setConfirmLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        console.log('Delay job:', selectedJobId, 'Minutes:', minutes, 'Note:', delayNote);
-        // In production: API call to delay job
-        setJobs(prev => prev.map(j =>
-            j.job_id === selectedJobId
-                ? { ...j, job_status: 'delayed' as JobStatus }
-                : j
-        ));
+        if (previewTechId) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            setJobs(prev => prev.map(j =>
+                j.job_id === selectedJobId
+                    ? { ...j, job_status: 'delayed' as JobStatus }
+                    : j
+            ));
+        } else {
+            const token = getStoredTechnicianToken();
+            if (token && user?.role === 'technician') {
+                try {
+                    await delayTechnicianMyJob(token, selectedJobId, {
+                        minutes,
+                        note: delayNote || undefined,
+                    });
+                    await fetchJobs();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Failed to delay job.';
+                    toast.error(message);
+                }
+            }
+        }
 
         // Reset form
         setDelayMinutes('15');
@@ -494,11 +589,24 @@ export default function MyJobsPage() {
         if (!selectedJobId || !refuseReason) return;
 
         setConfirmLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        console.log('Refuse job:', selectedJobId, 'Reason:', refuseReason, 'Comment:', refuseComment);
-        // In production: API call to refuse job
-        setJobs(prev => prev.filter(j => j.job_id !== selectedJobId));
+        if (previewTechId) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            setJobs(prev => prev.filter(j => j.job_id !== selectedJobId));
+        } else {
+            const token = getStoredTechnicianToken();
+            if (token && user?.role === 'technician') {
+                try {
+                    await refuseTechnicianMyJob(token, selectedJobId, {
+                        reason: refuseReason,
+                        comment: refuseComment || undefined,
+                    });
+                    await fetchJobs();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Failed to refuse job.';
+                    toast.error(message);
+                }
+            }
+        }
 
         // Reset form
         setRefuseReason('');
@@ -514,10 +622,10 @@ export default function MyJobsPage() {
             <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
                 <div className="max-w-2xl mx-auto px-5 py-4">
                     <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                        My Jobs
+                        {isHistoryMode ? 'Job History' : 'Current Job'}
                     </h1>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        {activeJobs.length} active • {completedJobs.length} completed
+                        {isHistoryMode ? `${completedJobs.length} completed` : `${activeJobs.length} active`}
                     </p>
                 </div>
             </div>
@@ -540,41 +648,9 @@ export default function MyJobsPage() {
                     </div>
                 ) : (
                     <>
-                        {/* Active Jobs */}
-                        {activeJobs.length > 0 && (
-                            <div className="space-y-3">
-                                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
-                                    Active
-                                </h2>
-                                {activeJobs.map((job) => (
-                                    <JobCard
-                                        key={job.job_id}
-                                        job={job}
-                                        onStart={handleStart}
-                                        onDone={handleDone}
-                                        onDelay={handleDelay}
-                                        onRefuse={handleRefuse}
-                                    />
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Completed Jobs (Collapsible) */}
-                        {completedJobs.length > 0 && (
-                            <div className="space-y-3">
-                                <button
-                                    onClick={() => setShowCompleted(!showCompleted)}
-                                    className="w-full flex items-center justify-between px-1 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                                >
-                                    <span>Completed ({completedJobs.length})</span>
-                                    {showCompleted ? (
-                                        <ChevronUp className="w-4 h-4" />
-                                    ) : (
-                                        <ChevronDown className="w-4 h-4" />
-                                    )}
-                                </button>
-
-                                {showCompleted && (
+                        {isHistoryMode ? (
+                            <>
+                                {completedJobs.length > 0 ? (
                                     <div className="space-y-3">
                                         {completedJobs.map((job) => (
                                             <JobCard
@@ -587,23 +663,56 @@ export default function MyJobsPage() {
                                             />
                                         ))}
                                     </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-5">
+                                            <Clock className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                            No Job History Yet
+                                        </h3>
+                                        <p className="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+                                            Completed jobs will appear here after you finish them.
+                                        </p>
+                                    </div>
                                 )}
-                            </div>
-                        )}
+                            </>
+                        ) : (
+                            <>
+                                {/* Active Jobs */}
+                                {activeJobs.length > 0 && (
+                                    <div className="space-y-3">
+                                        <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
+                                            Active
+                                        </h2>
+                                        {activeJobs.map((job) => (
+                                            <JobCard
+                                                key={job.job_id}
+                                                job={job}
+                                                onStart={handleStart}
+                                                onDone={handleDone}
+                                                onDelay={handleDelay}
+                                                onRefuse={handleRefuse}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
 
-                        {/* Empty State */}
-                        {activeJobs.length === 0 && completedJobs.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-5">
-                                    <Calendar className="w-10 h-10 text-gray-400 dark:text-gray-600" />
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                                    No Jobs Assigned
-                                </h3>
-                                <p className="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
-                                    You don't have any jobs assigned. Check Available Jobs to accept new work.
-                                </p>
-                            </div>
+                                {/* Empty State */}
+                                {activeJobs.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-5">
+                                            <Calendar className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                            No Current Jobs
+                                        </h3>
+                                        <p className="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+                                            New confirmed jobs from admin will appear in the Jobs tab.
+                                        </p>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </>
                 )}
@@ -786,7 +895,9 @@ export default function MyJobsPage() {
             </Dialog>
 
             {/* Bottom Navigation */}
-            <BottomNav activeTab="my-jobs" routeBase={routeBase} />
+            <BottomNav activeTab={isHistoryMode ? 'history' : 'current-job'} routeBase={routeBase} />
         </div>
     );
 }
+
+

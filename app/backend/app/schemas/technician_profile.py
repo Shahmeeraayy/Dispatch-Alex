@@ -382,3 +382,51 @@ class AssignmentReadinessResponse(BaseModel):
     zone_match: bool
     skill_match: bool
     can_assign: bool
+
+
+class TechnicianJobFeedItem(BaseModel):
+    id: UUID
+    job_code: str
+    status: str
+    dealership_name: Optional[str] = None
+    service_name: Optional[str] = None
+    vehicle_summary: Optional[str] = None
+    zone_name: Optional[str] = None
+    requested_service_date: Optional[date] = None
+    requested_service_time: Optional[time] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TechnicianJobFeedResponse(BaseModel):
+    available_jobs: List[TechnicianJobFeedItem]
+    my_jobs: List[TechnicianJobFeedItem]
+
+
+class TechnicianJobDelayRequest(BaseModel):
+    minutes: Optional[int] = Field(default=None, ge=1, le=1440)
+    note: Optional[str] = None
+
+    @validator("note")
+    def validate_note(cls, note: Optional[str]):
+        if note is None:
+            return None
+        normalized = note.strip()
+        return normalized or None
+
+
+class TechnicianJobRefuseRequest(BaseModel):
+    reason: Optional[str] = None
+    comment: Optional[str] = None
+
+    @validator("reason", "comment")
+    def validate_text_fields(cls, value: Optional[str]):
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class TechnicianJobActionResponse(BaseModel):
+    job_id: UUID
+    status: str

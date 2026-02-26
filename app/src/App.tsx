@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from '@/components/ui/sonner';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { HomeRoute, PublicOnly, RequireRole } from '@/components/auth/RouteGuards';
 import AdminLoginPage from '@/pages/auth/AdminLogin';
@@ -26,7 +27,7 @@ import TechnicianPreview from '@/pages/admin/TechnicianPreview';
 // Technician Pages
 import AvailableJobsPage from '@/pages/technician/AvailableJobs';
 import MyJobsPage from '@/pages/technician/MyJobs';
-import SchedulePage from '@/pages/technician/Schedule';
+import JobHistoryPage from '@/pages/technician/JobHistory';
 import ProfilePage from '@/pages/technician/Profile';
 
 function PlaceholderPage({ title }: { title: string }) {
@@ -41,16 +42,42 @@ function App() {
           <Route path="/" element={<HomeRoute />} />
 
           {/* Login Portals */}
+          <Route path="/login" element={<PublicOnly><AdminLoginPage /></PublicOnly>} />
           <Route path="/admin/login" element={<PublicOnly><AdminLoginPage /></PublicOnly>} />
           <Route path="/tech/login" element={<PublicOnly><TechnicianLoginPage /></PublicOnly>} />
           <Route path="/tech/signup" element={<PublicOnly><TechnicianSignupPage /></PublicOnly>} />
 
           {/* Admin Preview Mode - Technician Portal Preview (No AdminLayout) */}
           <Route
+            path="/admin/tech-preview/:techId/jobs"
+            element={
+              <RequireRole role="admin">
+                <TechnicianPreview view="jobs" />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/tech-preview/:techId/current-job"
+            element={
+              <RequireRole role="admin">
+                <TechnicianPreview view="current-job" />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/tech-preview/:techId/history"
+            element={
+              <RequireRole role="admin">
+                <TechnicianPreview view="history" />
+              </RequireRole>
+            }
+          />
+          {/* Backward compatibility aliases */}
+          <Route
             path="/admin/tech-preview/:techId/available-jobs"
             element={
               <RequireRole role="admin">
-                <TechnicianPreview view="available-jobs" />
+                <Navigate to="../jobs" replace />
               </RequireRole>
             }
           />
@@ -58,16 +85,15 @@ function App() {
             path="/admin/tech-preview/:techId/my-jobs"
             element={
               <RequireRole role="admin">
-                <TechnicianPreview view="my-jobs" />
+                <Navigate to="../current-job" replace />
               </RequireRole>
             }
           />
-          {/* Backward compatibility alias */}
           <Route
             path="/admin/tech-preview/:techId/assigned"
             element={
               <RequireRole role="admin">
-                <Navigate to="../my-jobs" replace />
+                <Navigate to="../current-job" replace />
               </RequireRole>
             }
           />
@@ -75,7 +101,7 @@ function App() {
             path="/admin/tech-preview/:techId/schedule"
             element={
               <RequireRole role="admin">
-                <TechnicianPreview view="schedule" />
+                <Navigate to="../history" replace />
               </RequireRole>
             }
           />
@@ -95,12 +121,12 @@ function App() {
               </RequireRole>
             }
           />
-          {/* Default preview route redirects to available jobs */}
+          {/* Default preview route redirects to jobs */}
           <Route
             path="/admin/tech-preview/:techId"
             element={
               <RequireRole role="admin">
-                <Navigate to="available-jobs" replace />
+                <Navigate to="jobs" replace />
               </RequireRole>
             }
           />
@@ -134,16 +160,16 @@ function App() {
             path="/tech"
             element={
               <RequireRole role="technician">
-                <Navigate to="/tech/available-jobs" replace />
+                <Navigate to="/tech/jobs" replace />
               </RequireRole>
             }
           />
-          {/* Backward compatibility alias */}
+          {/* Backward compatibility aliases */}
           <Route
             path="/tech/assigned"
             element={
               <RequireRole role="technician">
-                <Navigate to="/tech/my-jobs" replace />
+                <Navigate to="/tech/current-job" replace />
               </RequireRole>
             }
           />
@@ -151,7 +177,7 @@ function App() {
             path="/tech/available-jobs"
             element={
               <RequireRole role="technician">
-                <AvailableJobsPage />
+                <Navigate to="/tech/jobs" replace />
               </RequireRole>
             }
           />
@@ -159,7 +185,7 @@ function App() {
             path="/tech/my-jobs"
             element={
               <RequireRole role="technician">
-                <MyJobsPage />
+                <Navigate to="/tech/current-job" replace />
               </RequireRole>
             }
           />
@@ -167,7 +193,31 @@ function App() {
             path="/tech/schedule"
             element={
               <RequireRole role="technician">
-                <SchedulePage />
+                <Navigate to="/tech/history" replace />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/tech/jobs"
+            element={
+              <RequireRole role="technician">
+                <AvailableJobsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/tech/current-job"
+            element={
+              <RequireRole role="technician">
+                <MyJobsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/tech/history"
+            element={
+              <RequireRole role="technician">
+                <JobHistoryPage />
               </RequireRole>
             }
           />
@@ -192,13 +242,14 @@ function App() {
             path="/tech/*"
             element={
               <RequireRole role="technician">
-                <Navigate to="/tech/available-jobs" replace />
+                <Navigate to="/tech/jobs" replace />
               </RequireRole>
             }
           />
 
           <Route path="*" element={<HomeRoute />} />
         </Routes>
+        <Toaster richColors position="top-right" />
       </AuthProvider>
     </ThemeProvider>
   );

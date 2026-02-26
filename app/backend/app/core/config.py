@@ -59,7 +59,13 @@ def get_env_csv(name: str, default: str) -> list[str]:
 
 
 def normalize_database_url(value: str) -> str:
-    return value.strip()
+    normalized = value.strip()
+    # Accept hosted Postgres URLs in common forms and route them to SQLAlchemy's psycopg driver.
+    if normalized.startswith("postgres://"):
+        return "postgresql+psycopg://" + normalized[len("postgres://"):]
+    if normalized.startswith("postgresql://") and "+psycopg" not in normalized.split("://", 1)[0]:
+        return "postgresql+psycopg://" + normalized[len("postgresql://"):]
+    return normalized
 
 
 APP_ENV = get_env("APP_ENV", "development").strip().lower()

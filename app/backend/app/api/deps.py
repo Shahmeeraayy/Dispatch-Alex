@@ -15,6 +15,7 @@ is_sqlite = DATABASE_URL.startswith("sqlite")
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False} if is_sqlite else {},
+    pool_pre_ping=not is_sqlite,
 )
 
 if is_sqlite:
@@ -53,6 +54,7 @@ def _ensure_sqlite_schema() -> None:
         ensure_column("technicians", "working_hours_end", "TIME")
         ensure_column("technicians", "after_hours_enabled", "BOOLEAN DEFAULT 0 NOT NULL")
         ensure_column("technicians", "updated_by", "CHAR(32)")
+        ensure_column("technicians", "priority_rank", "INTEGER DEFAULT 100 NOT NULL")
 
         ensure_column("jobs", "dealership_id", "CHAR(32)")
         ensure_column("jobs", "customer_name", "VARCHAR(255)")
@@ -74,6 +76,12 @@ def _ensure_sqlite_schema() -> None:
         ensure_column("jobs", "tax_rate", "NUMERIC(8,5)")
         ensure_column("jobs", "completed_at", "DATETIME")
         ensure_column("jobs", "invoice_id", "CHAR(32)")
+        ensure_column("jobs", "requested_service_date", "DATE")
+        ensure_column("jobs", "requested_service_time", "TIME")
+        ensure_column("jobs", "source_system", "VARCHAR(32)")
+        ensure_column("jobs", "source_metadata", "TEXT")
+        ensure_column("jobs", "pre_assigned_technician_id", "CHAR(32)")
+        ensure_column("jobs", "pre_assignment_reason", "VARCHAR(64)")
 
 
 _ensure_sqlite_schema()

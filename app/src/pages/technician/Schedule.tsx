@@ -6,29 +6,75 @@ import {
     Building2,
     Calendar,
     CalendarDays,
+    CheckCircle2,
     ChevronRight,
     Clock,
+    Loader2,
     MapPin,
     RefreshCw,
     User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MOCK_SERVICES } from '../admin/Services';
 import { MOCK_DEALERSHIPS } from '../admin/Dealerships';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    completeTechnicianMyJob,
+    fetchAdminTechnicianJobsFeed,
+    fetchTechnicianJobsFeed,
+    getStoredAdminToken,
+    getStoredTechnicianToken,
+    type BackendTechnicianJobFeedItem,
+} from '@/lib/backend-api';
+import { DISPATCH_JOB_STATUS, normalizeDispatchJobStatus } from '@/lib/job-status';
 
 interface ScheduledJob {
     job_id: string;
     job_code: string;
     dealership_name: string;
     service_name: string;
-    status: 'scheduled' | 'in_progress' | 'delayed' | 'completed';
+    status: 'scheduled' | 'in_progress' | 'delayed' | 'completed' | 'unknown';
     urgency: 'critical' | 'high' | 'normal' | 'low' | null;
     scheduled_start_dt: string | null;
     scheduled_end_dt: string | null;
     zone: string | null;
 }
+
+const mapBackendFeedItemToScheduledJob = (item: BackendTechnicianJobFeedItem): ScheduledJob | null => {
+    const status = normalizeDispatchJobStatus(item.status);
+    if (
+        status === DISPATCH_JOB_STATUS.CANCELLED
+        || status === DISPATCH_JOB_STATUS.ADMIN_PREVIEW
+        || status === DISPATCH_JOB_STATUS.PENDING_ADMIN_CONFIRMATION
+        || status === DISPATCH_JOB_STATUS.PENDING_REVIEW
+        || status === DISPATCH_JOB_STATUS.READY_FOR_TECH
+    ) {
+        return null;
+    }
+
+    const mappedStatus: ScheduledJob['status'] =
+        status === DISPATCH_JOB_STATUS.SCHEDULED ? 'scheduled'
+            : status === DISPATCH_JOB_STATUS.IN_PROGRESS ? 'in_progress'
+                : status === DISPATCH_JOB_STATUS.DELAYED ? 'delayed'
+                    : status === DISPATCH_JOB_STATUS.COMPLETED ? 'completed'
+                        : 'unknown';
+
+    const scheduledStart = item.requested_service_date
+        ? `${item.requested_service_date}T${(item.requested_service_time || '09:00:00').slice(0, 8)}`
+        : null;
+
+    return {
+        job_id: item.id,
+        job_code: item.job_code,
+        dealership_name: item.dealership_name || 'Unknown Dealership',
+        service_name: item.service_name || 'Service Request',
+        status: mappedStatus,
+        urgency: 'normal',
+        scheduled_start_dt: scheduledStart,
+        scheduled_end_dt: null,
+        zone: item.zone_name || null,
+    };
+};
 
 interface DateGroup {
     date: string;
@@ -36,10 +82,9 @@ interface DateGroup {
     jobs: ScheduledJob[];
 }
 
-const generateMockSchedule = (): ScheduledJob[] => {
+const generateMockSchedule = (services: string[]): ScheduledJob[] => {
     const today = new Date();
     const jobs: ScheduledJob[] = [];
-    const services = MOCK_SERVICES.map((s) => s.name);
     const dealers = MOCK_DEALERSHIPS.map((d) => d.name);
     const zones = ['Quebec', 'Levis', 'Donnacona', 'St-Raymond'];
 
@@ -164,6 +209,7 @@ function StatusBadge({ status }: { status: ScheduledJob['status'] }) {
         in_progress: 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700',
         delayed: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700',
         completed: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600',
+        unknown: 'bg-zinc-100 text-zinc-700 border-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700',
     };
 
     const labels: Record<ScheduledJob['status'], string> = {
@@ -171,6 +217,7 @@ function StatusBadge({ status }: { status: ScheduledJob['status'] }) {
         in_progress: 'In Progress',
         delayed: 'Delayed',
         completed: 'Completed',
+        unknown: 'Unknown',
     };
 
     return (
@@ -214,9 +261,13 @@ function UrgencyBadge({ urgency }: { urgency: ScheduledJob['urgency'] }) {
 function ScheduleJobCard({
     job,
     onOpen,
+    onComplete,
+    completing,
 }: {
     job: ScheduledJob;
     onOpen: (jobId: string) => void;
+    onComplete: (jobId: string) => void;
+    completing: boolean;
 }) {
     const formatTime = (isoString: string | null) => {
         if (!isoString) return 'Time TBD';
@@ -268,16 +319,34 @@ function ScheduleJobCard({
                 </div>
 
                 <div className="pt-2">
-                    <Button
-                        onClick={() => onOpen(job.job_id)}
-                        className={cn(
-                            'w-full h-11 text-sm font-semibold rounded-xl',
-                            'bg-[#2F8E92] hover:bg-[#267276] text-white',
-                        )}
-                    >
-                        Open Job
-                        <ChevronRight className="w-4 h-4 ml-2" />
-                    </Button>
+                    {job.status === 'in_progress' ? (
+                        <Button
+                            onClick={() => onComplete(job.job_id)}
+                            disabled={completing}
+                            className={cn(
+                                'w-full h-11 text-sm font-semibold rounded-xl',
+                                'bg-emerald-600 hover:bg-emerald-700 text-white',
+                            )}
+                        >
+                            {completing ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                            )}
+                            DONE
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={() => onOpen(job.job_id)}
+                            className={cn(
+                                'w-full h-11 text-sm font-semibold rounded-xl',
+                                'bg-[#2F8E92] hover:bg-[#267276] text-white',
+                            )}
+                        >
+                            Open Job
+                            <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>
@@ -338,6 +407,7 @@ export default function SchedulePage() {
     const [error, setError] = useState(false);
     const [jobs, setJobs] = useState<ScheduledJob[]>([]);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [completingJobId, setCompletingJobId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchSchedule();
@@ -347,8 +417,27 @@ export default function SchedulePage() {
         setLoading(true);
         setError(false);
         try {
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            setJobs(generateMockSchedule());
+            const technicianToken = getStoredTechnicianToken();
+            const adminToken = getStoredAdminToken();
+            if (previewTechId) {
+                if (!adminToken) {
+                    setJobs([]);
+                } else {
+                    const feed = await fetchAdminTechnicianJobsFeed(adminToken, previewTechId);
+                    const mapped = feed.my_jobs
+                        .map(mapBackendFeedItemToScheduledJob)
+                        .filter((job): job is ScheduledJob => job !== null);
+                    setJobs(mapped);
+                }
+            } else if (technicianToken) {
+                const feed = await fetchTechnicianJobsFeed(technicianToken);
+                const mapped = feed.my_jobs
+                    .map(mapBackendFeedItemToScheduledJob)
+                    .filter((job): job is ScheduledJob => job !== null);
+                setJobs(mapped);
+            } else {
+                setJobs([]);
+            }
             setLastUpdated(new Date());
         } catch (err) {
             console.error('Failed to fetch schedule:', err);
@@ -416,7 +505,27 @@ export default function SchedulePage() {
         navigate(`${routeBase}/my-jobs`);
     };
 
-    const activeJobsCount = jobs.filter((job) => ['scheduled', 'in_progress', 'delayed'].includes(job.status)).length;
+    const handleComplete = async (jobId: string) => {
+        if (previewTechId) {
+            setJobs((prev) => prev.map((job) => (job.job_id === jobId ? { ...job, status: 'completed' } : job)));
+            return;
+        }
+
+        const token = getStoredTechnicianToken();
+        if (!token) return;
+
+        setCompletingJobId(jobId);
+        try {
+            await completeTechnicianMyJob(token, jobId);
+            await fetchSchedule();
+        } catch {
+            // keep current UI as-is on failure
+        } finally {
+            setCompletingJobId(null);
+        }
+    };
+
+    const activeJobsCount = jobs.filter((job) => ['scheduled', 'in_progress', 'delayed', 'unknown'].includes(job.status)).length;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
@@ -499,7 +608,13 @@ export default function SchedulePage() {
                                 </h2>
                                 <div className="space-y-3">
                                     {group.jobs.map((job) => (
-                                        <ScheduleJobCard key={job.job_id} job={job} onOpen={handleJobOpen} />
+                                        <ScheduleJobCard
+                                            key={job.job_id}
+                                            job={job}
+                                            onOpen={handleJobOpen}
+                                            onComplete={handleComplete}
+                                            completing={completingJobId === job.job_id}
+                                        />
                                     ))}
                                 </div>
                             </div>

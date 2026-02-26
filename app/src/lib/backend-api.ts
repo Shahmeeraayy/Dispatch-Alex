@@ -139,6 +139,64 @@ export type BackendDealership = {
   }>;
 };
 
+export type BackendServiceCatalogItem = {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  default_price: string | number;
+  approval_required: boolean;
+  status: 'active' | 'archived';
+  notes?: string | null;
+  updated_at: string;
+  updated_by?: string | null;
+};
+
+export type BackendAdminJob = {
+  id: string;
+  job_code: string;
+  status: string;
+  dealership_id?: string | null;
+  dealership_name?: string | null;
+  assigned_technician_id?: string | null;
+  assigned_technician_name?: string | null;
+  pre_assigned_technician_id?: string | null;
+  pre_assigned_technician_name?: string | null;
+  pre_assignment_reason?: string | null;
+  service_type?: string | null;
+  vehicle?: string | null;
+  created_at: string;
+  updated_at: string;
+  requested_service_date?: string | null;
+  requested_service_time?: string | null;
+  source_system?: string | null;
+  source_metadata?: Record<string, unknown> | null;
+};
+
+export type BackendTechnicianJobFeedItem = {
+  id: string;
+  job_code: string;
+  status: string;
+  dealership_name?: string | null;
+  service_name?: string | null;
+  vehicle_summary?: string | null;
+  zone_name?: string | null;
+  requested_service_date?: string | null;
+  requested_service_time?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BackendTechnicianJobFeed = {
+  available_jobs: BackendTechnicianJobFeedItem[];
+  my_jobs: BackendTechnicianJobFeedItem[];
+};
+
+export type BackendTechnicianJobActionResponse = {
+  job_id: string;
+  status: string;
+};
+
 export type BackendInvoiceBrandingSettings = {
   logo_url?: string | null;
   name: string;
@@ -149,6 +207,18 @@ export type BackendInvoiceBrandingSettings = {
   phone: string;
   email: string;
   website: string;
+};
+
+export type BackendPriorityRule = {
+  id: string;
+  description: string;
+  dealership_id: string;
+  service_id?: string | null;
+  target_urgency: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  ranking_score: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type BackendInvoiceLineItem = {
@@ -458,6 +528,69 @@ export async function fetchAdminTechnicians(token: string): Promise<BackendTechn
   });
 }
 
+export async function fetchAdminTechnicianJobsFeed(
+  token: string,
+  technicianId: string,
+): Promise<BackendTechnicianJobFeed> {
+  return requestJson<BackendTechnicianJobFeed>(`/admin/technicians/${technicianId}/jobs-feed`, {
+    token,
+  });
+}
+
+export async function fetchAdminJobs(token: string): Promise<BackendAdminJob[]> {
+  return requestJson<BackendAdminJob[]>('/admin/jobs', {
+    token,
+  });
+}
+
+export async function createAdminJob(
+  token: string,
+  payload: {
+    job_code?: string | null;
+    dealership_name: string;
+    service_name: string;
+    vehicle_summary: string;
+    pre_assigned_technician_id?: string | null;
+    requested_service_date?: string | null;
+    requested_service_time?: string | null;
+  },
+): Promise<BackendAdminJob> {
+  return requestJson<BackendAdminJob>('/admin/jobs', {
+    method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminJobAssignment(
+  token: string,
+  jobId: string,
+  payload: { assigned_technician_id: string | null },
+): Promise<BackendAdminJob> {
+  return requestJson<BackendAdminJob>(`/admin/jobs/${jobId}/assignment`, {
+    method: 'PATCH',
+    token,
+    body: payload,
+  });
+}
+
+export async function confirmAdminJob(
+  token: string,
+  jobId: string,
+): Promise<BackendAdminJob> {
+  return requestJson<BackendAdminJob>(`/admin/jobs/${jobId}/confirm`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function deleteAdminJob(token: string, jobId: string): Promise<{ status: string }> {
+  return requestJson<{ status: string }>(`/admin/jobs/${jobId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
 export async function updateAdminTechnician(
   token: string,
   technicianId: string,
@@ -521,6 +654,68 @@ export async function rejectAdminTechnicianSignupRequest(
 
 export async function fetchAdminDealerships(token: string): Promise<BackendDealership[]> {
   return requestJson<BackendDealership[]>('/admin/dealerships', { token });
+}
+
+export async function fetchAdminServices(
+  token: string,
+  includeArchived = true,
+): Promise<BackendServiceCatalogItem[]> {
+  const suffix = includeArchived ? '?include_archived=true' : '?include_archived=false';
+  return requestJson<BackendServiceCatalogItem[]>(`/admin/services${suffix}`, { token });
+}
+
+export async function fetchServicesCatalog(token: string): Promise<BackendServiceCatalogItem[]> {
+  return requestJson<BackendServiceCatalogItem[]>('/services', { token });
+}
+
+export async function createAdminService(
+  token: string,
+  payload: {
+    code: string;
+    name: string;
+    category: string;
+    default_price: number;
+    approval_required?: boolean;
+    status?: 'active' | 'archived';
+    notes?: string | null;
+  },
+): Promise<BackendServiceCatalogItem> {
+  return requestJson<BackendServiceCatalogItem>('/admin/services', {
+    method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminService(
+  token: string,
+  serviceId: string,
+  payload: {
+    code?: string;
+    name?: string;
+    category?: string;
+    default_price?: number;
+    approval_required?: boolean;
+    notes?: string | null;
+  },
+): Promise<BackendServiceCatalogItem> {
+  return requestJson<BackendServiceCatalogItem>(`/admin/services/${serviceId}`, {
+    method: 'PUT',
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminServiceStatus(
+  token: string,
+  serviceId: string,
+  status: 'active' | 'archived',
+): Promise<BackendServiceCatalogItem> {
+  return requestJson<BackendServiceCatalogItem>(`/admin/services/${serviceId}/status`, {
+    method: 'PATCH',
+    token,
+    body: { status },
+  });
 }
 
 export async function createAdminDealership(
@@ -595,6 +790,61 @@ export async function updateAdminInvoiceBrandingSettings(
   });
 }
 
+export async function fetchAdminPriorityRules(
+  token: string,
+): Promise<BackendPriorityRule[]> {
+  return requestJson<BackendPriorityRule[]>('/admin/settings/priority-rules', {
+    token,
+  });
+}
+
+export async function createAdminPriorityRule(
+  token: string,
+  payload: {
+    description: string;
+    dealership_id: string;
+    service_id?: string | null;
+    target_urgency: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    ranking_score: number;
+    is_active?: boolean;
+  },
+): Promise<BackendPriorityRule> {
+  return requestJson<BackendPriorityRule>('/admin/settings/priority-rules', {
+    method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminPriorityRule(
+  token: string,
+  ruleId: string,
+  payload: {
+    description?: string;
+    dealership_id?: string;
+    service_id?: string | null;
+    target_urgency?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    ranking_score?: number;
+    is_active?: boolean;
+  },
+): Promise<BackendPriorityRule> {
+  return requestJson<BackendPriorityRule>(`/admin/settings/priority-rules/${ruleId}`, {
+    method: 'PATCH',
+    token,
+    body: payload,
+  });
+}
+
+export async function deleteAdminPriorityRule(
+  token: string,
+  ruleId: string,
+): Promise<{ status: string }> {
+  return requestJson<{ status: string }>(`/admin/settings/priority-rules/${ruleId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
 export async function fetchInvoices(token: string): Promise<BackendInvoice[]> {
   return requestJson<BackendInvoice[]>('/invoices', { token });
 }
@@ -623,6 +873,88 @@ export async function fetchPendingInvoiceApprovals(token: string): Promise<Backe
 
 export async function fetchTechnicianMeProfile(token: string): Promise<BackendTechnicianProfile> {
   return requestJson<BackendTechnicianProfile>('/technicians/me', { token });
+}
+
+export async function fetchTechnicianJobsFeed(token: string): Promise<BackendTechnicianJobFeed> {
+  return requestJson<BackendTechnicianJobFeed>('/technicians/me/jobs-feed', { token });
+}
+
+export async function startTechnicianMyJob(
+  token: string,
+  jobId: string,
+): Promise<BackendTechnicianJobActionResponse> {
+  return requestJson<BackendTechnicianJobActionResponse>(`/technicians/me/jobs/${jobId}/start`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function acceptTechnicianMyJob(
+  token: string,
+  jobId: string,
+): Promise<BackendTechnicianJobActionResponse> {
+  return requestJson<BackendTechnicianJobActionResponse>(`/technicians/me/jobs/${jobId}/accept`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function completeTechnicianMyJob(
+  token: string,
+  jobId: string,
+): Promise<BackendTechnicianJobActionResponse> {
+  return requestJson<BackendTechnicianJobActionResponse>(`/technicians/me/jobs/${jobId}/complete`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function delayTechnicianMyJob(
+  token: string,
+  jobId: string,
+  payload: { minutes?: number; note?: string },
+): Promise<BackendTechnicianJobActionResponse> {
+  return requestJson<BackendTechnicianJobActionResponse>(`/technicians/me/jobs/${jobId}/delay`, {
+    method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export async function refuseTechnicianMyJob(
+  token: string,
+  jobId: string,
+  payload: { reason?: string; comment?: string },
+): Promise<BackendTechnicianJobActionResponse> {
+  return requestJson<BackendTechnicianJobActionResponse>(`/technicians/me/jobs/${jobId}/refuse`, {
+    method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export async function acceptTechnicianJob(
+  token: string,
+  technicianId: string,
+  jobId: string,
+): Promise<{ message: string; job_id: string; status: string }> {
+  return requestJson<{ message: string; job_id: string; status: string }>(`/technicians/${technicianId}/accept/${jobId}`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function rejectTechnicianJob(
+  token: string,
+  technicianId: string,
+  jobId: string,
+  reason: string,
+): Promise<{ status: string; message: string }> {
+  return requestJson<{ status: string; message: string }>(`/technicians/${technicianId}/reject/${jobId}`, {
+    method: 'POST',
+    token,
+    body: { reason },
+  });
 }
 
 export async function updateTechnicianMeProfile(

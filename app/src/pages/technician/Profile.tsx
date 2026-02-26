@@ -7,7 +7,6 @@ import {
     ChevronRight,
     Clock,
     LogOut,
-    Mail,
     Plus,
     Save,
     Settings,
@@ -24,13 +23,10 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-    fetchTechnicianEmailChangeRequests,
     fetchTechnicianMeProfile,
     getStoredTechnicianToken,
-    requestTechnicianEmailChange,
     updateTechnicianMeAvailability,
     updateTechnicianMeProfile,
-    type BackendEmailChangeRequest,
     type BackendTechnicianProfile,
 } from '@/lib/backend-api';
 
@@ -54,14 +50,14 @@ function BottomNav({
     activeTab,
     routeBase,
 }: {
-    activeTab: 'available' | 'my-jobs' | 'schedule' | 'profile';
+    activeTab: 'jobs' | 'current-job' | 'history' | 'profile';
     routeBase: string;
 }) {
     const navigate = useNavigate();
     const tabs = [
-        { id: 'available', label: 'Available', icon: Briefcase, path: `${routeBase}/available-jobs` },
-        { id: 'my-jobs', label: 'My Jobs', icon: Calendar, path: `${routeBase}/my-jobs` },
-        { id: 'schedule', label: 'Schedule', icon: Clock, path: `${routeBase}/schedule` },
+        { id: 'jobs', label: 'Jobs', icon: Briefcase, path: `${routeBase}/jobs` },
+        { id: 'current-job', label: 'Current Job', icon: Calendar, path: `${routeBase}/current-job` },
+        { id: 'history', label: 'History', icon: Clock, path: `${routeBase}/history` },
         { id: 'profile', label: 'Profile', icon: User, path: `${routeBase}/profile` },
     ] as const;
 
@@ -92,12 +88,6 @@ function BottomNav({
             </div>
         </div>
     );
-}
-
-function emailRequestTone(status: BackendEmailChangeRequest['status']) {
-    if (status === 'PENDING') return 'bg-amber-100 text-amber-700 border-amber-200';
-    if (status === 'APPROVED') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    return 'bg-red-100 text-red-700 border-red-200';
 }
 
 function hasOverlap(ranges: OutOfOfficeRangeDraft[]): boolean {
@@ -133,11 +123,9 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [profile, setProfile] = useState<BackendTechnicianProfile | null>(null);
-    const [emailRequests, setEmailRequests] = useState<BackendEmailChangeRequest[]>([]);
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
     const [profilePictureUrl, setProfilePictureUrl] = useState('');
-    const [requestedEmail, setRequestedEmail] = useState('');
     const [workingDays, setWorkingDays] = useState<number[]>([]);
     const [workingHoursStart, setWorkingHoursStart] = useState('08:00');
     const [workingHoursEnd, setWorkingHoursEnd] = useState('17:00');
@@ -146,7 +134,6 @@ export default function ProfilePage() {
     const [newRange, setNewRange] = useState<OutOfOfficeRangeDraft>({ start_date: '', end_date: '', note: '' });
     const [savingProfile, setSavingProfile] = useState(false);
     const [savingAvailability, setSavingAvailability] = useState(false);
-    const [requestingEmailChange, setRequestingEmailChange] = useState(false);
 
     const loadBackendData = async () => {
         if (isPreviewMode) return;
@@ -161,12 +148,8 @@ export default function ProfilePage() {
         setLoading(true);
         setError(null);
         try {
-            const [profilePayload, emailRequestPayload] = await Promise.all([
-                fetchTechnicianMeProfile(token),
-                fetchTechnicianEmailChangeRequests(token),
-            ]);
+            const profilePayload = await fetchTechnicianMeProfile(token);
             setProfile(profilePayload);
-            setEmailRequests(emailRequestPayload);
             setFullName(profilePayload.full_name || profilePayload.name);
             setPhone(profilePayload.phone || '');
             setProfilePictureUrl(profilePayload.profile_picture_url || '');
@@ -297,30 +280,6 @@ export default function ProfilePage() {
         }
     };
 
-    const submitEmailChangeRequest = async () => {
-        if (isPreviewMode) return;
-        if (!requestedEmail.trim()) {
-            window.alert('Enter the new email address first.');
-            return;
-        }
-        const token = getStoredTechnicianToken();
-        if (!token) {
-            window.alert('Technician backend session missing. Please login again.');
-            return;
-        }
-        setRequestingEmailChange(true);
-        try {
-            await requestTechnicianEmailChange(token, { requested_email: requestedEmail.trim() });
-            setRequestedEmail('');
-            await loadBackendData();
-            window.alert('Email change request submitted.');
-        } catch (requestError) {
-            window.alert(requestError instanceof Error ? requestError.message : 'Failed to submit email change request.');
-        } finally {
-            setRequestingEmailChange(false);
-        }
-    };
-
     const userName = isPreviewMode
         ? (previewTech?.name ?? 'Preview Technician')
         : (profile?.full_name || profile?.name || user?.name || 'Technician');
@@ -393,37 +352,6 @@ export default function ProfilePage() {
                                         <Save className="w-4 h-4 mr-2" />
                                         {savingProfile ? 'Saving...' : 'Save Profile'}
                                     </Button>
-                                </div>
-                            ) : null}
-                        </Card>
-
-                        <Card className="p-6 border-gray-200">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                <Mail className="w-4 h-4" /> Email Change Request
-                            </h3>
-                            <div className="text-sm text-gray-600 mb-3">Current Email: <span className="font-medium text-gray-900">{userEmail}</span></div>
-
-                            {!isPreviewMode ? (
-                                <div className="space-y-3">
-                                    <div className="flex gap-2">
-                                        <Input type="email" value={requestedEmail} onChange={(event) => setRequestedEmail(event.target.value)} placeholder="Enter new email address" />
-                                        <Button onClick={() => void submitEmailChangeRequest()} disabled={requestingEmailChange} className="bg-[#2F8E92] hover:bg-[#267276]">
-                                            {requestingEmailChange ? 'Submitting...' : 'Request'}
-                                        </Button>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {emailRequests.length === 0 ? (
-                                            <div className="text-xs text-gray-500">No email change requests yet.</div>
-                                        ) : emailRequests.slice(0, 3).map((request) => (
-                                            <div key={request.id} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
-                                                <div className="text-xs text-gray-700">
-                                                    {request.requested_email}
-                                                    <div className="text-gray-500">{new Date(request.requested_at).toLocaleString()}</div>
-                                                </div>
-                                                <Badge variant="outline" className={emailRequestTone(request.status)}>{request.status}</Badge>
-                                            </div>
-                                        ))}
-                                    </div>
                                 </div>
                             ) : null}
                         </Card>

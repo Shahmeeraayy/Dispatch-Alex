@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
     Database,
     AlertCircle,
+    Pencil,
     RefreshCw,
     Clock,
     Moon,
@@ -14,9 +15,7 @@ import {
     ListFilter,
     PlusCircle
 } from 'lucide-react';
-import { priorityRules as initialPriorityRules } from '@/mock/data';
 import { MOCK_DEALERSHIPS } from './Dealerships';
-import { MOCK_SERVICES } from './Services';
 import type { PriorityRule, UrgencyLevel } from '@/types';
 
 
@@ -62,9 +61,16 @@ import {
     saveInvoiceCompanyProfile,
 } from '@/lib/invoice-company';
 import {
+    createAdminPriorityRule,
+    deleteAdminPriorityRule,
+    fetchAdminPriorityRules,
+    fetchAdminServices,
     fetchAdminInvoiceBrandingSettings,
     getStoredAdminToken,
+    updateAdminPriorityRule,
     updateAdminInvoiceBrandingSettings,
+    type BackendPriorityRule,
+    type BackendServiceCatalogItem,
 } from '@/lib/backend-api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -144,6 +150,27 @@ const normalizeInvoiceCompanyProfile = (profile: InvoiceCompanyProfile): Invoice
     website: profile.website.trim(),
 });
 
+const mapBackendPriorityRule = (row: BackendPriorityRule): PriorityRule => ({
+    id: row.id,
+    description: row.description,
+    dealershipId: row.dealership_id,
+    serviceId: row.service_id ?? undefined,
+    targetUrgency: row.target_urgency,
+    rankingScore: row.ranking_score,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+});
+
+const getDefaultNewRule = (): Partial<PriorityRule> => ({
+    targetUrgency: 'HIGH',
+    rankingScore: 10,
+    isActive: true,
+    dealershipId: '',
+    serviceId: '',
+    description: ''
+});
+
 
 
 export default function SettingsPage() {
@@ -153,16 +180,12 @@ export default function SettingsPage() {
     const [settings, setSettings] = useState<OperationalSettings>(MOCK_SETTINGS);
     const [savedInvoiceCompany, setSavedInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [invoiceCompany, setInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
-    const [priorityRules, setPriorityRules] = useState<PriorityRule[]>(initialPriorityRules);
+    const [priorityRules, setPriorityRules] = useState<PriorityRule[]>([]);
+    const [serviceOptions, setServiceOptions] = useState<Array<{ id: string; name: string }>>([]);
     const [isAddingRule, setIsAddingRule] = useState(false);
-    const [newRule, setNewRule] = useState<Partial<PriorityRule>>({
-        targetUrgency: 'HIGH',
-        rankingScore: 10,
-        isActive: true,
-        dealershipId: '',
-        serviceId: '',
-        description: ''
-    });
+    const [newRule, setNewRule] = useState<Partial<PriorityRule>>(getDefaultNewRule());
+    const [isEditingRule, setIsEditingRule] = useState(false);
+    const [editRule, setEditRule] = useState<Partial<PriorityRule> & { id?: string }>(getDefaultNewRule());
 
     const { theme, setTheme } = useTheme();
 
@@ -227,7 +250,61 @@ export default function SettingsPage() {
         };
     }, [hasBackendAdminToken]);
 
-    const handleSaveSettings = async () => {
+    useEffect(() => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken) {
+            setServiceOptions([]);
+            return;
+        }
+
+        let cancelled = false;
+        const loadServices = async () => {
+            try {
+                const rows = await fetchAdminServices(adminToken, true);
+                if (cancelled) return;
+                const next = rows
+                    .map((row: BackendServiceCatalogItem) => ({
+                        id: row.id,
+                        name: row.name?.trim() || '',
+                    }))
+                    .filter((row) => row.name.length > 0);
+                setServiceOptions(next);
+            } catch {
+                if (!cancelled) setServiceOptions([]);
+            }
+        };
+
+        void loadServices();
+        return () => {
+            cancelled = true;
+        };
+    }, [hasBackendAdminToken]);
+
+    useEffect(() => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken) {
+            setPriorityRules([]);
+            return;
+        }
+
+        let cancelled = false;
+        const loadPriorityRules = async () => {
+            try {
+                const rows = await fetchAdminPriorityRules(adminToken);
+                if (cancelled) return;
+                setPriorityRules(rows.map(mapBackendPriorityRule));
+            } catch {
+                if (!cancelled) setPriorityRules([]);
+            }
+        };
+
+        void loadPriorityRules();
+        return () => {
+            cancelled = true;
+        };
+    }, [hasBackendAdminToken]);
+
+    const saveInvoiceBrandingSettings = async (successMessage: string): Promise<boolean> => {
         const normalizedCompanyProfile: InvoiceCompanyProfile = normalizeInvoiceCompanyProfile(invoiceCompany);
 
         if (
@@ -241,7 +318,7 @@ export default function SettingsPage() {
             !normalizedCompanyProfile.website
         ) {
             alert("Please complete the full invoice company profile (all fields except logo are required).");
-            return;
+            return false;
         }
 
         setLoading(true);
@@ -268,13 +345,26 @@ export default function SettingsPage() {
             setSavedInvoiceCompany(nextCompanyProfile);
             setInvoiceCompany(nextCompanyProfile);
             saveInvoiceCompanyProfile(nextCompanyProfile);
-            alert("Settings saved successfully.");
+            alert(successMessage);
+            return true;
         } catch (error) {
             const detail = error instanceof Error ? error.message : "Unable to save settings.";
             alert(`Failed to save invoice branding settings: ${detail}`);
+            return false;
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSaveSettings = async () => {
+        const didSave = await saveInvoiceBrandingSettings("Settings saved successfully.");
+        if (didSave) {
+            setSavedSettings({ ...settings });
+        }
+    };
+
+    const handleSaveInvoiceBranding = async () => {
+        await saveInvoiceBrandingSettings("Invoice branding saved successfully.");
     };
 
     const handleCancelSettings = () => {
@@ -328,36 +418,106 @@ export default function SettingsPage() {
         alert(`Testing ${integration} connection...`);
     };
 
-    const handleDeleteRule = (id: string) => {
-        setPriorityRules(prev => prev.filter(r => r.id !== id));
+    const handleDeleteRule = async (id: string) => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken) {
+            alert('Admin session is required to delete rules.');
+            return;
+        }
+
+        try {
+            await deleteAdminPriorityRule(adminToken, id);
+            setPriorityRules(prev => prev.filter(r => r.id !== id));
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unable to delete priority rule.';
+            alert(detail);
+        }
     };
 
-    const handleToggleRule = (id: string) => {
-        setPriorityRules(prev => prev.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
+    const handleToggleRule = async (id: string) => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken) {
+            alert('Admin session is required to update rules.');
+            return;
+        }
+
+        const current = priorityRules.find((rule) => rule.id === id);
+        if (!current) {
+            return;
+        }
+
+        try {
+            const updated = await updateAdminPriorityRule(adminToken, id, {
+                is_active: !current.isActive,
+            });
+            setPriorityRules(prev => prev.map(r => r.id === id ? mapBackendPriorityRule(updated) : r));
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unable to update priority rule.';
+            alert(detail);
+        }
     };
 
-    const handleAddRule = () => {
-        const rule: PriorityRule = {
-            id: `rule-${Date.now()}`,
-            description: newRule.description || 'New Priority Rule',
-            dealershipId: newRule.dealershipId || (MOCK_DEALERSHIPS[0]?.id || ''),
-            serviceId: newRule.serviceId === 'any' ? undefined : newRule.serviceId,
-            targetUrgency: newRule.targetUrgency || 'HIGH',
-            rankingScore: (newRule.rankingScore !== undefined) ? newRule.rankingScore : 10,
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        setPriorityRules(prev => [...prev, rule]);
-        setIsAddingRule(false);
-        setNewRule({
-            targetUrgency: 'HIGH',
-            rankingScore: 10,
-            isActive: true,
-            dealershipId: '',
-            serviceId: '',
-            description: ''
+    const handleAddRule = async () => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken) {
+            alert('Admin session is required to create rules.');
+            return;
+        }
+
+        try {
+            const created = await createAdminPriorityRule(adminToken, {
+                description: newRule.description || 'New Priority Rule',
+                dealership_id: newRule.dealershipId || (MOCK_DEALERSHIPS[0]?.id || ''),
+                service_id: newRule.serviceId === 'any' ? null : (newRule.serviceId || null),
+                target_urgency: newRule.targetUrgency || 'HIGH',
+                ranking_score: (newRule.rankingScore !== undefined) ? newRule.rankingScore : 10,
+                is_active: true,
+            });
+            setPriorityRules(prev => [...prev, mapBackendPriorityRule(created)]);
+            setIsAddingRule(false);
+            setNewRule(getDefaultNewRule());
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unable to create priority rule.';
+            alert(detail);
+        }
+    };
+
+    const handleOpenEditRule = (rule: PriorityRule) => {
+        setEditRule({
+            id: rule.id,
+            description: rule.description,
+            dealershipId: rule.dealershipId,
+            serviceId: rule.serviceId || 'any',
+            targetUrgency: rule.targetUrgency,
+            rankingScore: rule.rankingScore,
+            isActive: rule.isActive,
         });
+        setIsEditingRule(true);
+    };
+
+    const handleEditRule = async () => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken || !editRule.id) {
+            alert('Admin session is required to edit rules.');
+            return;
+        }
+
+        try {
+            const updated = await updateAdminPriorityRule(adminToken, editRule.id, {
+                description: editRule.description || 'Updated Priority Rule',
+                dealership_id: editRule.dealershipId || (MOCK_DEALERSHIPS[0]?.id || ''),
+                service_id: editRule.serviceId === 'any' ? null : (editRule.serviceId || null),
+                target_urgency: editRule.targetUrgency || 'HIGH',
+                ranking_score: (editRule.rankingScore !== undefined) ? editRule.rankingScore : 10,
+                is_active: editRule.isActive ?? true,
+            });
+            setPriorityRules((prev) => prev.map((r) => (r.id === editRule.id ? mapBackendPriorityRule(updated) : r)));
+            setIsEditingRule(false);
+            setEditRule(getDefaultNewRule());
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unable to update priority rule.';
+            alert(detail);
+        }
     };
 
 
@@ -443,7 +603,7 @@ export default function SettingsPage() {
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="any">Any Service</SelectItem>
-                                                        {MOCK_SERVICES.map(s => (
+                                                        {serviceOptions.map(s => (
                                                             <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -484,6 +644,91 @@ export default function SettingsPage() {
                                         <Button className="bg-[#2F8E92] text-white hover:bg-[#267276]" onClick={handleAddRule}>Save Rule</Button>
                                     </DialogFooter>
 
+                                </DialogContent>
+                            </Dialog>
+                            <Dialog open={isEditingRule} onOpenChange={setIsEditingRule}>
+                                <DialogContent className="max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle>Edit Ranking Rule</DialogTitle>
+                                        <DialogDescription>Update rule logic for dispatch ranking.</DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label>Rule Description</Label>
+                                            <Input
+                                                placeholder="e.g., Prioritize Audi repairs"
+                                                value={editRule.description || ''}
+                                                onChange={(e) => setEditRule({ ...editRule, description: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Dealership</Label>
+                                                <Select
+                                                    value={editRule.dealershipId}
+                                                    onValueChange={(v) => setEditRule({ ...editRule, dealershipId: v })}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select dealer" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {MOCK_DEALERSHIPS.map(d => (
+                                                            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Service Type</Label>
+                                                <Select
+                                                    value={editRule.serviceId}
+                                                    onValueChange={(v) => setEditRule({ ...editRule, serviceId: v })}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Any Service" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="any">Any Service</SelectItem>
+                                                        {serviceOptions.map(s => (
+                                                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Target Urgency</Label>
+                                                <Select
+                                                    value={editRule.targetUrgency}
+                                                    onValueChange={(v) => setEditRule({ ...editRule, targetUrgency: v as UrgencyLevel })}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="LOW">Low</SelectItem>
+                                                        <SelectItem value="MEDIUM">Medium</SelectItem>
+                                                        <SelectItem value="HIGH">High</SelectItem>
+                                                        <SelectItem value="CRITICAL">Critical</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Ranking Score</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={editRule.rankingScore}
+                                                    onChange={(e) => setEditRule({ ...editRule, rankingScore: parseInt(e.target.value) })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsEditingRule(false)}>Cancel</Button>
+                                        <Button className="bg-[#2F8E92] text-white hover:bg-[#267276]" onClick={handleEditRule}>Save Changes</Button>
+                                    </DialogFooter>
                                 </DialogContent>
                             </Dialog>
                         </div>
@@ -533,6 +778,14 @@ export default function SettingsPage() {
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-[#2F8E92]"
+                                                        onClick={() => handleOpenEditRule(rule)}
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
@@ -646,6 +899,17 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </CardContent>
+                    <CardFooter className="bg-muted/30 border-t border-border py-3">
+                        <div className="ml-auto flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={handleCancelSettings} disabled={loading}>
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={handleSaveInvoiceBranding} disabled={loading}>
+                                {loading && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
+                                {loading ? 'Saving...' : 'Save Invoice Branding'}
+                            </Button>
+                        </div>
+                    </CardFooter>
                 </Card>
 
                 {/* Section F - Appearance (User Preference) */}

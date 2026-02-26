@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Column, DateTime, String, Text, Time, Uuid, text
+from sqlalchemy import JSON, Boolean, CheckConstraint, Column, DateTime, Integer, String, Text, Time, Uuid, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -22,6 +22,7 @@ class Technician(Base):
     after_hours_enabled = Column(Boolean, nullable=False, server_default=text("false"))
     password = Column(String(255), nullable=True)
     status = Column(String(20), nullable=False, server_default=text("'active'"))
+    priority_rank = Column(Integer, nullable=False, server_default=text("100"))
     manual_availability = Column(Boolean, nullable=False, server_default=text("true"))
     updated_by = Column(Uuid(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

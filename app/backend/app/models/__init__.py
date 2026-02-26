@@ -3,7 +3,10 @@ from .dealership import Dealership
 from .invoice import Invoice, InvoiceLineItem
 from .invoice_branding_settings import InvoiceBrandingSettings
 from .job import Job
+from .job_event import JobEvent
 from .job_rejection import JobRejection
+from .priority_rule import PriorityRule
+from .service_catalog import ServiceCatalog
 from .skill import Skill, technician_skills
 from .signup_request import SignupRequest
 from .technician import Technician

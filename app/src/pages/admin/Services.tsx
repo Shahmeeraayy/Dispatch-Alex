@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
     Search,
-    Filter,
     RefreshCw,
     Plus,
     MoreVertical,
@@ -62,6 +61,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+    createAdminService,
+    fetchAdminServices,
+    getStoredAdminToken,
+    updateAdminService,
+    updateAdminServiceStatus,
+    type BackendServiceCatalogItem,
+} from '@/lib/backend-api';
 
 // --- Types ---
 
@@ -69,6 +77,7 @@ interface ServiceItem {
     id: string;
     code: string;
     name: string;
+    category: string;
     default_price: number;
     approval_required: boolean;
     status: 'active' | 'archived';
@@ -78,102 +87,102 @@ interface ServiceItem {
     allowed_actions: string[];
 }
 
+const toNumber = (value: string | number): number => {
+    if (typeof value === 'number') return value;
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const mapBackendServiceToUi = (row: BackendServiceCatalogItem): ServiceItem => ({
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    category: row.category || 'General',
+    default_price: toNumber(row.default_price),
+    approval_required: Boolean(row.approval_required),
+    status: row.status === 'archived' ? 'archived' : 'active',
+    notes: row.notes ?? undefined,
+    updated_at: row.updated_at,
+    updated_by: row.updated_by ?? undefined,
+    allowed_actions: ['edit', row.status === 'active' ? 'archive' : 'unarchive', 'duplicate'],
+});
+
 // --- Mock Data ---
 
 export const MOCK_SERVICES: ServiceItem[] = [
-    { id: 's1', code: 'TEINTE-BANDE-PB', name: 'Bande pare-brise teintée', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's2', code: 'FORDDN-SVC-TINT-BANDE-PB', name: 'Bande pare-brise teintée (Ford)', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's3', code: 'GEN-PROD-CBL-062', name: 'Câble CBL-062', default_price: 51, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's4', code: 'AUDI-SVC-2WAY', name: 'Démarreur 2-Way – Audi', default_price: 480, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's5', code: 'AUDI-SVC-2WAY-S3RS3-2526', name: 'Démarreur 2-Way – Audi S3/RS3 2025-2026', default_price: 580, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's6', code: 'AUDI-SVC-MYCAR2', name: 'Démarreur MyCar 2 – Audi', default_price: 590, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's7', code: 'AUDI-SVC-MYCAR-S3RS3-2526', name: 'Démarreur MyCar – Audi S3/RS3 2025-2026', default_price: 690, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's8', code: 'AUDI-SVC-DOMINO', name: 'Domino repérage – Audi', default_price: 320, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's9', code: 'GEN-PROD-CSA', name: 'Fils CSA (au pied)', default_price: 1.05, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's10', code: 'PG-SVC-KM', name: 'Frais de déplacement (km)', default_price: 0.7, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's11', code: 'GEN-FEE-SHIPPING', name: 'Frais d’expédition', default_price: 0, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's12', code: 'PG-SVC-HOTEL', name: 'Hébergement technicien', default_price: 0, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's13', code: 'PG-SVC-MO-9PLUS', name: 'Main-d’œuvre – après 9 h', default_price: 195, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's14', code: 'PG-SVC-MO-WE', name: 'Main-d’œuvre – fin de semaine', default_price: 195, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's15', code: 'PG-SVC-MO-REG', name: 'Main-d’œuvre – régulier', default_price: 130, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's16', code: 'GEN-FEE-ATELIER', name: 'Matériel d’atelier', default_price: 0, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's17', code: 'GEN-SVC-PB-MO', name: 'Pare-brise – main-d’œuvre', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's18', code: 'PG-SVC-PERDIEM', name: 'Per diem – repas', default_price: 80, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's19', code: 'PPF-ALA-AILES-COMP-2', name: 'PPF ailes complètes (2)', default_price: 400, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's20', code: 'PPF-ALA-CAPOT-12', name: 'PPF bande de capot 12"', default_price: 120, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's21', code: 'PPF-ALA-CAPOT-18', name: 'PPF bande de capot 18"', default_price: 170, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's22', code: 'PPF-ALA-TOIT-12', name: 'PPF bande de toit 12"', default_price: 100, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's23', code: 'PPF-ALA-TOIT-4', name: 'PPF bande de toit 4"', default_price: 40, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's24', code: 'PPF-ALA-TOIT-6', name: 'PPF bande de toit 6"', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's25', code: 'PPF-ALA-TOIT-8', name: 'PPF bande de toit 8"', default_price: 75, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's26', code: 'PPF-OPT-BANDE-AR', name: 'PPF bande pare-chocs arrière (à partir de)', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's27', code: 'FORDDN-SVC-PPF-BANDE-AR', name: 'PPF bande pare-chocs arrière – Donnacona Ford', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's28', code: 'HONDA-DON-SVC-PPF-BANDE-AR', name: 'PPF bande pare-chocs arrière – Honda', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's29', code: 'PPF-ALA-BAS-CAISSES-12', name: 'PPF bas de caisses 12"', default_price: 375, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's30', code: 'PPF-ALA-BAS-CAISSES-8', name: 'PPF bas de caisses 8"', default_price: 240, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's31', code: 'PPF-PKG-CAPOT12-AILES', name: 'PPF capot 12" + ailes', default_price: 135, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's32', code: 'FORDDN-SVC-PPF-CAPOT12-AILES', name: 'PPF capot 12" + ailes – Donnacona Ford', default_price: 135, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's33', code: 'FORDDN-SVC-PPF-CAPOT12-F150', name: 'PPF capot 12" + ailes – F-150', default_price: 175, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's34', code: 'FORDDN-SVC-PPF-CAPOT12-F250', name: 'PPF capot 12" + ailes – F-250', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's35', code: 'FORDDN-SVC-PPF-CAPOT12-COMBO-F150', name: 'PPF capot 12" + ailes + pare-chocs avant (combo) – F-150', default_price: 150, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's36', code: 'FORDDN-SVC-PPF-CAPOT12-COMBO-F250', name: 'PPF capot 12" + ailes + pare-chocs avant (combo) – F-250', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's37', code: 'PPF-PKG-CAPOT12-AILES-POINTE', name: 'PPF capot 12" + ailes + pointes (à partir de)', default_price: 185, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's38', code: 'FORDDN-SVC-PPF-CAPOT16-AUTRE', name: 'PPF capot 16" + ailes (autre)', default_price: 175, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's39', code: 'PPF-PKG-CAPOT16-AILES', name: 'PPF capot 16" + ailes (base)', default_price: 185, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's40', code: 'HONDA-DON-SVC-PPF-16-CRVHRV', name: 'PPF capot 16" + ailes – CRV/HRV/Ridgeline/Prologue', default_price: 170, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's41', code: 'FORDDN-SVC-PPF-CAPOT16-F150', name: 'PPF capot 16" + ailes – F-150', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's42', code: 'FORDDN-SVC-PPF-CAPOT16-F250', name: 'PPF capot 16" + ailes – F-250', default_price: 250, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's43', code: 'HONDA-DON-SVC-PPF-16-ODY', name: 'PPF capot 16" + ailes – Odyssey', default_price: 180, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's44', code: 'FORDDN-SVC-PPF-CAPOT16-COMBO-F150', name: 'PPF capot 16" + ailes + pare-chocs avant (combo) – F-150', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's45', code: 'FORDDN-SVC-PPF-CAPOT16-COMBO-F250', name: 'PPF capot 16" + ailes + pare-chocs avant (combo) – F-250', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's46', code: 'PPF-PKG-CAPOT16-AILES-POINTE', name: 'PPF capot 16" + ailes + pointe (à partir de)', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's47', code: 'FORDDN-SVC-PPF-CAPOT16-AUTRE-POINTE', name: 'PPF capot 16" + ailes + pointe (autre)', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's48', code: 'PPF-PKG-CAPOT24-POINTE', name: 'PPF capot 24" + pointe', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's49', code: 'HONDA-DON-SVC-PPF-CIVIC-24', name: 'PPF capot 24" + pointe – Civic', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's50', code: 'FORDDN-SVC-PPF-CAPOT24-POINTE', name: 'PPF capot 24" + pointe – Donnacona Ford', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's51', code: 'PPF-ALA-CAPOT-COMP', name: 'PPF capot complet (à partir de)', default_price: 325, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's52', code: 'PPF-ALA-POIGNEES', name: 'PPF intérieur de poignées (ch.)', default_price: 10, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's53', code: 'PPF-OPT-MIROIRS', name: 'PPF miroirs (2)', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's54', code: 'FORDDN-SVC-PPF-MIROIRS', name: 'PPF miroirs – Donnacona Ford', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's55', code: 'HONDA-DON-SVC-PPF-MIROIRS', name: 'PPF miroirs – Honda', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's56', code: 'PPF-ALA-MONTANT-PB', name: 'PPF montant de pare-brise (ch.)', default_price: 30, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's57', code: 'FORDDN-SVC-PPF-PARECHOCS-AV-AUTRE', name: 'PPF pare-chocs avant – autre modèle', default_price: 325, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's58', code: 'PPF-OPT-PARECHOCS-AV', name: 'PPF pare-chocs avant (base)', default_price: 350, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's59', code: 'FORDDN-SVC-PPF-PARECHOCS-AV-F150', name: 'PPF pare-chocs avant – F-150', default_price: 250, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's60', code: 'FORDDN-SVC-PPF-PARECHOCS-AV-F250', name: 'PPF pare-chocs avant – F-250', default_price: 300, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's61', code: 'HONDA-DON-SVC-PPF-PARECHOCS-AV', name: 'PPF pare-chocs avant – Honda', default_price: 325, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's62', code: 'PPF-ALA-PHARES-AJOUT', name: 'PPF phares (ajout)', default_price: 70, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's63', code: 'PPF-ALA-PHARES-SEUL', name: 'PPF phares (seul)', default_price: 110, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's64', code: 'PPF-ALA-SEUIL-COFFRE', name: 'PPF seuil de coffre', default_price: 45, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's65', code: 'PPF-ALA-SEUIL-PORTE', name: 'PPF seuil de porte (ch.)', default_price: 25, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's66', code: 'PPF-OPT-TOIT12-AJOUT', name: 'PPF toit 12" (ajout)', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's67', code: 'FORDDN-SVC-PPF-TOIT12-AJOUT', name: 'PPF toit 12" (ajout) – Donnacona Ford', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's68', code: 'HONDA-DON-SVC-PPF-TOIT12-AJOUT', name: 'PPF toit 12" (ajout) – Honda', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's69', code: 'PPF-OPT-TOIT12-SEUL', name: 'PPF toit 12" (seul)', default_price: 115, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's70', code: 'FORDDN-SVC-PPF-TOIT12-SEUL', name: 'PPF toit 12" (seul) – Donnacona Ford', default_price: 115, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's71', code: 'HONDA-DON-SVC-PPF-TOIT12-SEUL', name: 'PPF toit 12" (seul) – Honda', default_price: 115, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's72', code: 'AUDI-SVC-PB-MO', name: 'Remplacement de pare-brise – Audi', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's73', code: 'GEN-SVC-911PRO', name: 'Service 911 Pro (heure)', default_price: 75.95, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's74', code: 'GEN-SVC-ESTH', name: 'Services d’esthétique', default_price: 0, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's75', code: 'GEN-FEE-PARK', name: 'Stationnement mensuel', default_price: 217.43, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's76', code: 'TEINTE-COMP-LIMO', name: 'Teintage complet – arrière limo', default_price: 240, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's77', code: 'FORDDN-SVC-TINT-COMP-LIMO', name: 'Teintage complet – arrière limo (Ford)', default_price: 240, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's78', code: 'TEINTE-COMP-STD', name: 'Teintage complet – standard', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's79', code: 'FORDDN-SVC-TINT-COMP-STD', name: 'Teintage complet – standard (Ford)', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's80', code: 'TEINTE-AR-LIMO', name: 'Teintage vitres arrière – limo', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's81', code: 'FORDDN-SVC-TINT-AR-LIMO', name: 'Teintage vitres arrière – limo (Ford)', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's82', code: 'TEINTE-AR-STD', name: 'Teintage vitres arrière – standard', default_price: 185, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's83', code: 'FORDDN-SVC-TINT-AR-STD', name: 'Teintage vitres arrière – standard (Ford)', default_price: 185, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's84', code: 'TEINTE-AV-CER', name: 'Teintage vitres avant – céramique', default_price: 100, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's85', code: 'FORDDN-SVC-TINT-AV-CER', name: 'Teintage vitres avant – céramique (Ford)', default_price: 100, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's86', code: 'TEINTE-AV-STD', name: 'Teintage vitres avant – standard', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's87', code: 'FORDDN-SVC-TINT-AV-STD', name: 'Teintage vitres avant – standard (Ford)', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's88', code: 'PG-SVC-TR-REG', name: 'Temps de déplacement – régulier', default_price: 75, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's89', code: 'GEN-SVC-INSTALL', name: 'Temps d’installation', default_price: 0, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's90', code: 'GEN-SVC-OVERTIME', name: 'Temps supplémentaire', default_price: 0, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's91', code: 'PG-SVC-TR-9PLUS', name: 'Transport – après 9 h', default_price: 112.5, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's92', code: 'PG-SVC-TR-WE', name: 'Transport – fin de semaine', default_price: 112.5, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
-    { id: 's93', code: 'GEN-PROD-URETH', name: 'Uréthane', default_price: 66.15, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] }
+    { id: 's1', code: 'PPF-ALA-AILES-COMP-2', name: 'PPF ailes complètes (2)', category: 'PPF', default_price: 400, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's2', code: 'PPF-ALA-CAPOT-12', name: 'PPF bande de capot 12"', category: 'PPF', default_price: 120, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's3', code: 'PPF-ALA-CAPOT-18', name: 'PPF bande de capot 18"', category: 'PPF', default_price: 170, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's4', code: 'PPF-ALA-TOIT-12', name: 'PPF bande de toit 12"', category: 'PPF', default_price: 100, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's5', code: 'PPF-ALA-TOIT-4', name: 'PPF bande de toit 4"', category: 'PPF', default_price: 40, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's6', code: 'PPF-ALA-TOIT-6', name: 'PPF bande de toit 6"', category: 'PPF', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's7', code: 'PPF-ALA-TOIT-8', name: 'PPF bande de toit 8"', category: 'PPF', default_price: 75, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's8', code: 'PPF-OPT-BANDE-AR', name: 'PPF bande pare-chocs arrière (à partir de)', category: 'PPF', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's9', code: 'FORDDN-SVC-PPF-BANDE-AR', name: 'PPF bande pare-chocs arrière – Donnacona Ford', category: 'PPF', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's10', code: 'HONDA-DON-SVC-PPF-BANDE-AR', name: 'PPF bande pare-chocs arrière – Honda', category: 'PPF', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's11', code: 'PPF-ALA-BAS-CAISSES-12', name: 'PPF bas de caisses 12"', category: 'PPF', default_price: 375, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's12', code: 'PPF-ALA-BAS-CAISSES-8', name: 'PPF bas de caisses 8"', category: 'PPF', default_price: 240, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's13', code: 'PPF-PKG-CAPOT12-AILES', name: 'PPF capot 12" + ailes', category: 'PPF', default_price: 135, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's14', code: 'FORDDN-SVC-PPF-CAPOT12-AILES', name: 'PPF capot 12" + ailes – Donnacona Ford', category: 'PPF', default_price: 135, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's15', code: 'FORDDN-SVC-PPF-CAPOT12-F150', name: 'PPF capot 12" + ailes – F-150', category: 'PPF', default_price: 175, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's16', code: 'FORDDN-SVC-PPF-CAPOT12-F250', name: 'PPF capot 12" + ailes – F-250', category: 'PPF', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's17', code: 'FORDDN-SVC-PPF-CAPOT12-COMBO-F150', name: 'PPF capot 12" + ailes + pare-chocs avant (combo) – F-150', category: 'PPF', default_price: 150, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's18', code: 'FORDDN-SVC-PPF-CAPOT12-COMBO-F250', name: 'PPF capot 12" + ailes + pare-chocs avant (combo) – F-250', category: 'PPF', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's19', code: 'PPF-PKG-CAPOT12-AILES-POINTE', name: 'PPF capot 12" + ailes + pointes (à partir de)', category: 'PPF', default_price: 185, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's20', code: 'FORDDN-SVC-PPF-CAPOT16-AUTRE', name: 'PPF capot 16" + ailes (autre)', category: 'PPF', default_price: 175, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's21', code: 'PPF-PKG-CAPOT16-AILES', name: 'PPF capot 16" + ailes (base)', category: 'PPF', default_price: 185, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's22', code: 'HONDA-DON-SVC-PPF-16-CRVHRV', name: 'PPF capot 16" + ailes – CRV/HRV/Ridgeline/Prologue', category: 'PPF', default_price: 170, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's23', code: 'FORDDN-SVC-PPF-CAPOT16-F150', name: 'PPF capot 16" + ailes – F-150', category: 'PPF', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's24', code: 'FORDDN-SVC-PPF-CAPOT16-F250', name: 'PPF capot 16" + ailes – F-250', category: 'PPF', default_price: 250, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's25', code: 'HONDA-DON-SVC-PPF-16-ODY', name: 'PPF capot 16" + ailes – Odyssey', category: 'PPF', default_price: 180, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's26', code: 'FORDDN-SVC-PPF-CAPOT16-COMBO-F150', name: 'PPF capot 16" + ailes + pare-chocs avant (combo) – F-150', category: 'PPF', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's27', code: 'FORDDN-SVC-PPF-CAPOT16-COMBO-F250', name: 'PPF capot 16" + ailes + pare-chocs avant (combo) – F-250', category: 'PPF', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's28', code: 'PPF-PKG-CAPOT16-AILES-POINTE', name: 'PPF capot 16" + ailes + pointe (à partir de)', category: 'PPF', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's29', code: 'FORDDN-SVC-PPF-CAPOT16-AUTRE-POINTE', name: 'PPF capot 16" + ailes + pointe (autre)', category: 'PPF', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's30', code: 'PPF-PKG-CAPOT24-POINTE', name: 'PPF capot 24" + pointe', category: 'PPF', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's31', code: 'HONDA-DON-SVC-PPF-CIVIC-24', name: 'PPF capot 24" + pointe – Civic', category: 'PPF', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's32', code: 'FORDDN-SVC-PPF-CAPOT24-POINTE', name: 'PPF capot 24" + pointe – Donnacona Ford', category: 'PPF', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's33', code: 'PPF-ALA-CAPOT-COMP', name: 'PPF capot complet (à partir de)', category: 'PPF', default_price: 325, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's34', code: 'PPF-ALA-POIGNEES', name: 'PPF intérieur de poignées (ch.)', category: 'PPF', default_price: 10, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's35', code: 'PPF-OPT-MIROIRS', name: 'PPF miroirs (2)', category: 'PPF', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's36', code: 'FORDDN-SVC-PPF-MIROIRS', name: 'PPF miroirs – Donnacona Ford', category: 'PPF', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's37', code: 'HONDA-DON-SVC-PPF-MIROIRS', name: 'PPF miroirs – Honda', category: 'PPF', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's38', code: 'PPF-ALA-MONTANT-PB', name: 'PPF montant de pare-brise (ch.)', category: 'PPF', default_price: 30, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's39', code: 'FORDDN-SVC-PPF-PARECHOCS-AV-AUTRE', name: 'PPF pare-chocs avant – autre modèle', category: 'PPF', default_price: 325, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's40', code: 'PPF-OPT-PARECHOCS-AV', name: 'PPF pare-chocs avant (base)', category: 'PPF', default_price: 350, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's41', code: 'FORDDN-SVC-PPF-PARECHOCS-AV-F150', name: 'PPF pare-chocs avant – F-150', category: 'PPF', default_price: 250, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's42', code: 'FORDDN-SVC-PPF-PARECHOCS-AV-F250', name: 'PPF pare-chocs avant – F-250', category: 'PPF', default_price: 300, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's43', code: 'HONDA-DON-SVC-PPF-PARECHOCS-AV', name: 'PPF pare-chocs avant – Honda', category: 'PPF', default_price: 325, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's44', code: 'PPF-ALA-PHARES-AJOUT', name: 'PPF phares (ajout)', category: 'PPF', default_price: 70, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's45', code: 'PPF-ALA-PHARES-SEUL', name: 'PPF phares (seul)', category: 'PPF', default_price: 110, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's46', code: 'PPF-ALA-SEUIL-COFFRE', name: 'PPF seuil de coffre', category: 'PPF', default_price: 45, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's47', code: 'PPF-ALA-SEUIL-PORTE', name: 'PPF seuil de porte (ch.)', category: 'PPF', default_price: 25, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's48', code: 'PPF-OPT-TOIT12-AJOUT', name: 'PPF toit 12" (ajout)', category: 'PPF', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's49', code: 'FORDDN-SVC-PPF-TOIT12-AJOUT', name: 'PPF toit 12" (ajout) – Donnacona Ford', category: 'PPF', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's50', code: 'HONDA-DON-SVC-PPF-TOIT12-AJOUT', name: 'PPF toit 12" (ajout) – Honda', category: 'PPF', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's51', code: 'PPF-OPT-TOIT12-SEUL', name: 'PPF toit 12" (seul)', category: 'PPF', default_price: 115, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's52', code: 'FORDDN-SVC-PPF-TOIT12-SEUL', name: 'PPF toit 12" (seul) – Donnacona Ford', category: 'PPF', default_price: 115, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's53', code: 'HONDA-DON-SVC-PPF-TOIT12-SEUL', name: 'PPF toit 12" (seul) – Honda', category: 'PPF', default_price: 115, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's54', code: 'TEINTE-BANDE-PB', name: 'Bande pare-brise teintée', category: 'Window Tint', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's55', code: 'FORDDN-SVC-TINT-BANDE-PB', name: 'Bande pare-brise teintée (Ford)', category: 'Window Tint', default_price: 50, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's56', code: 'TEINTE-COMP-LIMO', name: 'Teintage complet – arrière limo', category: 'Window Tint', default_price: 240, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's57', code: 'FORDDN-SVC-TINT-COMP-LIMO', name: 'Teintage complet – arrière limo (Ford)', category: 'Window Tint', default_price: 240, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's58', code: 'TEINTE-COMP-STD', name: 'Teintage complet – standard', category: 'Window Tint', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's59', code: 'FORDDN-SVC-TINT-COMP-STD', name: 'Teintage complet – standard (Ford)', category: 'Window Tint', default_price: 225, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's60', code: 'TEINTE-AR-LIMO', name: 'Teintage vitres arrière – limo', category: 'Window Tint', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's61', code: 'FORDDN-SVC-TINT-AR-LIMO', name: 'Teintage vitres arrière – limo (Ford)', category: 'Window Tint', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's62', code: 'TEINTE-AR-STD', name: 'Teintage vitres arrière – standard', category: 'Window Tint', default_price: 185, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's63', code: 'FORDDN-SVC-TINT-AR-STD', name: 'Teintage vitres arrière – standard (Ford)', category: 'Window Tint', default_price: 185, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's64', code: 'TEINTE-AV-CER', name: 'Teintage vitres avant – céramique', category: 'Window Tint', default_price: 100, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's65', code: 'FORDDN-SVC-TINT-AV-CER', name: 'Teintage vitres avant – céramique (Ford)', category: 'Window Tint', default_price: 100, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's66', code: 'TEINTE-AV-STD', name: 'Teintage vitres avant – standard', category: 'Window Tint', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's67', code: 'FORDDN-SVC-TINT-AV-STD', name: 'Teintage vitres avant – standard (Ford)', category: 'Window Tint', default_price: 90, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's68', code: 'AUDI-SVC-2WAY', name: 'Démarreur 2-Way – Audi', category: 'Remote Starter', default_price: 480, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's69', code: 'AUDI-SVC-2WAY-S3RS3-2526', name: 'Démarreur 2-Way – Audi S3/RS3 2025-2026', category: 'Remote Starter', default_price: 580, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's70', code: 'AUDI-SVC-MYCAR2', name: 'Démarreur MyCar 2 – Audi', category: 'Remote Starter', default_price: 590, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's71', code: 'AUDI-SVC-MYCAR-S3RS3-2526', name: 'Démarreur MyCar – Audi S3/RS3 2025-2026', category: 'Remote Starter', default_price: 690, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's72', code: 'AUDI-SVC-DOMINO', name: 'Domino repérage – Audi', category: 'Remote Starter', default_price: 320, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
+    { id: 's73', code: 'AUDI-SVC-PB-MO', name: 'Remplacement de pare-brise – Audi', category: 'Remote Starter', default_price: 200, approval_required: false, status: 'active', updated_at: '2024-02-11T12:00:00Z', updated_by: 'System Import', allowed_actions: ['edit', 'archive', 'duplicate'] },
 ];
 
 // --- Components ---
@@ -191,17 +200,20 @@ function StatusBadge({ status }: { status: 'active' | 'archived' }) {
 const SERVICE_EXPORT_COLUMNS = [
     'Code',
     'Name',
+    'Category',
     'DefaultPrice',
-    'ApprovalRequired',
     'Status',
     'Notes',
 ];
 
 export default function ServicesPage() {
+    const { hasBackendAdminToken } = useAuth();
     const [services, setServices] = useState<ServiceItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterApproval, setFilterApproval] = useState<string>('all');
+    const [filterCategory, setFilterCategory] = useState<string>('all');
+    const [minPrice, setMinPrice] = useState<string>('');
+    const [maxPrice, setMaxPrice] = useState<string>('');
 
     // Drawers & Modals
     const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
@@ -220,23 +232,35 @@ export default function ServicesPage() {
     });
 
     // Initial Fetch
-    const fetchServices = () => {
+    const fetchServices = async () => {
         setLoading(true);
-        setTimeout(() => {
-            setServices(MOCK_SERVICES);
+        const token = getStoredAdminToken();
+        if (!hasBackendAdminToken || !token) {
+            setServices([]);
             setLoading(false);
-        }, 600);
+            return;
+        }
+        try {
+            const rows = await fetchAdminServices(token, true);
+            setServices(rows.map(mapBackendServiceToUi));
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unable to load services';
+            alert(detail);
+            setServices([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
-        fetchServices();
-    }, []);
+        void fetchServices();
+    }, [hasBackendAdminToken]);
 
     const getServiceExportRows = () => services.map(s => ({
             Code: s.code,
             Name: s.name,
+            Category: s.category,
             DefaultPrice: s.default_price,
-            ApprovalRequired: s.approval_required ? 'Yes' : 'No',
             Status: s.status,
             Notes: s.notes || ''
         }));
@@ -251,12 +275,59 @@ export default function ServicesPage() {
         const matchesSearch =
             s.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const normalizedCategory = s.category.trim().toLowerCase();
+        const normalizedName = s.name.trim().toLowerCase();
+        const normalizedCode = s.code.trim().toLowerCase();
+        let matchesCategory = true;
+        if (filterCategory === 'ppf') {
+            matchesCategory = normalizedCategory === 'ppf';
+        }
+        if (filterCategory === 'window_tint') {
+            matchesCategory = normalizedCategory === 'window tint';
+        }
+        if (filterCategory === 'engine_immobilizers') {
+            matchesCategory =
+                normalizedName.includes('immobilizer') ||
+                normalizedName.includes('anti-demarrage') ||
+                normalizedName.includes('antidémarrage') ||
+                normalizedName.includes('domino') ||
+                normalizedCode.includes('immobil');
+        }
+        if (filterCategory === 'remote_starters') {
+            matchesCategory =
+                normalizedName.includes('remote starter') ||
+                normalizedName.includes('demarreur') ||
+                normalizedName.includes('démarreur') ||
+                normalizedName.includes('mycar') ||
+                normalizedName.includes('2-way') ||
+                normalizedCode.includes('2way') ||
+                normalizedCode.includes('mycar');
+        }
+        if (filterCategory === 'vehicle_tracking_systems') {
+            matchesCategory =
+                normalizedName.includes('tracking') ||
+                normalizedName.includes('repérage') ||
+                normalizedName.includes('reperage') ||
+                normalizedCode.includes('tracking');
+        }
+        if (filterCategory === 'windshield_repair') {
+            matchesCategory =
+                normalizedName.includes('windshield repair') ||
+                normalizedName.includes('pare-brise') ||
+                normalizedCode.includes('pb');
+        }
+        if (filterCategory === 'windshield_replacement') {
+            matchesCategory =
+                normalizedName.includes('windshield replacement') ||
+                normalizedName.includes('remplacement de pare-brise');
+        }
 
-        let matchesApproval = true;
-        if (filterApproval === 'yes') matchesApproval = s.approval_required;
-        if (filterApproval === 'no') matchesApproval = !s.approval_required;
+        const min = minPrice.trim() === '' ? null : Number(minPrice);
+        const max = maxPrice.trim() === '' ? null : Number(maxPrice);
+        const matchesMin = min === null || (!Number.isNaN(min) && s.default_price >= min);
+        const matchesMax = max === null || (!Number.isNaN(max) && s.default_price <= max);
 
-        return matchesSearch && matchesApproval;
+        return matchesSearch && matchesCategory && matchesMin && matchesMax;
     });
 
     // Handlers
@@ -284,7 +355,13 @@ export default function ServicesPage() {
         setModalOpen(true);
     };
 
-    const handleSaveService = () => {
+    const handleSaveService = async () => {
+        const token = getStoredAdminToken();
+        if (!token) {
+            alert('Admin session is required to save services.');
+            return;
+        }
+
         if (!formData.code || !formData.name || !formData.default_price) {
             alert("Code, Name, and Default Price are required.");
             return;
@@ -302,44 +379,61 @@ export default function ServicesPage() {
                 alert("Service code already exists.");
                 return;
             }
-
-            const newService: ServiceItem = {
-                id: Date.now().toString(),
-                code: formData.code,
-                name: formData.name,
-                default_price: price,
-                approval_required: formData.approval_required,
-                status: 'active',
-                notes: formData.notes,
-                updated_at: new Date().toISOString(),
-                updated_by: 'Current User', // In real app from auth context
-                allowed_actions: ['edit', 'archive', 'duplicate']
-            };
-            setServices(prev => [newService, ...prev]);
+            try {
+                const created = await createAdminService(token, {
+                    code: formData.code,
+                    name: formData.name,
+                    category: 'General',
+                    default_price: price,
+                    approval_required: formData.approval_required,
+                    notes: formData.notes || null,
+                });
+                setServices(prev => [mapBackendServiceToUi(created), ...prev]);
+            } catch (error) {
+                const detail = error instanceof Error ? error.message : 'Unable to create service';
+                alert(detail);
+                return;
+            }
 
         } else if (modalMode === 'edit' && selectedService) {
-            const updatedService = {
-                ...selectedService,
-                code: formData.code,
-                name: formData.name,
-                default_price: price,
-                approval_required: formData.approval_required,
-                notes: formData.notes,
-                updated_at: new Date().toISOString(),
-                updated_by: 'Current User'
-            };
-            setServices(prev => prev.map(s => s.id === selectedService.id ? updatedService : s));
-            setSelectedService(updatedService); // Update drawer if open
+            try {
+                const updated = await updateAdminService(token, selectedService.id, {
+                    code: formData.code,
+                    name: formData.name,
+                    category: selectedService.category || 'General',
+                    default_price: price,
+                    approval_required: formData.approval_required,
+                    notes: formData.notes || null,
+                });
+                const updatedService = mapBackendServiceToUi(updated);
+                setServices(prev => prev.map(s => s.id === selectedService.id ? updatedService : s));
+                setSelectedService(updatedService);
+            } catch (error) {
+                const detail = error instanceof Error ? error.message : 'Unable to update service';
+                alert(detail);
+                return;
+            }
         }
 
         setModalOpen(false);
         // Toast success here
     };
 
-    const handleArchiveToggle = (s: ServiceItem) => {
+    const handleArchiveToggle = async (s: ServiceItem) => {
+        const token = getStoredAdminToken();
+        if (!token) {
+            alert('Admin session is required to change service status.');
+            return;
+        }
         const newStatus = s.status === 'active' ? 'archived' : 'active';
-        const updated = { ...s, status: newStatus as 'active' | 'archived', updated_at: new Date().toISOString() };
-        setServices(prev => prev.map(item => item.id === s.id ? updated : item));
+        try {
+            const updated = await updateAdminServiceStatus(token, s.id, newStatus);
+            const next = mapBackendServiceToUi(updated);
+            setServices(prev => prev.map(item => item.id === s.id ? next : item));
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unable to update service status';
+            alert(detail);
+        }
     };
 
     return (
@@ -385,25 +479,53 @@ export default function ServicesPage() {
                         />
                     </div>
                     <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto">
-                        <Select value={filterApproval} onValueChange={setFilterApproval}>
+                        <Select value={filterCategory} onValueChange={setFilterCategory}>
                             <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Approval Required" />
+                                <SelectValue placeholder="Category" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Any Approval Status</SelectItem>
-                                <SelectItem value="yes">Approval Required</SelectItem>
-                                <SelectItem value="no">No Approval Needed</SelectItem>
+                                <SelectItem value="all">All Categories</SelectItem>
+                                <SelectItem value="ppf">PPF</SelectItem>
+                                <SelectItem value="window_tint">Window Tint</SelectItem>
+                                <SelectItem value="engine_immobilizers">Engine immobilizers</SelectItem>
+                                <SelectItem value="remote_starters">Remote starters</SelectItem>
+                                <SelectItem value="vehicle_tracking_systems">Vehicle tracking systems</SelectItem>
+                                <SelectItem value="windshield_repair">Windshield repair</SelectItem>
+                                <SelectItem value="windshield_replacement">Windshield replacement</SelectItem>
                             </SelectContent>
                         </Select>
 
-                        <div className="h-6 w-px bg-gray-200 mx-2" />
-
-                        <Badge variant="secondary"
-                            className="cursor-pointer bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
-                            onClick={() => setFilterApproval('yes')}
-                        >
-                            Approval Required ({services.filter(s => s.approval_required).length})
-                        </Badge>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-[180px] justify-start">
+                                    Prices
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-[260px] p-3">
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-gray-500">Min Price</Label>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="Min Price"
+                                        value={minPrice}
+                                        onChange={(e) => setMinPrice(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2 mt-3">
+                                    <Label className="text-xs text-gray-500">Max Price</Label>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="Max Price"
+                                        value={maxPrice}
+                                        onChange={(e) => setMaxPrice(e.target.value)}
+                                    />
+                                </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
             </Card>
@@ -423,16 +545,16 @@ export default function ServicesPage() {
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900">No services found</h3>
                         <p className="text-sm mt-1">Try adjusting your filters or search query.</p>
-                        <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterApproval('all'); }}>Clear Filters</Button>
+                        <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterCategory('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</Button>
                     </div>
                 ) : (
                     <Table>
                         <TableHeader className="bg-gray-50 sticky top-0 z-10">
                             <TableRow>
                                 <TableHead className="pl-6 w-[150px]">Service Code</TableHead>
-                                <TableHead className="min-w-[200px]">Service Name</TableHead>
+                                <TableHead className="min-w-[260px]">Service Name</TableHead>
+                                <TableHead className="w-[120px]">Category</TableHead>
                                 <TableHead className="w-[120px] text-right pr-6">Default Price</TableHead>
-                                <TableHead className="w-[150px] text-center">Approval Req.</TableHead>
                                 <TableHead className="w-[100px] text-center">Status</TableHead>
                                 <TableHead className="w-[80px] text-center">Notes</TableHead>
                                 <TableHead className="w-[180px] text-right">Last Updated</TableHead>
@@ -448,11 +570,9 @@ export default function ServicesPage() {
                                 >
                                     <TableCell className="pl-6 font-semibold text-gray-900">{service.code}</TableCell>
                                     <TableCell className="text-gray-700 font-medium">{service.name}</TableCell>
+                                    <TableCell className="text-gray-600">{service.category}</TableCell>
                                     <TableCell className="text-right pr-6 font-mono text-gray-600">
                                         ${service.default_price.toFixed(2)}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <ApprovalBadge required={service.approval_required} />
                                     </TableCell>
                                     <TableCell className="text-center">
                                         <StatusBadge status={service.status} />

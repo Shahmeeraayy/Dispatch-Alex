@@ -41,7 +41,7 @@ const navItems = [
   { path: '/admin/technicians', label: 'Technicians', icon: Users },
   { path: '/admin/technician-accounts', label: 'Tech Accounts', icon: UserCog },
   { path: '/admin/dealerships', label: 'Dealerships', icon: Building2 },
-  { path: '/admin/services', label: 'Services & Pricing', icon: Wrench },
+  { path: '/admin/services', label: 'Services', icon: Wrench },
   { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
   { path: '/admin/settings', label: 'Settings', icon: Settings },
 ];
@@ -170,7 +170,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const handleRefresh = () => {
     setLastUpdated('Updated just now');
-    // Add actual refresh logic here
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sm-dispatch:admin-refresh', {
+        detail: { source: 'header' },
+      }));
+    }
   };
 
   return (

@@ -17,6 +17,7 @@ from ...schemas.technician_profile import (
     TechnicianProfileResponse,
     TechnicianSkillAssignRequest,
     TechnicianUpdateRequest,
+    TechnicianJobFeedResponse,
     TechnicianZoneAssignRequest,
     TimeOffResponseItem,
     WeeklyScheduleResponseItem,
@@ -25,6 +26,7 @@ from ...schemas.technician_profile import (
     ZoneResponse,
 )
 from ...services.assignment_service import AssignmentService
+from ...services.technician_jobs_service import TechnicianJobsService
 from ...services.technician_admin_service import TechnicianAdminService
 
 router = APIRouter(prefix="/admin/technicians", tags=["admin-technicians"])
@@ -195,3 +197,12 @@ def get_assignment_readiness(
     current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
 ):
     return AssignmentService(db).check_assignment_readiness(technician_id, job_id)
+
+
+@router.get("/{technician_id}/jobs-feed", response_model=TechnicianJobFeedResponse)
+def get_admin_technician_jobs_feed(
+    technician_id: UUID,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    return TechnicianJobsService(db).get_job_feed(technician_id)

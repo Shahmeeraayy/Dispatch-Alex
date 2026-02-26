@@ -20,6 +20,7 @@ from app.models.dealership import Dealership
 from app.models.invoice import Invoice, InvoiceLineItem
 from app.models.invoice_branding_settings import InvoiceBrandingSettings
 from app.models.job import Job
+from app.models.priority_rule import PriorityRule
 from app.models.technician import Technician
 
 
@@ -44,6 +45,7 @@ class InvoiceApiTests(unittest.TestCase):
             db.query(Job).update({"invoice_id": None}, synchronize_session=False)
             db.query(Invoice).delete()
             db.query(InvoiceBrandingSettings).delete()
+            db.query(PriorityRule).delete()
             db.query(Job).delete()
             db.query(Technician).delete()
             db.query(Dealership).delete()
@@ -507,6 +509,47 @@ class InvoiceApiTests(unittest.TestCase):
         created_invoice = create_invoice_res.json()
         self.assertEqual(created_invoice["company_info"]["name"], update_payload["name"])
         self.assertEqual(created_invoice["company_info"]["email"], update_payload["email"])
+
+    def test_priority_rules_crud_endpoints(self):
+        list_res = self.client.get("/admin/settings/priority-rules", headers=self.auth_header)
+        self.assertEqual(list_res.status_code, 200, list_res.text)
+        initial_rows = list_res.json()
+        self.assertGreaterEqual(len(initial_rows), 1)
+
+        create_payload = {
+            "description": "Escalate high-priority Audi intake",
+            "dealership_id": "D-001",
+            "service_id": None,
+            "target_urgency": "HIGH",
+            "ranking_score": 12,
+            "is_active": True,
+        }
+        create_res = self.client.post(
+            "/admin/settings/priority-rules",
+            json=create_payload,
+            headers=self.auth_header,
+        )
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        created = create_res.json()
+        self.assertEqual(created["description"], create_payload["description"])
+        self.assertEqual(created["ranking_score"], create_payload["ranking_score"])
+        rule_id = created["id"]
+
+        patch_res = self.client.patch(
+            f"/admin/settings/priority-rules/{rule_id}",
+            json={"is_active": False},
+            headers=self.auth_header,
+        )
+        self.assertEqual(patch_res.status_code, 200, patch_res.text)
+        patched = patch_res.json()
+        self.assertFalse(patched["is_active"])
+
+        delete_res = self.client.delete(
+            f"/admin/settings/priority-rules/{rule_id}",
+            headers=self.auth_header,
+        )
+        self.assertEqual(delete_res.status_code, 200, delete_res.text)
+        self.assertEqual(delete_res.json()["status"], "ok")
 
 
 if __name__ == "__main__":

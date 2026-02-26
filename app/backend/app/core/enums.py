@@ -34,3 +34,17 @@ class AuditEntityType(str, Enum):
     TECHNICIAN_EMAIL_CHANGE_REQUEST = "technician_email_change_request"
     JOB = "job"
     INVOICE = "invoice"
+
+
+class JobWorkflowStatus(str, Enum):
+    UNKNOWN = "UNKNOWN"
+    ADMIN_PREVIEW = "ADMIN_PREVIEW"
+    READY_FOR_TECH = "READY_FOR_TECH"
+    PENDING_ADMIN_CONFIRMATION = "PENDING_ADMIN_CONFIRMATION"
+    PENDING_REVIEW = "PENDING_REVIEW"
+    PENDING = "PENDING"
+    SCHEDULED = "SCHEDULED"
+    IN_PROGRESS = "IN_PROGRESS"
+    DELAYED = "DELAYED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"

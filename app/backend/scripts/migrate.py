@@ -6,6 +6,7 @@ from datetime import datetime, time, timezone
 from typing import Iterable
 
 from sqlalchemy import and_, create_engine, insert, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
@@ -52,6 +53,7 @@ def get_engine():
     return create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False} if is_sqlite else {},
+        pool_pre_ping=not is_sqlite,
     )
 
 
@@ -76,15 +78,19 @@ def load_applied_versions(conn) -> set[str]:
 def mark_versions_applied(conn, versions: Iterable[str]) -> None:
     now = datetime.now(timezone.utc).isoformat()
     for version in versions:
-        conn.execute(
-            text(
-                """
-                INSERT OR IGNORE INTO schema_migrations (version, applied_at)
-                VALUES (:version, :applied_at)
-                """
-            ),
-            {"version": version, "applied_at": now},
-        )
+        try:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO schema_migrations (version, applied_at)
+                    VALUES (:version, :applied_at)
+                    """
+                ),
+                {"version": version, "applied_at": now},
+            )
+        except IntegrityError:
+            # Idempotent behavior across SQLite/PostgreSQL if the version is already present.
+            continue
 
 
 def ensure_sqlite_technician_password_column(conn) -> None:
@@ -107,6 +113,7 @@ def ensure_sqlite_technician_password_column(conn) -> None:
     ensure_column("technicians", "working_hours_end", "TIME")
     ensure_column("technicians", "after_hours_enabled", "BOOLEAN DEFAULT 0 NOT NULL")
     ensure_column("technicians", "updated_by", "CHAR(32)")
+    ensure_column("technicians", "priority_rank", "INTEGER DEFAULT 100 NOT NULL")
     ensure_column("jobs", "dealership_id", "CHAR(32)")
     ensure_column("jobs", "customer_name", "VARCHAR(255)")
     ensure_column("jobs", "customer_address", "TEXT")
@@ -127,6 +134,12 @@ def ensure_sqlite_technician_password_column(conn) -> None:
     ensure_column("jobs", "tax_rate", "NUMERIC(8,5)")
     ensure_column("jobs", "completed_at", "DATETIME")
     ensure_column("jobs", "invoice_id", "CHAR(32)")
+    ensure_column("jobs", "requested_service_date", "DATE")
+    ensure_column("jobs", "requested_service_time", "TIME")
+    ensure_column("jobs", "source_system", "VARCHAR(32)")
+    ensure_column("jobs", "source_metadata", "TEXT")
+    ensure_column("jobs", "pre_assigned_technician_id", "CHAR(32)")
+    ensure_column("jobs", "pre_assignment_reason", "VARCHAR(64)")
 
 
 def seed_development_data(engine) -> None:

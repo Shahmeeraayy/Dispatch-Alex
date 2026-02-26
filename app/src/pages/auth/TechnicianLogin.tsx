@@ -29,7 +29,7 @@ export default function TechnicianLoginPage() {
 
     try {
       await login(email, password, 'technician');
-      const destination = from && from.startsWith('/tech') ? from : '/tech/available-jobs';
+      const destination = from && from.startsWith('/tech') ? from : '/tech/jobs';
       navigate(destination, { replace: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Sign in failed.');
@@ -47,7 +47,7 @@ export default function TechnicianLoginPage() {
           </div>
           <div className="space-y-1">
             <CardTitle className="text-2xl">Technician Sign In</CardTitle>
-            <CardDescription>Access available jobs, assigned jobs, schedule, and profile after admin approval.</CardDescription>
+            <CardDescription>Access jobs, current work, history, and profile after admin approval.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>

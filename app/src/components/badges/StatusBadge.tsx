@@ -7,16 +7,28 @@ interface StatusBadgeProps {
 }
 
 const statusConfig: Record<JobStatus, { label: string; className: string }> = {
+  UNKNOWN: {
+    label: 'Unknown',
+    className: 'badge-status-pending',
+  },
+  ADMIN_PREVIEW: {
+    label: 'Admin Preview',
+    className: 'badge-status-pending',
+  },
+  READY_FOR_TECH: {
+    label: 'Ready For Tech',
+    className: 'badge-status-pending',
+  },
+  PENDING_ADMIN_CONFIRMATION: {
+    label: 'Pending Admin Confirmation',
+    className: 'badge-status-pending',
+  },
   PENDING_REVIEW: {
     label: 'Pending Review',
     className: 'badge-status-pending',
   },
-  READY_FOR_TECH_ACCEPTANCE: {
-    label: 'Ready for Tech',
-    className: 'badge-status-pending',
-  },
-  DISPATCHING: {
-    label: 'Dispatching',
+  PENDING: {
+    label: 'Pending',
     className: 'badge-status-in-progress',
   },
   SCHEDULED: {

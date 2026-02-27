@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import unicodedata
 from typing import Iterable, Literal, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
@@ -171,34 +171,45 @@ class JobWorkflowService:
         # Mandatory business rule: every new job starts in admin_review, regardless of source.
         row.status = db_status_from_dispatch_status(DispatchJobStatus.ADMIN_PREVIEW)
 
+    def _resolve_unique_job_code_for_make(self, requested_code: str) -> str:
+        trimmed = requested_code.strip()
+        if not trimmed:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="job_id is required")
+
+        base_code = trimmed[:50]
+        exists = self.db.query(Job.id).filter(Job.job_code == base_code).first()
+        if exists is None:
+            return base_code
+
+        # Make retries/re-submissions must not overwrite prior jobs.
+        # Keep the original code recognizable while guaranteeing uniqueness.
+        max_base_len = 45  # leaves room for "-0001"
+        suffix_base = base_code[:max_base_len]
+        for idx in range(1, 10_000):
+            candidate = f"{suffix_base}-{idx:04d}"
+            if self.db.query(Job.id).filter(Job.job_code == candidate).first() is None:
+                return candidate
+
+        # Highly defensive fallback if many collisions happen.
+        return f"{suffix_base[:41]}-{uuid4().hex[:8]}"
+
     def upsert_jobs_from_make(self, items: Iterable[MakeJobIntakeItem]) -> list[MakeJobUpsertResult]:
         results: list[MakeJobUpsertResult] = []
 
         for item in items:
-            job_code = item.job_id.strip()
-            if not job_code:
-                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="job_id is required")
+            job_code = self._resolve_unique_job_code_for_make(item.job_id)
 
             dealership = self._get_or_create_dealership(
                 name=item.dealership.dealership_name,
                 phone=item.dealership.telephone,
             )
 
-            row = self.db.query(Job).filter(Job.job_code == job_code).first()
-            action: Literal["created", "updated"]
-
-            if row is None:
-                row = Job(
-                    job_code=job_code,
-                    status=db_status_from_dispatch_status(DispatchJobStatus.ADMIN_PREVIEW),
-                )
-                self.db.add(row)
-                action = "created"
-            else:
-                action = "updated"
-                # Automation may update payload details, but cannot drive workflow status transitions.
-                if not (row.status or "").strip():
-                    row.status = db_status_from_dispatch_status(DispatchJobStatus.ADMIN_PREVIEW)
+            row = Job(
+                job_code=job_code,
+                status=db_status_from_dispatch_status(DispatchJobStatus.ADMIN_PREVIEW),
+            )
+            self.db.add(row)
+            action: Literal["created", "updated"] = "created"
 
             row.dealership_id = dealership.id if dealership is not None else None
             row.customer_name = dealership.name if dealership is not None else row.customer_name

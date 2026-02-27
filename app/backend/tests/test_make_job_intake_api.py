@@ -97,7 +97,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             self.assertEqual(dealership.name, "Audi levis")
             self.assertEqual(dealership.phone, "+13438421791")
 
-    def test_make_job_intake_retry_updates_details_but_does_not_change_status(self):
+    def test_make_job_intake_retry_creates_new_job_without_overwriting_previous(self):
         create_res = self.client.post("/integrations/make/jobs", json=self._make_payload())
         self.assertEqual(create_res.status_code, 201, create_res.text)
 
@@ -114,20 +114,27 @@ class MakeJobIntakeApiTests(unittest.TestCase):
         retry_res = self.client.post("/integrations/make/jobs", json=retry_payload)
         self.assertEqual(retry_res.status_code, 201, retry_res.text)
         body = retry_res.json()
-        self.assertEqual(body["created"], 0)
-        self.assertEqual(body["updated"], 1)
-        self.assertEqual(body["items"][0]["action"], "updated")
-        self.assertEqual(body["items"][0]["status"], "scheduled")
+        self.assertEqual(body["created"], 1)
+        self.assertEqual(body["updated"], 0)
+        self.assertEqual(body["items"][0]["action"], "created")
+        self.assertEqual(body["items"][0]["status"], "admin_review")
+        self.assertEqual(body["items"][0]["job_code"], "SM2-20231201-1234-0001")
         self.assertEqual(body["items"][0]["requested_service_time"], "10:45:00")
 
         with SessionLocal() as db:
-            job = db.query(Job).filter(Job.job_code == "SM2-20231201-1234").first()
-            self.assertIsNotNone(job)
-            self.assertEqual(job.status, "scheduled")
-            self.assertEqual(job.vehicle, "audi a3 2026 updated")
-            self.assertEqual(job.requested_service_time, time(10, 45))
+            original_job = db.query(Job).filter(Job.job_code == "SM2-20231201-1234").first()
+            self.assertIsNotNone(original_job)
+            self.assertEqual(original_job.status, "scheduled")
+            self.assertEqual(original_job.vehicle, "audi a3 2026")
+            self.assertEqual(original_job.requested_service_time, time(9, 30))
 
-            dealership = db.query(Dealership).filter(Dealership.id == job.dealership_id).first()
+            new_job = db.query(Job).filter(Job.job_code == "SM2-20231201-1234-0001").first()
+            self.assertIsNotNone(new_job)
+            self.assertEqual(new_job.status, "admin_review")
+            self.assertEqual(new_job.vehicle, "audi a3 2026 updated")
+            self.assertEqual(new_job.requested_service_time, time(10, 45))
+
+            dealership = db.query(Dealership).filter(Dealership.id == new_job.dealership_id).first()
             self.assertIsNotNone(dealership)
             self.assertEqual(dealership.phone, "+13430000000")
 

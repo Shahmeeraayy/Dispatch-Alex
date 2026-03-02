@@ -340,6 +340,24 @@ class TechnicianProfileUpdateRequest(BaseModel):
         return normalized or None
 
 
+class TechnicianPasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=255)
+    new_password: str = Field(..., min_length=6, max_length=255)
+
+    @validator("current_password", "new_password")
+    def validate_password_fields(cls, value: str):
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("value cannot be blank")
+        return normalized
+
+
+class TechnicianPasswordChangeResponse(BaseModel):
+    status: str
+    technician_email: str
+    password_changed_at: datetime
+
+
 class EmailChangeRequestCreateRequest(BaseModel):
     requested_email: str = Field(..., min_length=3, max_length=255)
 

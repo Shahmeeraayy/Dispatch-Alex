@@ -5,6 +5,7 @@ import {
     Calendar,
     ChevronRight,
     Clock,
+    KeyRound,
     LogOut,
     Plus,
     RefreshCw,
@@ -28,6 +29,7 @@ import {
     getStoredAdminToken,
     getStoredTechnicianToken,
     updateTechnicianMeAvailability,
+    updateTechnicianMePassword,
     updateTechnicianMeProfile,
     type BackendTechnicianProfile,
 } from '@/lib/backend-api';
@@ -137,6 +139,13 @@ export default function ProfilePage() {
     const [newRange, setNewRange] = useState<OutOfOfficeRangeDraft>({ start_date: '', end_date: '', note: '' });
     const [savingProfile, setSavingProfile] = useState(false);
     const [savingAvailability, setSavingAvailability] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+    });
+    const [savingPassword, setSavingPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
 
     const loadBackendData = async () => {
         setLoading(true);
@@ -285,7 +294,6 @@ export default function ProfilePage() {
             const updated = await updateTechnicianMeProfile(token, {
                 full_name: fullName,
                 phone: phone || null,
-                profile_picture_url: profilePictureUrl || null,
             });
             setProfile(updated);
             window.alert('Profile updated successfully.');
@@ -293,6 +301,51 @@ export default function ProfilePage() {
             window.alert(saveError instanceof Error ? saveError.message : 'Failed to update profile.');
         } finally {
             setSavingProfile(false);
+        }
+    };
+
+    const savePassword = async () => {
+        if (isPreviewMode) return;
+        const token = getStoredTechnicianToken();
+        if (!token) {
+            setPasswordError('Technician backend session missing. Please login again.');
+            return;
+        }
+
+        const currentPassword = passwordForm.currentPassword.trim();
+        const newPassword = passwordForm.newPassword.trim();
+        const confirmPassword = passwordForm.confirmPassword.trim();
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            setPasswordError('All password fields are required.');
+            return;
+        }
+        if (newPassword.length < 6) {
+            setPasswordError('New password must be at least 6 characters.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError('New password and confirmation do not match.');
+            return;
+        }
+
+        setSavingPassword(true);
+        setPasswordError(null);
+        try {
+            await updateTechnicianMePassword(token, {
+                current_password: currentPassword,
+                new_password: newPassword,
+            });
+            setPasswordForm({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: '',
+            });
+            window.alert('Password updated successfully.');
+        } catch (saveError) {
+            setPasswordError(saveError instanceof Error ? saveError.message : 'Failed to update password.');
+        } finally {
+            setSavingPassword(false);
         }
     };
 
@@ -432,10 +485,6 @@ export default function ProfilePage() {
                                         <Label>Phone</Label>
                                         <Input value={phone} onChange={(event) => setPhone(event.target.value)} />
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label>Profile Picture URL</Label>
-                                        <Input value={profilePictureUrl} onChange={(event) => setProfilePictureUrl(event.target.value)} />
-                                    </div>
                                     <Button onClick={() => void saveProfile()} className="w-full bg-[#2F8E92] hover:bg-[#267276]" disabled={savingProfile}>
                                         <Save className="w-4 h-4 mr-2" />
                                         {savingProfile ? 'Saving...' : 'Save Profile'}
@@ -554,6 +603,60 @@ export default function ProfilePage() {
                                     <Button onClick={() => void saveAvailability()} className="w-full bg-[#2F8E92] hover:bg-[#267276]" disabled={savingAvailability}>
                                         <Save className="w-4 h-4 mr-2" />
                                         {savingAvailability ? 'Saving...' : 'Save Availability'}
+                                    </Button>
+                                </div>
+                            )}
+                        </Card>
+
+                        <Card className="p-6 border-gray-200">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <KeyRound className="w-4 h-4 text-[#2F8E92]" />
+                                Reset Password
+                            </h3>
+                            {isPreviewMode ? (
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-500">
+                                    Preview mode is read-only. Open technician portal to update password.
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="technician_current_password">Current Password</Label>
+                                        <Input
+                                            id="technician_current_password"
+                                            type="password"
+                                            autoComplete="current-password"
+                                            value={passwordForm.currentPassword}
+                                            onChange={(event) => setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="technician_new_password">New Password</Label>
+                                        <Input
+                                            id="technician_new_password"
+                                            type="password"
+                                            autoComplete="new-password"
+                                            value={passwordForm.newPassword}
+                                            onChange={(event) => setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="technician_confirm_password">Confirm New Password</Label>
+                                        <Input
+                                            id="technician_confirm_password"
+                                            type="password"
+                                            autoComplete="new-password"
+                                            value={passwordForm.confirmPassword}
+                                            onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                                        />
+                                    </div>
+                                    {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
+                                    <Button
+                                        onClick={() => void savePassword()}
+                                        className="w-full bg-[#2F8E92] hover:bg-[#267276]"
+                                        disabled={savingPassword}
+                                    >
+                                        <Save className="w-4 h-4 mr-2" />
+                                        {savingPassword ? 'Updating...' : 'Update Password'}
                                     </Button>
                                 </div>
                             )}

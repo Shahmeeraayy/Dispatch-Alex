@@ -10,6 +10,8 @@ from ...core.security import AuthenticatedUser
 from ...schemas.technician_profile import (
     EmailChangeRequestCreateRequest,
     EmailChangeRequestResponse,
+    TechnicianPasswordChangeRequest,
+    TechnicianPasswordChangeResponse,
     TechnicianJobActionResponse,
     TechnicianJobDelayRequest,
     TechnicianAvailabilityUpdateRequest,
@@ -48,6 +50,15 @@ def update_my_availability(
     current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.TECHNICIAN)),
 ):
     return TechnicianProfileService(db, current_user).update_availability(payload)
+
+
+@router.post("/password", response_model=TechnicianPasswordChangeResponse)
+def change_my_password(
+    payload: TechnicianPasswordChangeRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.TECHNICIAN)),
+):
+    return TechnicianProfileService(db, current_user).change_password(payload)
 
 
 @router.post("/email-change-request", response_model=EmailChangeRequestResponse, status_code=201)

@@ -14,6 +14,8 @@ from ..schemas.technician_profile import (
     EmailChangeRequestResponse,
     SkillResponse,
     TechnicianAvailabilityUpdateRequest,
+    TechnicianPasswordChangeRequest,
+    TechnicianPasswordChangeResponse,
     TechnicianProfileResponse,
     TechnicianProfileUpdateRequest,
     TimeOffResponseItem,
@@ -229,6 +231,51 @@ class TechnicianProfileService:
         )
         self.db.commit()
         return self.get_profile()
+
+    def change_password(self, payload: TechnicianPasswordChangeRequest) -> TechnicianPasswordChangeResponse:
+        technician = self._require_technician()
+
+        stored_password = (technician.password or "").strip()
+        current_password = payload.current_password.strip()
+        if stored_password:
+            if current_password != stored_password:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
+        elif current_password != "tech123":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
+
+        if payload.new_password == current_password:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="New password must be different from current password",
+            )
+
+        self.repo.update_technician_fields(
+            technician.id,
+            {
+                "password": payload.new_password,
+                "updated_by": self.current_user.user_id,
+            },
+        )
+
+        changed_at = datetime.now(timezone.utc)
+        AuditService.log_event(
+            self.db,
+            actor_role=UserRole.TECHNICIAN,
+            actor_id=self.current_user.user_id,
+            action="technician.password.updated",
+            entity_type=AuditEntityType.TECHNICIAN.value,
+            entity_id=technician.id,
+            metadata={
+                "password": "[redacted]",
+                "password_changed_at": changed_at.isoformat(),
+            },
+        )
+        self.db.commit()
+        return TechnicianPasswordChangeResponse(
+            status="updated",
+            technician_email=technician.email,
+            password_changed_at=changed_at,
+        )
 
     def request_email_change(self, payload: EmailChangeRequestCreateRequest) -> EmailChangeRequestResponse:
         technician = self._require_technician()

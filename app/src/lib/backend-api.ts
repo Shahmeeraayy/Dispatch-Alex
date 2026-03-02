@@ -215,6 +215,12 @@ export type BackendAdminPasswordChangeResponse = {
   password_changed_at: string;
 };
 
+export type BackendTechnicianPasswordChangeResponse = {
+  status: string;
+  technician_email: string;
+  password_changed_at: string;
+};
+
 export type BackendPriorityRule = {
   id: string;
   description: string;
@@ -972,6 +978,20 @@ export async function updateTechnicianMeProfile(
 ): Promise<BackendTechnicianProfile> {
   return requestJson<BackendTechnicianProfile>('/technicians/me', {
     method: 'PUT',
+    token,
+    body: payload,
+  });
+}
+
+export async function updateTechnicianMePassword(
+  token: string,
+  payload: {
+    current_password: string;
+    new_password: string;
+  },
+): Promise<BackendTechnicianPasswordChangeResponse> {
+  return requestJson<BackendTechnicianPasswordChangeResponse>('/technicians/me/password', {
+    method: 'POST',
     token,
     body: payload,
   });

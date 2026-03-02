@@ -374,7 +374,7 @@ export default function AvailableJobsPage() {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
             {/* Top Navigation Bar */}
             <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center">
+                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between gap-3">
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                             Jobs
@@ -388,6 +388,16 @@ export default function AvailableJobsPage() {
                             Viewing as {currentTech.name} ({currentTechCode})
                         </p>
                     </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRefresh}
+                        className="h-9 gap-2 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                        disabled={loading}
+                    >
+                        <RefreshCw className={cn("w-4 h-4 text-gray-600 dark:text-gray-400", loading && "animate-spin")} />
+                        Refresh
+                    </Button>
                 </div>
             </div>
 
@@ -419,14 +429,6 @@ export default function AvailableJobsPage() {
                         <p className="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
                             Admin-confirmed jobs assigned to this technician will appear here.
                         </p>
-                        <Button
-                            onClick={handleRefresh}
-                            variant="outline"
-                            className="mt-6 h-11 px-6 font-semibold"
-                        >
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            Refresh
-                        </Button>
                     </div>
                 ) : (
                     // Job Cards

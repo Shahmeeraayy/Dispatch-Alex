@@ -89,3 +89,4 @@ def delete_priority_rule(
 ):
     _ = current_user
     return PriorityRulesService(db, current_user).delete_rule(rule_id)
+

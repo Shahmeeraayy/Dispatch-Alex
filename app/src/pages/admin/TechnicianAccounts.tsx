@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Search,
   UserCog,
@@ -78,15 +78,45 @@ export default function TechnicianAccountsPage() {
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+
+  const runSync = useCallback(async () => {
+    setIsRefreshing(true);
+    setSyncError(null);
+    try {
+      await syncAdminData();
+      setLastSyncedAt(new Date().toLocaleTimeString());
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : 'Unable to refresh technician account data.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [syncAdminData]);
 
   useEffect(() => {
-    void syncAdminData().catch(() => {
-      // Keep currently cached data if backend sync fails temporarily.
-    });
-  }, [syncAdminData]);
+    void runSync();
+  }, [runSync]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleAdminRefresh = () => {
+      void runSync();
+    };
+
+    window.addEventListener('sm-dispatch:admin-refresh', handleAdminRefresh);
+    return () => {
+      window.removeEventListener('sm-dispatch:admin-refresh', handleAdminRefresh);
+    };
+  }, [runSync]);
 
   const activeCount = technicianAccounts.filter((item) => item.isActive).length;
   const pendingCount = pendingTechnicianRequests.length;
+  const hasSearchQuery = searchQuery.trim().length > 0;
 
   const filteredAccounts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -141,6 +171,7 @@ export default function TechnicianAccountsPage() {
         phone: form.phone,
         password: form.password || undefined,
       });
+      await runSync();
       setEditDialogOpen(false);
       setSelectedAccount(null);
     } catch (error) {
@@ -162,6 +193,7 @@ export default function TechnicianAccountsPage() {
 
     try {
       await setTechnicianAccountActive(account.id, nextState);
+      await runSync();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Unable to update account status.');
     }
@@ -174,7 +206,7 @@ export default function TechnicianAccountsPage() {
 
     try {
       await approveTechnicianSignupRequest(request.id);
-      await syncAdminData();
+      await runSync();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Unable to approve signup request.');
     }
@@ -187,7 +219,7 @@ export default function TechnicianAccountsPage() {
 
     try {
       await rejectTechnicianSignupRequest(request.id);
-      await syncAdminData();
+      await runSync();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Unable to reject signup request.');
     }
@@ -227,6 +259,52 @@ export default function TechnicianAccountsPage() {
             className="pl-9"
           />
         </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Badge
+            variant="outline"
+            className={
+              isRefreshing
+                ? 'border-blue-200 text-blue-700 bg-blue-50'
+                : syncError
+                  ? 'border-red-200 text-red-700 bg-red-50'
+                  : 'border-emerald-200 text-emerald-700 bg-emerald-50'
+            }
+          >
+            {isRefreshing ? 'Syncing data...' : syncError ? 'Sync failed' : 'Data synced'}
+          </Badge>
+          <Badge variant="outline" className="border-gray-200 text-gray-600">
+            Showing {filteredAccounts.length} accounts • {filteredPendingRequests.length} pending
+          </Badge>
+          {lastSyncedAt ? (
+            <span className="text-xs text-gray-500">Last synced at {lastSyncedAt}</span>
+          ) : null}
+          {hasSearchQuery ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSearchQuery('')}
+              className="h-7 px-2 text-gray-600"
+            >
+              Clear Search
+            </Button>
+          ) : null}
+          {syncError ? (
+            <>
+              <span className="text-xs text-red-600">{syncError}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => { void runSync(); }}
+                disabled={isRefreshing}
+                className="h-7 px-2"
+              >
+                Retry Sync
+              </Button>
+            </>
+          ) : null}
+        </div>
       </Card>
 
       <Card className="border-gray-200">
@@ -234,6 +312,9 @@ export default function TechnicianAccountsPage() {
           <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
             <UserPlus className="w-4 h-4 text-amber-600" />
             Pending Signup Requests
+            <Badge variant="secondary" className="bg-amber-100 text-amber-700 border border-amber-200">
+              {filteredPendingRequests.length}
+            </Badge>
           </h2>
           <p className="text-sm text-gray-600 mt-1">
             Approve requests to create technician accounts and allow login.
@@ -252,7 +333,7 @@ export default function TechnicianAccountsPage() {
             {filteredPendingRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-28 text-center text-sm text-gray-500">
-                  No pending signup requests.
+                  {hasSearchQuery ? 'No pending signup requests match your search.' : 'No pending signup requests.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -293,6 +374,7 @@ export default function TechnicianAccountsPage() {
                         size="sm"
                         className="bg-emerald-600 hover:bg-emerald-700"
                         onClick={() => handleApproveRequest(request)}
+                        disabled={isRefreshing}
                       >
                         <CheckCircle2 className="w-4 h-4 mr-1" />
                         Approve
@@ -301,6 +383,7 @@ export default function TechnicianAccountsPage() {
                         size="sm"
                         variant="destructive"
                         onClick={() => handleRejectRequest(request)}
+                        disabled={isRefreshing}
                       >
                         <XCircle className="w-4 h-4 mr-1" />
                         Reject
@@ -319,6 +402,9 @@ export default function TechnicianAccountsPage() {
           <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
             <UserCog className="w-4 h-4 text-[#2F8E92]" />
             Active Technician Accounts
+            <Badge variant="secondary" className="bg-[#e8f4f5] text-[#2F8E92] border border-[#cde7e9]">
+              {filteredAccounts.length}
+            </Badge>
           </h2>
         </div>
         <Table>
@@ -335,7 +421,7 @@ export default function TechnicianAccountsPage() {
             {filteredAccounts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-40 text-center text-sm text-gray-500">
-                  No technician accounts match your search.
+                  {hasSearchQuery ? 'No technician accounts match your search.' : 'No technician accounts available yet.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -388,6 +474,7 @@ export default function TechnicianAccountsPage() {
                         variant={account.isActive ? 'destructive' : 'default'}
                         onClick={() => handleToggleActive(account)}
                         className={!account.isActive ? 'bg-emerald-600 hover:bg-emerald-700' : undefined}
+                        disabled={isRefreshing}
                       >
                         {account.isActive ? <ShieldOff className="w-4 h-4 mr-1" /> : <ShieldCheck className="w-4 h-4 mr-1" />}
                         {account.isActive ? 'Deactivate' : 'Activate'}

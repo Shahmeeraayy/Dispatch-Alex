@@ -1,21 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
     Search,
-    Filter,
     RefreshCw,
     Plus,
     MoreVertical,
-    CheckCircle2,
-    AlertCircle,
     Clock,
     Calendar,
     MapPin,
     Shield,
-    Phone,
     Briefcase,
     X,
     User,
-    Power,
     FileDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -103,7 +98,6 @@ interface Technician {
     phone: string;
     profile_picture_url?: string;
     status: 'active' | 'inactive';
-    availability: 'available' | 'busy' | 'offline';
     has_pending_email_change_request?: boolean;
     pending_email_change_requested_email?: string;
     zones: string[];
@@ -218,9 +212,6 @@ const mergeTechniciansWithAccounts = (
             tech_code: techCode,
             phone: formatPhoneForDisplay(account.phone ?? existing?.phone ?? ''),
             status: account.isActive ? 'active' : 'inactive',
-            availability: account.isActive
-                ? (existing?.availability ?? 'available')
-                : 'offline',
             zones: existing?.zones?.length ? existing.zones : [...DEFAULT_ACCOUNT_ZONES],
             skills: existing?.skills?.length ? existing.skills : [...DEFAULT_ACCOUNT_SKILLS],
             working_hours: existing?.working_hours?.length ? existing.working_hours : getRealSchedule(),
@@ -237,13 +228,6 @@ const mergeTechniciansWithAccounts = (
 };
 
 const mapBackendTechnician = (item: BackendTechnicianListItem, index: number): Technician => {
-    const availability: Technician['availability'] =
-        item.status !== 'active'
-            ? 'offline'
-            : item.effective_availability
-                ? (item.current_jobs_count > 0 ? 'busy' : 'available')
-                : 'offline';
-
     return {
         id: item.id,
         name: item.full_name || item.name,
@@ -252,7 +236,6 @@ const mapBackendTechnician = (item: BackendTechnicianListItem, index: number): T
         phone: formatPhoneForDisplay(item.phone ?? ''),
         profile_picture_url: item.profile_picture_url ?? undefined,
         status: item.status === 'active' ? 'active' : 'inactive',
-        availability,
         has_pending_email_change_request: item.has_pending_email_change_request ?? false,
         pending_email_change_requested_email: item.pending_email_change_requested_email ?? undefined,
         zones: item.zones.map((zone) => zone.name),
@@ -272,29 +255,12 @@ function StatusBadge({ status }: { status: 'active' | 'inactive' }) {
     return <Badge variant="outline" className="text-gray-500 border-gray-200">Inactive</Badge>;
 }
 
-function AvailabilityBadge({ status }: { status: 'available' | 'busy' | 'offline' }) {
-    const styles = {
-        available: 'bg-green-100 text-green-700 border-green-200',
-        busy: 'bg-orange-100 text-orange-700 border-orange-200',
-        offline: 'bg-gray-100 text-gray-500 border-gray-200'
-    };
-    const labels = {
-        available: 'Available',
-        busy: 'Busy / On Job',
-        offline: 'Offline'
-    };
-    return (
-        <Badge variant="outline" className={cn("shadow-none capitalize", styles[status])}>
-            {labels[status]}
-        </Badge>
-    );
-}
-
 const TECHNICIAN_EXPORT_COLUMNS = [
     'TechCode',
     'Name',
     'Phone',
     'Status',
+    'ActiveJobs',
     'Zones',
     'Skills',
     'WorkingHours',
@@ -404,6 +370,22 @@ export default function TechniciansPage() {
             tech.skills.some((skill) => skill.trim().toLowerCase() === filterSkill.toLowerCase());
         return matchesSearch && matchesStatus && matchesZone && matchesSkill;
     });
+    const totalTechCount = techs.length;
+    const activeTechCount = techs.filter((tech) => tech.status === 'active').length;
+    const inactiveTechCount = totalTechCount - activeTechCount;
+    const assignedJobsCount = techs.reduce((sum, tech) => sum + tech.current_jobs_count, 0);
+    const busyTechniciansCount = techs.filter((tech) => tech.current_jobs_count > 0).length;
+    const hasActiveFilters =
+        searchQuery.trim().length > 0
+        || filterStatus !== 'all'
+        || filterZone !== 'all'
+        || filterSkill !== 'all';
+    const clearFilters = () => {
+        setSearchQuery('');
+        setFilterStatus('all');
+        setFilterZone('all');
+        setFilterSkill('all');
+    };
 
     // Handlers
     const hasDrawerChanges = useMemo(() => {
@@ -413,13 +395,11 @@ export default function TechniciansPage() {
             skills: selectedTech.skills,
             working_hours: selectedTech.working_hours,
             time_off: selectedTech.time_off,
-            availability: selectedTech.availability,
         }) !== JSON.stringify({
             zones: techDraft.zones,
             skills: techDraft.skills,
             working_hours: techDraft.working_hours,
             time_off: techDraft.time_off,
-            availability: techDraft.availability,
         });
     }, [selectedTech, techDraft]);
 
@@ -454,14 +434,12 @@ export default function TechniciansPage() {
             skills: selectedTech.skills,
             working_hours: selectedTech.working_hours,
             time_off: selectedTech.time_off,
-            availability: selectedTech.availability,
         };
         const afterSnapshot = {
             zones: techDraft.zones,
             skills: techDraft.skills,
             working_hours: techDraft.working_hours,
             time_off: techDraft.time_off,
-            availability: techDraft.availability,
         };
 
         const saved = cloneTech(techDraft);
@@ -499,13 +477,6 @@ export default function TechniciansPage() {
             setTimeOffForm({ start: '', end: '', reason: '' });
             setTimeOffModalOpen(false);
         }
-    };
-
-    const getAvailabilityFromTimeOff = (tech: Technician, nextTimeOff: TimeOff[]): Technician['availability'] => {
-        if (tech.status === 'inactive') return 'offline';
-        if (nextTimeOff.length > 0) return 'offline';
-        if (tech.current_jobs_count > 0) return 'busy';
-        return 'available';
     };
 
     const handleAddZone = () => {
@@ -599,7 +570,6 @@ export default function TechniciansPage() {
             return {
                 ...draft,
                 time_off: nextTimeOff,
-                availability: getAvailabilityFromTimeOff(draft, nextTimeOff),
             };
         });
     };
@@ -647,7 +617,6 @@ export default function TechniciansPage() {
         updateDraft((draft) => ({
             ...draft,
             time_off: [...draft.time_off, newTimeOff],
-            availability: 'offline',
         }));
         setTimeOffModalOpen(false);
         setTimeOffForm({ start: '', end: '', reason: '' });
@@ -683,7 +652,6 @@ export default function TechniciansPage() {
             tech_code: code,
             phone,
             status: 'active',
-            availability: 'available',
             zones,
             skills,
             working_hours: getRealSchedule(),
@@ -844,6 +812,7 @@ export default function TechniciansPage() {
             Name: t.name,
             Phone: t.phone,
             Status: t.status,
+            ActiveJobs: t.current_jobs_count,
             Zones: t.zones.join('; '),
             Skills: t.skills.join('; '),
             WorkingHours: JSON.stringify(t.working_hours) // Simplify for CSV
@@ -861,7 +830,7 @@ export default function TechniciansPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Technicians</h1>
-                    <p className="text-sm text-gray-500 font-medium">Manage technician availability, skills, and zones</p>
+                    <p className="text-sm text-gray-500 font-medium">Manage technician profiles, skills, zones, and schedules</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
@@ -921,13 +890,35 @@ export default function TechniciansPage() {
                 </div>
             </div>
 
+            <Card className="border-gray-200 shadow-sm overflow-hidden">
+                <div className="grid grid-cols-2 lg:grid-cols-4">
+                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-gray-100">
+                        <p className="text-xs uppercase tracking-wider text-gray-500">Total Technicians</p>
+                        <p className="text-2xl font-semibold text-gray-900 mt-1">{totalTechCount}</p>
+                    </div>
+                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-gray-100">
+                        <p className="text-xs uppercase tracking-wider text-gray-500">Active</p>
+                        <p className="text-2xl font-semibold text-blue-700 mt-1">{activeTechCount}</p>
+                    </div>
+                    <div className="p-4 lg:border-r border-gray-100">
+                        <p className="text-xs uppercase tracking-wider text-gray-500">Inactive</p>
+                        <p className="text-2xl font-semibold text-gray-700 mt-1">{inactiveTechCount}</p>
+                    </div>
+                    <div className="p-4">
+                        <p className="text-xs uppercase tracking-wider text-gray-500">Assigned Jobs</p>
+                        <p className="text-2xl font-semibold text-amber-700 mt-1">{assignedJobsCount}</p>
+                        <p className="text-xs text-gray-500 mt-1">{busyTechniciansCount} technicians currently assigned</p>
+                    </div>
+                </div>
+            </Card>
+
             {/* 2. Filter Bar */}
             <Card className="p-4 border-gray-200 shadow-sm space-y-4">
                 <div className="flex flex-col lg:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full lg:w-auto min-w-0 lg:min-w-[300px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <Input
-                            placeholder="Search by name, tech code, phone, zone, or skill..."
+                            placeholder="Search technician, code, phone, zone, or skill..."
                             className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-all"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
@@ -981,11 +972,19 @@ export default function TechniciansPage() {
                         <div className="h-6 w-px bg-gray-200 mx-2" />
 
                         <Badge variant="secondary" className="cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200">
-                            Active ({techs.filter(t => t.status === 'active').length})
+                            Active ({activeTechCount})
                         </Badge>
-                        <Badge variant="secondary" className="cursor-pointer bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200">
-                            Unavailable Today ({techs.filter(t => t.availability !== 'available').length})
+                        <Badge variant="secondary" className="cursor-pointer bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200">
+                            Assigned Jobs ({assignedJobsCount})
                         </Badge>
+                        <Badge variant="outline" className="bg-white border-gray-200 text-gray-600">
+                            Showing {filteredTechs.length} of {totalTechCount}
+                        </Badge>
+                        {hasActiveFilters ? (
+                            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-gray-600">
+                                Clear Filters
+                            </Button>
+                        ) : null}
                     </div>
                 </div>
             </Card>
@@ -1005,7 +1004,7 @@ export default function TechniciansPage() {
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900">No technicians found</h3>
                         <p className="text-sm mt-1">Try adjusting your filters or search query.</p>
-                        <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterZone('all'); setFilterSkill('all'); }}>Clear Filters</Button>
+                        <Button variant="outline" className="mt-4" onClick={clearFilters}>Clear Filters</Button>
                     </div>
                 ) : (
                     <Table>
@@ -1015,7 +1014,7 @@ export default function TechniciansPage() {
                                 <TableHead className="w-[120px]">Code</TableHead>
                                 <TableHead className="w-[140px]">Phone</TableHead>
                                 <TableHead className="w-[100px]">Status</TableHead>
-                                <TableHead className="w-[120px]">Availability</TableHead>
+                                <TableHead className="w-[120px]">Active Jobs</TableHead>
                                 <TableHead className="w-[200px]">Zones</TableHead>
                                 <TableHead className="w-[200px]">Skills</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
@@ -1047,7 +1046,17 @@ export default function TechniciansPage() {
                                         <StatusBadge status={tech.status} />
                                     </TableCell>
                                     <TableCell>
-                                        <AvailabilityBadge status={tech.availability} />
+                                        <Badge
+                                            variant="outline"
+                                            className={cn(
+                                                "shadow-none min-w-8 justify-center",
+                                                tech.current_jobs_count > 0
+                                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                    : 'bg-gray-50 text-gray-500 border-gray-200',
+                                            )}
+                                        >
+                                            {tech.current_jobs_count}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1">
@@ -1077,7 +1086,39 @@ export default function TechniciansPage() {
                                                     <DropdownMenuItem onClick={() => handleOpenProfile(tech)}>View Profile</DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => openEditTechModal(tech)}>Edit Technician</DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-red-600">Deactivate</DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        className={tech.status === 'active' ? 'text-red-600' : 'text-blue-700'}
+                                                        onClick={() => {
+                                                            if (tech.status === 'active') {
+                                                                if (tech.current_jobs_count > 0) {
+                                                                    alert('Cannot deactivate technician with active assigned jobs.');
+                                                                    return;
+                                                                }
+                                                                setSelectedTech(tech);
+                                                                setTechDraft(cloneTech(tech));
+                                                                setConfirmDeactivateOpen(true);
+                                                                return;
+                                                            }
+
+                                                            const updated = { ...tech, status: 'active' as const };
+                                                            setTechs((prev) => {
+                                                                const next = prev.map((t) => (t.id === updated.id ? updated : t));
+                                                                persistTechniciansToStorage(next);
+                                                                return next;
+                                                            });
+                                                            if (selectedTech?.id === updated.id) {
+                                                                setSelectedTech(updated);
+                                                                setTechDraft(cloneTech(updated));
+                                                            }
+                                                            appendAuditLog(
+                                                                'technician.status_changed',
+                                                                `Technician ${updated.name} activated`,
+                                                                { tech_id: updated.id, tech_code: updated.tech_code, new_status: 'active' }
+                                                            );
+                                                        }}
+                                                    >
+                                                        {tech.status === 'active' ? 'Deactivate' : 'Activate'}
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
@@ -1360,7 +1401,7 @@ export default function TechniciansPage() {
                     <DialogHeader>
                         <DialogTitle>Schedule Time Off</DialogTitle>
                         <DialogDescription>
-                            Add a time off entry for {selectedTech?.name}. This will update their availability status.
+                            Add a time off entry for {selectedTech?.name} so dispatch planning stays accurate.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">

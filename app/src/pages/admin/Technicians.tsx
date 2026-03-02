@@ -51,7 +51,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -1259,7 +1258,7 @@ export default function TechniciansPage() {
                                 </div>
                             </div>
 
-                            <ScrollArea className="flex-1">
+                            <div className="flex-1 min-h-0 overflow-y-auto">
                                 <div className="p-6 space-y-6">
 
                                     {/* B) Skills & Zones */}
@@ -1421,7 +1420,7 @@ export default function TechniciansPage() {
                                     </Card>
 
                                 </div>
-                            </ScrollArea>
+                            </div>
                         </>
                     )}
                 </SheetContent>

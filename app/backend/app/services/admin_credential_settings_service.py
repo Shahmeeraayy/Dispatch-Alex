@@ -1,0 +1,106 @@
+from __future__ import annotations
+
+import hashlib
+import hmac
+import secrets
+from datetime import datetime, timezone
+
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
+from ..core.config import ADMIN_DEFAULT_PASSWORD, ADMIN_EMAIL
+from ..models.admin_credential_settings import AdminCredentialSettings
+
+
+ADMIN_CREDENTIAL_SETTINGS_KEY = "default"
+PBKDF2_ITERATIONS = 600_000
+
+
+def hash_password(password: str) -> str:
+    normalized = password.strip()
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        normalized.encode("utf-8"),
+        salt.encode("utf-8"),
+        PBKDF2_ITERATIONS,
+    )
+    return f"pbkdf2_sha256${PBKDF2_ITERATIONS}${salt}${digest.hex()}"
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    try:
+        algorithm, raw_iterations, salt, digest = stored_hash.split("$", 3)
+        if algorithm != "pbkdf2_sha256":
+            return False
+        iterations = int(raw_iterations)
+    except ValueError:
+        return False
+
+    computed = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.strip().encode("utf-8"),
+        salt.encode("utf-8"),
+        iterations,
+    ).hex()
+    return hmac.compare_digest(computed, digest)
+
+
+class AdminCredentialSettingsService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def _get_or_create_settings_row(self) -> AdminCredentialSettings:
+        row = (
+            self.db.query(AdminCredentialSettings)
+            .filter(AdminCredentialSettings.key == ADMIN_CREDENTIAL_SETTINGS_KEY)
+            .first()
+        )
+        if row is not None:
+            return row
+
+        row = AdminCredentialSettings(
+            key=ADMIN_CREDENTIAL_SETTINGS_KEY,
+            admin_email=ADMIN_EMAIL,
+            password_hash=hash_password(ADMIN_DEFAULT_PASSWORD),
+        )
+        self.db.add(row)
+        self.db.commit()
+        self.db.refresh(row)
+        return row
+
+    def verify_admin_credentials(self, email: str, password: str) -> bool:
+        normalized_email = email.strip().lower()
+        normalized_password = password.strip()
+        if not normalized_email or not normalized_password:
+            return False
+
+        row = self._get_or_create_settings_row()
+        if normalized_email != (row.admin_email or "").strip().lower():
+            return False
+        return verify_password(normalized_password, row.password_hash)
+
+    def change_password(self, current_password: str, new_password: str) -> dict[str, str]:
+        normalized_current = current_password.strip()
+        normalized_next = new_password.strip()
+        if not normalized_current or not normalized_next:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Current and new password are required")
+        if len(normalized_next) < 6:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="New password must be at least 6 characters")
+
+        row = self._get_or_create_settings_row()
+        if not verify_password(normalized_current, row.password_hash):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
+        if verify_password(normalized_next, row.password_hash):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="New password must be different from the current password")
+
+        row.password_hash = hash_password(normalized_next)
+        row.password_changed_at = datetime.now(timezone.utc)
+        self.db.commit()
+        self.db.refresh(row)
+
+        return {
+            "status": "ok",
+            "admin_email": row.admin_email,
+            "password_changed_at": row.password_changed_at.isoformat(),
+        }

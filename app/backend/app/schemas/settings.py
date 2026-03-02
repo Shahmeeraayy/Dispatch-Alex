@@ -37,6 +37,25 @@ class InvoiceBrandingSettingsResponse(InvoiceBrandingSettingsPayload):
         from_attributes = True
 
 
+class AdminPasswordChangePayload(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=255)
+    new_password: str = Field(..., min_length=6, max_length=255)
+
+    @field_validator("current_password", "new_password")
+    @classmethod
+    def _normalize_password_fields(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("value cannot be blank")
+        return normalized
+
+
+class AdminPasswordChangeResponse(BaseModel):
+    status: str
+    admin_email: str
+    password_changed_at: datetime
+
+
 class PriorityRuleCreatePayload(BaseModel):
     description: str = Field(..., min_length=1, max_length=255)
     dealership_id: str = Field(..., min_length=1, max_length=64)

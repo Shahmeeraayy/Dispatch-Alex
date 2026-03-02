@@ -5,6 +5,7 @@ import {
     Pencil,
     RefreshCw,
     Clock,
+    KeyRound,
     Moon,
     Sun,
     Monitor,
@@ -64,6 +65,7 @@ import {
     fetchAdminServices,
     fetchAdminInvoiceBrandingSettings,
     getStoredAdminToken,
+    updateAdminPassword,
     updateAdminPriorityRule,
     updateAdminInvoiceBrandingSettings,
     type BackendDealership,
@@ -162,7 +164,7 @@ const getDefaultNewRule = (): Partial<PriorityRule> => ({
 
 
 export default function SettingsPage() {
-    const { hasBackendAdminToken } = useAuth();
+    const { hasBackendAdminToken, user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [savedInvoiceCompany, setSavedInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [invoiceCompany, setInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
@@ -173,6 +175,13 @@ export default function SettingsPage() {
     const [newRule, setNewRule] = useState<Partial<PriorityRule>>(getDefaultNewRule());
     const [isEditingRule, setIsEditingRule] = useState(false);
     const [editRule, setEditRule] = useState<Partial<PriorityRule> & { id?: string }>(getDefaultNewRule());
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+    });
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
     const MOCK_DEALERSHIPS = dealershipOptions.length > 0 ? dealershipOptions : FALLBACK_DEALERSHIPS;
 
     const { theme, setTheme } = useTheme();
@@ -371,6 +380,50 @@ export default function SettingsPage() {
 
     const handleCancelInvoiceBranding = () => {
         setInvoiceCompany({ ...savedInvoiceCompany });
+    };
+
+    const handleSaveAdminPassword = async () => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken) {
+            setPasswordError('Admin session is required to change password.');
+            return;
+        }
+
+        setPasswordError(null);
+        const currentPassword = passwordForm.currentPassword.trim();
+        const newPassword = passwordForm.newPassword.trim();
+        const confirmPassword = passwordForm.confirmPassword.trim();
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            setPasswordError('All password fields are required.');
+            return;
+        }
+        if (newPassword.length < 6) {
+            setPasswordError('New password must be at least 6 characters.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError('New password and confirmation do not match.');
+            return;
+        }
+
+        setIsSavingPassword(true);
+        try {
+            await updateAdminPassword(adminToken, {
+                current_password: currentPassword,
+                new_password: newPassword,
+            });
+            setPasswordForm({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: '',
+            });
+            alert('Admin password updated successfully.');
+        } catch (error) {
+            setPasswordError(error instanceof Error ? error.message : 'Unable to update admin password.');
+        } finally {
+            setIsSavingPassword(false);
+        }
     };
 
     const handleThemeChange = (newTheme: ThemeMode) => {
@@ -895,6 +948,81 @@ export default function SettingsPage() {
                             <Button size="sm" onClick={handleSaveInvoiceBranding} disabled={loading}>
                                 {loading && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
                                 {loading ? 'Saving...' : 'Save Invoice Branding'}
+                            </Button>
+                        </div>
+                    </CardFooter>
+                </Card>
+
+                <Card className="border-border shadow-sm bg-card">
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+                            <KeyRound className="w-4 h-4 text-[#2F8E92]" /> Admin Password
+                        </CardTitle>
+                        <CardDescription className="text-muted-foreground">
+                            Change the admin sign-in password whenever needed.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid sm:grid-cols-2 gap-6">
+                            <div className="space-y-2 sm:col-span-2">
+                                <Label htmlFor="admin_account_email" className="text-foreground">Admin Email</Label>
+                                <Input
+                                    id="admin_account_email"
+                                    value={user?.email ?? 'admin@sm2dispatch.com'}
+                                    disabled
+                                />
+                            </div>
+                            <div className="space-y-2 sm:col-span-2">
+                                <Label htmlFor="admin_current_password" className="text-foreground">Current Password</Label>
+                                <Input
+                                    id="admin_current_password"
+                                    type="password"
+                                    value={passwordForm.currentPassword}
+                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                                    autoComplete="current-password"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="admin_new_password" className="text-foreground">New Password</Label>
+                                <Input
+                                    id="admin_new_password"
+                                    type="password"
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                                    autoComplete="new-password"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="admin_confirm_password" className="text-foreground">Confirm New Password</Label>
+                                <Input
+                                    id="admin_confirm_password"
+                                    type="password"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                                    autoComplete="new-password"
+                                />
+                            </div>
+                        </div>
+                        {passwordError && (
+                            <p className="mt-4 text-sm text-red-600">{passwordError}</p>
+                        )}
+                    </CardContent>
+                    <CardFooter className="bg-muted/30 border-t border-border py-3">
+                        <div className="ml-auto flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                                    setPasswordError(null);
+                                }}
+                                disabled={isSavingPassword}
+                            >
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={handleSaveAdminPassword} disabled={isSavingPassword}>
+                                {isSavingPassword && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
+                                {isSavingPassword ? 'Saving...' : 'Update Password'}
                             </Button>
                         </div>
                     </CardFooter>

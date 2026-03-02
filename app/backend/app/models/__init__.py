@@ -1,3 +1,4 @@
+from .admin_credential_settings import AdminCredentialSettings
 from .audit_log import AuditLog
 from .dealership import Dealership
 from .invoice import Invoice, InvoiceLineItem

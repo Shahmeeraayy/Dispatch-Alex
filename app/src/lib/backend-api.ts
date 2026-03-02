@@ -209,6 +209,12 @@ export type BackendInvoiceBrandingSettings = {
   website: string;
 };
 
+export type BackendAdminPasswordChangeResponse = {
+  status: string;
+  admin_email: string;
+  password_changed_at: string;
+};
+
 export type BackendPriorityRule = {
   id: string;
   description: string;
@@ -421,31 +427,10 @@ export function clearStoredTechnicianToken(): void {
 
 async function tryRefreshAdminToken(expiredToken: string): Promise<string | null> {
   const currentAdminToken = getStoredAdminToken();
-  if (!currentAdminToken || currentAdminToken !== expiredToken) {
-    return null;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/auth/dev/admin-token`, {
-    method: 'POST',
-    headers: { Accept: 'application/json' },
-  });
-  if (!response.ok) {
+  if (currentAdminToken && currentAdminToken === expiredToken) {
     clearStoredAdminToken();
-    return null;
   }
-
-  try {
-    const payload = await response.json() as DevAdminTokenResponse;
-    if (!payload?.access_token || !payload.access_token.trim()) {
-      clearStoredAdminToken();
-      return null;
-    }
-    setStoredAdminToken(payload.access_token);
-    return payload.access_token;
-  } catch {
-    clearStoredAdminToken();
-    return null;
-  }
+  return null;
 }
 
 async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -508,8 +493,14 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   return response.json() as Promise<T>;
 }
 
-export async function fetchDevAdminToken(): Promise<DevAdminTokenResponse> {
-  return requestJson<DevAdminTokenResponse>('/auth/dev/admin-token', { method: 'POST' });
+export async function fetchDevAdminToken(payload: {
+  email: string;
+  password: string;
+}): Promise<DevAdminTokenResponse> {
+  return requestJson<DevAdminTokenResponse>('/auth/dev/admin-token', {
+    method: 'POST',
+    body: payload,
+  });
 }
 
 export async function fetchDevTechnicianToken(payload: {
@@ -785,6 +776,20 @@ export async function updateAdminInvoiceBrandingSettings(
 ): Promise<BackendInvoiceBrandingSettings> {
   return requestJson<BackendInvoiceBrandingSettings>('/admin/settings/invoice-branding', {
     method: 'PUT',
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminPassword(
+  token: string,
+  payload: {
+    current_password: string;
+    new_password: string;
+  },
+): Promise<BackendAdminPasswordChangeResponse> {
+  return requestJson<BackendAdminPasswordChangeResponse>('/admin/settings/admin-password', {
+    method: 'POST',
     token,
     body: payload,
   });

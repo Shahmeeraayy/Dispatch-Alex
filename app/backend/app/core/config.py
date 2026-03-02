@@ -96,6 +96,8 @@ COMPANY_ZIP_CODE = get_env("COMPANY_ZIP_CODE", "G1A 1A1")
 COMPANY_PHONE = get_env("COMPANY_PHONE", "+1-418-555-0100")
 COMPANY_EMAIL = get_env("COMPANY_EMAIL", "billing@sm2dispatch.com")
 COMPANY_WEBSITE = get_env("COMPANY_WEBSITE", "https://www.sm2dispatch.com")
+ADMIN_EMAIL = get_env("ADMIN_EMAIL", "admin@sm2dispatch.com").strip().lower()
+ADMIN_DEFAULT_PASSWORD = get_env("ADMIN_DEFAULT_PASSWORD", "admin123")
 
 if APP_ENV != "development" and JWT_SECRET_KEY.startswith("change-me"):
     raise RuntimeError("JWT_SECRET_KEY must be set to a secure value outside development")

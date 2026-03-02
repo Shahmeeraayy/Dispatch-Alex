@@ -16,7 +16,7 @@ export default function AdminLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('admin@sm2dispatch.com');
-  const [password, setPassword] = useState('admin123');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 

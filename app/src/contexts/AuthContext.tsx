@@ -100,7 +100,6 @@ const AUTH_STORAGE_KEY = 'sm_dispatch_auth_user';
 const TECHNICIANS_STORAGE_KEY = 'sm_dispatch_technician_accounts';
 const TECHNICIAN_SIGNUP_REQUESTS_STORAGE_KEY = 'sm_dispatch_technician_signup_requests';
 const ADMIN_EMAIL = currentUser.email.toLowerCase();
-const ADMIN_PASSWORD = 'admin123';
 
 const DEFAULT_TECHNICIAN_ACCOUNTS: TechnicianAccount[] = [
   {
@@ -428,35 +427,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user?.role !== 'admin' || hasBackendAdminToken) {
       return;
     }
-
-    let cancelled = false;
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    const bootstrap = async () => {
-      try {
-        const tokenResponse = await fetchDevAdminToken();
-        if (cancelled) {
-          return;
-        }
-        setStoredAdminToken(tokenResponse.access_token);
-        setHasBackendAdminToken(true);
-        await refreshBackendAdminData();
-      } catch {
-        if (!cancelled) {
-          retryTimer = setTimeout(() => {
-            void bootstrap();
-          }, 3000);
-        }
-      }
-    };
-
-    void bootstrap();
-
-    return () => {
-      cancelled = true;
-      if (retryTimer) {
-        clearTimeout(retryTimer);
-      }
-    };
+    setUser(null);
   }, [hasBackendAdminToken, refreshBackendAdminData, user]);
 
   useEffect(() => {
@@ -478,11 +449,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (role === 'admin') {
-      if (normalizedEmail !== ADMIN_EMAIL || normalizedPassword !== ADMIN_PASSWORD) {
-        throw new Error('Invalid admin credentials.');
-      }
-
-      const tokenResponse = await fetchDevAdminToken();
+      const tokenResponse = await fetchDevAdminToken({
+        email: normalizedEmail,
+        password: normalizedPassword,
+      });
       setStoredAdminToken(tokenResponse.access_token);
       setHasBackendAdminToken(true);
       clearStoredTechnicianToken();
@@ -780,11 +750,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (role === 'admin') {
       clearStoredTechnicianToken();
       setHasBackendTechnicianToken(false);
-      setUser({
-        ...currentUser,
-        email: ADMIN_EMAIL,
-        updatedAt: new Date().toISOString(),
-      });
+      setUser(null);
       return;
     }
 

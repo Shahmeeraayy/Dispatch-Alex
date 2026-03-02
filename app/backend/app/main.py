@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError
 
+from .api import deps
 from .api.endpoints import (
     admin_jobs,
     admin_dealerships,
@@ -19,12 +20,19 @@ from .api.endpoints import (
     technician_time_off,
 )
 from .core.config import CORS_ALLOW_ORIGINS
+from .models.base import Base
 
 app = FastAPI(
     title="SM2 Dispatch Technician API",
     description="Backend APIs for admin technician profile, scheduling, and availability.",
     version="2.0.0",
 )
+
+
+@app.on_event("startup")
+def ensure_runtime_schema() -> None:
+    with deps.engine.begin() as conn:
+        Base.metadata.create_all(bind=conn)
 
 app.add_middleware(
     CORSMiddleware,

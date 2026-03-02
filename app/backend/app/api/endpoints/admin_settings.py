@@ -7,12 +7,15 @@ from ...api import deps
 from ...core.enums import UserRole
 from ...core.security import AuthenticatedUser
 from ...schemas.settings import (
+    AdminPasswordChangePayload,
+    AdminPasswordChangeResponse,
     InvoiceBrandingSettingsPayload,
     InvoiceBrandingSettingsResponse,
     PriorityRuleCreatePayload,
     PriorityRuleResponse,
     PriorityRuleUpdatePayload,
 )
+from ...services.admin_credential_settings_service import AdminCredentialSettingsService
 from ...services.invoice_branding_settings_service import InvoiceBrandingSettingsService
 from ...services.priority_rules_service import PriorityRulesService
 
@@ -36,6 +39,19 @@ def update_invoice_branding_settings(
 ):
     _ = current_user
     return InvoiceBrandingSettingsService(db).upsert_invoice_branding(payload)
+
+
+@router.post("/admin-password", response_model=AdminPasswordChangeResponse)
+def change_admin_password(
+    payload: AdminPasswordChangePayload,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    _ = current_user
+    return AdminCredentialSettingsService(db).change_password(
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+    )
 
 
 @router.get("/priority-rules", response_model=List[PriorityRuleResponse])

@@ -374,7 +374,7 @@ export default function AvailableJobsPage() {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
             {/* Top Navigation Bar */}
             <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between">
+                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center">
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                             Jobs
@@ -387,18 +387,6 @@ export default function AvailableJobsPage() {
                         <p className="text-xs text-[#2F8E92] dark:text-teal-400 mt-0.5 font-medium">
                             Viewing as {currentTech.name} ({currentTechCode})
                         </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleRefresh}
-                            className="h-9 gap-2 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
-                            disabled={loading}
-                        >
-                            <RefreshCw className={cn("w-4 h-4 text-gray-600 dark:text-gray-400", loading && "animate-spin")} />
-                            Refresh
-                        </Button>
                     </div>
                 </div>
             </div>

@@ -1079,46 +1079,55 @@ export default function DealershipsPage() {
 
             {/* 4. Dealership Drawer */}
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                <SheetContent className="sm:max-w-xl w-full p-0 flex flex-col gap-0 bg-gray-50/50">
+                <SheetContent className="sm:max-w-2xl w-full p-0 flex flex-col gap-0 bg-slate-50">
                     {selectedDealership && editForm && (
                         <>
-                            <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-start justify-between">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
+                            <div className="bg-white px-6 py-5 border-b border-gray-200">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1">
                                         <h2 className="text-xl font-bold text-gray-900">{selectedDealership.name}</h2>
                                         <StatusBadge status={selectedDealership.status} />
                                     </div>
                                     <div className="text-sm text-gray-500">
                                         {selectedDealership.city || 'No city/ville provided'}
                                     </div>
+                                    </div>
+                                    <div className="flex items-center justify-start sm:justify-end">
+                                        <Button
+                                            variant={selectedDealership.status === 'active' ? "outline" : "default"}
+                                            size="sm"
+                                            className="min-w-[112px]"
+                                            onClick={handleToggleStatus}
+                                        >
+                                            {selectedDealership.status === 'active' ? 'Deactivate' : 'Activate'}
+                                        </Button>
+                                    </div>
                                 </div>
-                                <Button variant={selectedDealership.status === 'active' ? "outline" : "default"} size="sm" onClick={handleToggleStatus}>
-                                    {selectedDealership.status === 'active' ? 'Deactivate' : 'Activate'}
-                                </Button>
                             </div>
 
                             <ScrollArea className="flex-1">
-                                <div className="p-6 space-y-6">
+                                <div className="p-6 space-y-5">
 
                                     {/* A) Contact Info (Editable) */}
-                                    <Card className="p-4 border-gray-200 shadow-sm">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                    <Card className="border-gray-200 shadow-sm">
+                                        <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 leading-none">
                                                 <Building2 className="w-4 h-4" /> Contact Information
                                             </h3>
-                                            <div className="flex items-center gap-2">
-                                                <Button variant="ghost" size="sm" className="h-7 text-xs text-gray-600 hover:text-gray-700" onClick={handleCancelEdit}>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-xs text-gray-600 hover:text-gray-700" onClick={handleCancelEdit}>
                                                     Cancel
                                                 </Button>
-                                                <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-600 hover:text-blue-700" onClick={handleSaveEdit}>
+                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700" onClick={handleSaveEdit}>
                                                     Save Changes
                                                 </Button>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-2">
                                             <div className="space-y-2">
                                                 <Label className="text-xs text-gray-500">Dealership Name</Label>
-                                                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="h-8" />
+                                                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="h-9" />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-xs text-gray-500">Phone</Label>
@@ -1126,39 +1135,43 @@ export default function DealershipsPage() {
                                                     placeholder={phoneExampleFormat}
                                                     value={editForm.phone}
                                                     onChange={e => setEditForm({ ...editForm, phone: formatUsPhoneInput(e.target.value) })}
-                                                    className="h-8"
+                                                    className="h-9"
                                                 />
                                             </div>
-                                            <div className="col-span-2 space-y-2">
+                                            <div className="space-y-2 md:col-span-2">
                                                 <Label className="text-xs text-gray-500">Domain Email</Label>
-                                                <Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="h-8" />
+                                                <Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="h-9" />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-xs text-gray-500">City/Ville</Label>
-                                                <Input value={editForm.city} onChange={e => setEditForm({ ...editForm, city: e.target.value })} className="h-8" />
+                                                <Input value={editForm.city} onChange={e => setEditForm({ ...editForm, city: e.target.value })} className="h-9" />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-xs text-gray-500">Postal Code (Code)</Label>
-                                                <Input value={editForm.postal_code} onChange={e => setEditForm({ ...editForm, postal_code: e.target.value })} className="h-8" />
+                                                <Input value={editForm.postal_code} onChange={e => setEditForm({ ...editForm, postal_code: e.target.value })} className="h-9" />
                                             </div>
-                                            <div className="space-y-2">
+                                            <div className="space-y-2 md:col-span-2">
                                                 <Label className="text-xs text-gray-500">Address</Label>
-                                                <Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className="h-8" />
+                                                <Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className="h-9" />
                                             </div>
                                         </div>
                                     </Card>
 
                                     {/* B) Operational Notes */}
-                                    <Card className="p-4 border-gray-200 shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                            <AlertCircle className="w-4 h-4" /> Operational Notes
-                                        </h3>
-                                        <Textarea
-                                            value={editForm.notes || ''}
-                                            onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
-                                            className="min-h-[100px]"
-                                            placeholder="Gate codes, special instructions, preferred technicians..."
-                                        />
+                                    <Card className="border-gray-200 shadow-sm">
+                                        <div className="border-b border-gray-100 px-5 py-4">
+                                            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 leading-none">
+                                                <AlertCircle className="w-4 h-4" /> Operational Notes
+                                            </h3>
+                                        </div>
+                                        <div className="px-5 py-5">
+                                            <Textarea
+                                                value={editForm.notes || ''}
+                                                onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
+                                                className="min-h-[120px]"
+                                                placeholder="Gate codes, special instructions, preferred technicians..."
+                                            />
+                                        </div>
                                     </Card>
                                 </div>
                             </ScrollArea>

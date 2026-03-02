@@ -1,7 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Search,
-    RefreshCw,
     Plus,
     MoreVertical,
     Clock,
@@ -294,7 +293,7 @@ export default function TechniciansPage() {
     const [newSkillInput, setNewSkillInput] = useState('');
 
     // Initial Fetch
-    const fetchTechs = async () => {
+    const fetchTechs = useCallback(async () => {
         setLoading(true);
         const adminToken = getStoredAdminToken();
 
@@ -315,11 +314,26 @@ export default function TechniciansPage() {
         setTechs(merged);
         setIsBackendSynced(false);
         setLoading(false);
-    };
+    }, [hasBackendAdminToken, technicianAccounts]);
 
     useEffect(() => {
         void fetchTechs();
-    }, [hasBackendAdminToken]);
+    }, [fetchTechs]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const handleAdminRefresh = () => {
+            void fetchTechs();
+        };
+
+        window.addEventListener('sm-dispatch:admin-refresh', handleAdminRefresh);
+        return () => {
+            window.removeEventListener('sm-dispatch:admin-refresh', handleAdminRefresh);
+        };
+    }, [fetchTechs]);
 
     useEffect(() => {
         if (isBackendSynced) {
@@ -833,12 +847,6 @@ export default function TechniciansPage() {
                     <p className="text-sm text-gray-500 font-medium">Manage technician profiles, skills, zones, and schedules</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
-                        Last updated: {new Date().toLocaleTimeString()}
-                    </div>
-                    <Button variant="outline" size="icon" onClick={fetchTechs} disabled={loading}>
-                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                    </Button>
                     <Button variant="outline" onClick={() => setExportModalOpen(true)} className="gap-2">
                         <FileDown className="w-4 h-4" /> Export
                     </Button>

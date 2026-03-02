@@ -5,7 +5,6 @@ import {
   RefreshCw,
   Briefcase,
   CheckCircle2,
-  Clock3,
   Users,
   DollarSign,
   FileWarning,
@@ -280,14 +279,6 @@ export default function ReportsPage() {
             <CheckCircle2 className="w-4 h-4" />
           </div>
           {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-3xl font-bold">{numberFmt.format(kpis?.jobs_completed ?? 0)}</div>}
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Avg Completion Time</span>
-            <Clock3 className="w-4 h-4" />
-          </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-3xl font-bold">{numberFmt.format(Math.round(kpis?.avg_completion_minutes ?? 0))}m</div>}
         </Card>
 
         <Card className="p-4">

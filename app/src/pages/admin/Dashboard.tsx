@@ -178,15 +178,6 @@ function buildSnapshot(input: {
       tone: 'critical',
     });
   }
-  if (alerts.length === 0) {
-    alerts.push({
-      id: 'all-clear',
-      title: 'All operational data is synced',
-      description: 'Dashboard metrics are loading from Neon-backed endpoints and no urgent items were detected.',
-      tone: 'info',
-    });
-  }
-
   const activity = jobs
     .slice()
     .sort((left, right) => (
@@ -356,29 +347,31 @@ export default function Dashboard() {
         </Card>
       ) : null}
 
-      <section className="space-y-3">
-        {snapshot?.alerts.map((alert) => (
-          <Card
-            key={alert.id}
-            className={cn(
-              'border shadow-sm',
-              alert.tone === 'critical' && 'border-rose-200 bg-rose-50',
-              alert.tone === 'warning' && 'border-amber-200 bg-amber-50',
-              alert.tone === 'info' && 'border-emerald-200 bg-emerald-50',
-            )}
-          >
-            <CardContent className="p-4 flex items-start gap-3">
-              {alert.tone === 'critical' ? <AlertCircle className="w-5 h-5 text-rose-700 mt-0.5" /> : null}
-              {alert.tone === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-700 mt-0.5" /> : null}
-              {alert.tone === 'info' ? <CheckCircle2 className="w-5 h-5 text-emerald-700 mt-0.5" /> : null}
-              <div>
-                <div className="font-semibold text-sm text-foreground">{alert.title}</div>
-                <div className="text-sm text-muted-foreground">{alert.description}</div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
+      {snapshot?.alerts.length ? (
+        <section className="space-y-3">
+          {snapshot.alerts.map((alert) => (
+            <Card
+              key={alert.id}
+              className={cn(
+                'border shadow-sm',
+                alert.tone === 'critical' && 'border-rose-200 bg-rose-50',
+                alert.tone === 'warning' && 'border-amber-200 bg-amber-50',
+                alert.tone === 'info' && 'border-emerald-200 bg-emerald-50',
+              )}
+            >
+              <CardContent className="p-4 flex items-start gap-3">
+                {alert.tone === 'critical' ? <AlertCircle className="w-5 h-5 text-rose-700 mt-0.5" /> : null}
+                {alert.tone === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-700 mt-0.5" /> : null}
+                {alert.tone === 'info' ? <CheckCircle2 className="w-5 h-5 text-emerald-700 mt-0.5" /> : null}
+                <div>
+                  <div className="font-semibold text-sm text-foreground">{alert.title}</div>
+                  <div className="text-sm text-muted-foreground">{alert.description}</div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      ) : null}
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
         {snapshot?.cards.map((card) => (

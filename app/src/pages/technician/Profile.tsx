@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
     ArrowLeft,
-    Bell,
     Briefcase,
     Calendar,
     ChevronRight,
@@ -24,7 +23,9 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+    fetchAdminTechnicians,
     fetchTechnicianMeProfile,
+    getStoredAdminToken,
     getStoredTechnicianToken,
     updateTechnicianMeAvailability,
     updateTechnicianMeProfile,
@@ -137,17 +138,62 @@ export default function ProfilePage() {
     const [savingAvailability, setSavingAvailability] = useState(false);
 
     const loadBackendData = async () => {
-        if (isPreviewMode) return;
+        setLoading(true);
+        setError(null);
+
+        if (isPreviewMode) {
+            const fallbackName = previewTech?.name || user?.name || '';
+            const fallbackPhone = previewTech?.phone || user?.phone || '';
+            const adminToken = getStoredAdminToken();
+            if (!adminToken || !previewTechId) {
+                setFullName(fallbackName);
+                setPhone(fallbackPhone);
+                setProfilePictureUrl('');
+                setWorkingDays([]);
+                setWorkingHoursStart('08:00');
+                setWorkingHoursEnd('17:00');
+                setAfterHoursEnabled(false);
+                setOutOfOfficeRanges([]);
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const rows = await fetchAdminTechnicians(adminToken);
+                const selected = rows.find((item) => item.id === previewTechId);
+                setFullName(selected?.full_name || selected?.name || fallbackName);
+                setPhone(selected?.phone || fallbackPhone);
+                setProfilePictureUrl(selected?.profile_picture_url || '');
+                setWorkingDays(selected?.working_days || []);
+                setWorkingHoursStart((selected?.working_hours_start || '08:00').slice(0, 5));
+                setWorkingHoursEnd((selected?.working_hours_end || '17:00').slice(0, 5));
+                setAfterHoursEnabled(Boolean(selected?.after_hours_enabled));
+                setOutOfOfficeRanges([]);
+            } catch (fetchError) {
+                setError(fetchError instanceof Error ? fetchError.message : 'Failed to load technician preview settings.');
+                setFullName(fallbackName);
+                setPhone(fallbackPhone);
+                setProfilePictureUrl('');
+                setWorkingDays([]);
+                setWorkingHoursStart('08:00');
+                setWorkingHoursEnd('17:00');
+                setAfterHoursEnabled(false);
+                setOutOfOfficeRanges([]);
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
         const token = getStoredTechnicianToken();
         if (!token) {
             setError('Technician backend session missing. Please login again.');
             setFullName(user?.name || '');
             setPhone(user?.phone || '');
+            setLoading(false);
             return;
         }
 
-        setLoading(true);
-        setError(null);
         try {
             const profilePayload = await fetchTechnicianMeProfile(token);
             setProfile(profilePayload);
@@ -174,7 +220,7 @@ export default function ProfilePage() {
 
     useEffect(() => {
         void loadBackendData();
-    }, [isPreviewMode, user?.name, user?.phone]);
+    }, [isPreviewMode, previewTechId, previewTech?.name, previewTech?.phone, user?.name, user?.phone]);
 
     const handleLogout = () => {
         if (isPreviewMode) {
@@ -194,13 +240,6 @@ export default function ProfilePage() {
     };
 
     const handleRefresh = async () => {
-        if (isPreviewMode) {
-            setError(null);
-            setFullName(previewTech?.name || '');
-            setPhone(previewTech?.phone || '');
-            setProfilePictureUrl('');
-            return;
-        }
         await loadBackendData();
     };
 
@@ -307,6 +346,10 @@ export default function ProfilePage() {
         .toUpperCase();
     const statusLabel = isPreviewMode ? 'Preview' : ((profile?.status || 'active').toString());
     const userPhone = phone || user?.phone || 'Not set';
+    const workingDayLabels = DAY_OPTIONS
+        .filter((day) => workingDays.includes(day.value))
+        .map((day) => day.label)
+        .join(', ');
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
@@ -358,7 +401,23 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
-                            {!isPreviewMode ? (
+                            {isPreviewMode ? (
+                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500">Full Name</span>
+                                        <span className="font-medium text-gray-900">{fullName || userName}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500">Email</span>
+                                        <span className="font-medium text-gray-900">{userEmail}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500">Phone</span>
+                                        <span className="font-medium text-gray-900">{userPhone}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">Preview mode is read-only. Open technician portal to edit these values.</p>
+                                </div>
+                            ) : (
                                 <div className="space-y-3">
                                     <div className="space-y-1">
                                         <Label>Full Name</Label>
@@ -377,12 +436,45 @@ export default function ProfilePage() {
                                         {savingProfile ? 'Saving...' : 'Save Profile'}
                                     </Button>
                                 </div>
-                            ) : null}
+                            )}
                         </Card>
 
                         <Card className="p-6 border-gray-200">
                             <h3 className="text-sm font-semibold text-gray-900 mb-3">Availability Settings</h3>
-                            {!isPreviewMode ? (
+                            {isPreviewMode ? (
+                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500">Working Days</span>
+                                        <span className="font-medium text-gray-900">{workingDayLabels || 'Not configured'}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500">Working Hours</span>
+                                        <span className="font-medium text-gray-900">{workingHoursStart} - {workingHoursEnd}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500">After-hours Availability</span>
+                                        <span className={cn('font-medium', afterHoursEnabled ? 'text-emerald-600' : 'text-gray-700')}>
+                                            {afterHoursEnabled ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                    </div>
+                                    <div className="pt-1 border-t border-gray-200">
+                                        <div className="text-xs font-medium text-gray-600 mb-2">Out-of-office ranges</div>
+                                        {outOfOfficeRanges.length === 0 ? (
+                                            <div className="text-xs text-gray-500">No out-of-office ranges configured.</div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {outOfOfficeRanges.map((range, index) => (
+                                                    <div key={`${range.start_date}-${range.end_date}-${index}`} className="rounded-md border border-gray-200 px-3 py-2">
+                                                        <div className="text-xs font-medium text-gray-800">{range.start_date} - {range.end_date}</div>
+                                                        <div className="text-xs text-gray-500">{range.note || 'Out of office'}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-500">Preview mode is read-only. Open technician portal to update availability.</p>
+                                </div>
+                            ) : (
                                 <div className="space-y-4">
                                     <div>
                                         <Label className="mb-2 block">Working Days</Label>
@@ -459,7 +551,7 @@ export default function ProfilePage() {
                                         {savingAvailability ? 'Saving...' : 'Save Availability'}
                                     </Button>
                                 </div>
-                            ) : null}
+                            )}
                         </Card>
                     </>
                 ) : (
@@ -504,16 +596,6 @@ export default function ProfilePage() {
                             <button
                                 type="button"
                                 className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-gray-50"
-                            >
-                                <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                    <Bell className="w-4 h-4 text-gray-500" />
-                                    Notifications
-                                </span>
-                                <ChevronRight className="w-4 h-4 text-gray-400" />
-                            </button>
-                            <button
-                                type="button"
-                                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-gray-50 border-t border-gray-100"
                                 onClick={openSettingsView}
                             >
                                 <span className="flex items-center gap-2 text-sm font-medium text-gray-900">

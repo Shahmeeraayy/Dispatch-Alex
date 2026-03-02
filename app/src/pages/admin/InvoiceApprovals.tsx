@@ -229,16 +229,16 @@ export default function InvoiceApprovalsPage() {
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Invoice Approvals</h1>
                     <p className="text-sm text-gray-500 font-medium">Review pricing and approve invoice creation</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
                     <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
                         Last updated: {new Date().toLocaleTimeString()}
                     </div>
-                    <Button variant="outline" className="h-9" onClick={() => void fetchInvoicesData()}>
-                        <RefreshCw className={cn('w-4 h-4 mr-2 text-gray-500', loading && 'animate-spin')} />
+                    <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => void fetchInvoicesData()}>
+                        <RefreshCw className={cn('w-4 h-4 text-gray-500', loading && 'animate-spin')} />
                         Refresh
                     </Button>
-                    <Button variant="outline" className="h-9" onClick={() => setExportModalOpen(true)}>
-                        <Download className="w-4 h-4 mr-2 text-gray-500" />
+                    <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => setExportModalOpen(true)}>
+                        <Download className="w-4 h-4 text-gray-500" />
                         Export CSV
                     </Button>
                 </div>

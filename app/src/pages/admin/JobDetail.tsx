@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft,
@@ -57,6 +57,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { formatPhoneForDisplay, formatUsPhoneInput, phoneExampleFormat, toUsPhoneFormat } from '@/lib/phone';
+import { fetchAdminJobs, getStoredAdminToken, type BackendAdminJob } from '@/lib/backend-api';
 
 // --- Types ---
 
@@ -181,6 +182,150 @@ const ELIGIBLE_TECHS: Technician[] = [
     { id: 't3', name: 'Maxime', zone: 'East', skillMatch: false, status: 'available', workload: 10 },
 ];
 
+function normalizeJobStatus(status?: string | null): JobStatus {
+    switch ((status || '').toLowerCase()) {
+        case 'scheduled':
+            return 'scheduled';
+        case 'in_progress':
+            return 'in_progress';
+        case 'completed':
+            return 'completed';
+        case 'cancelled':
+            return 'cancelled';
+        default:
+            return 'pending';
+    }
+}
+
+function normalizeInvoiceState(source: BackendAdminJob): InvoiceState {
+    const raw = typeof source.source_metadata?.invoice_state === 'string'
+        ? String(source.source_metadata.invoice_state).toLowerCase()
+        : '';
+    switch (raw) {
+        case 'draft':
+        case 'pending_approval':
+        case 'creating':
+        case 'approved':
+        case 'synced':
+        case 'failed':
+        case 'needs_manual_verification':
+        case 'not_started':
+            return raw;
+        default:
+            return source.assigned_technician_name ? 'pending_approval' : 'not_started';
+    }
+}
+
+function normalizeUrgency(source: BackendAdminJob): Urgency {
+    const raw = typeof source.source_metadata?.urgency === 'string'
+        ? String(source.source_metadata.urgency).toLowerCase()
+        : '';
+    switch (raw) {
+        case 'low':
+        case 'normal':
+        case 'high':
+        case 'critical':
+            return raw;
+        default:
+            return 'normal';
+    }
+}
+
+function buildAllowedActions(source: BackendAdminJob): string[] {
+    const normalizedStatus = normalizeJobStatus(source.status);
+    if (normalizedStatus === 'completed' || normalizedStatus === 'cancelled') {
+        return [];
+    }
+    return [
+        ...(!source.assigned_technician_id ? ['assign_tech'] : []),
+        'edit_details',
+        'approve_invoice',
+        'cancel_job',
+    ];
+}
+
+function buildTimeline(source: BackendAdminJob): TimelineEvent[] {
+    const timeline: TimelineEvent[] = [
+        {
+            id: `${source.id}-created`,
+            type: 'STATUS_CHANGED',
+            title: 'Job Loaded',
+            actor: 'SYSTEM',
+            timestamp: new Date(source.created_at).toLocaleString(),
+            description: `Current status is ${normalizeJobStatus(source.status).replace(/_/g, ' ')}.`,
+            payload: source.source_metadata ?? undefined,
+        },
+    ];
+
+    if (source.assigned_technician_name) {
+        timeline.unshift({
+            id: `${source.id}-tech`,
+            type: 'TECH_ASSIGNED',
+            title: 'Technician Assigned',
+            actor: 'ADMIN',
+            timestamp: new Date(source.updated_at).toLocaleString(),
+            description: `${source.assigned_technician_name} is currently assigned to this job.`,
+        });
+    }
+
+    if (source.updated_at !== source.created_at) {
+        timeline.unshift({
+            id: `${source.id}-updated`,
+            type: 'DETAILS_UPDATED',
+            title: 'Job Updated',
+            actor: 'SYSTEM',
+            timestamp: new Date(source.updated_at).toLocaleString(),
+            description: 'Job details were refreshed from the backend.',
+        });
+    }
+
+    return timeline;
+}
+
+function mapBackendJobToDetail(source: BackendAdminJob): JobDetail {
+    const vehicleSummary = (source.vehicle || '').trim();
+    const [vehicleYear = '', vehicleMake = '', ...vehicleModelParts] = vehicleSummary.split(/\s+/).filter(Boolean);
+    const vehicleModel = vehicleModelParts.join(' ');
+
+    return {
+        job_id: source.id,
+        job_code: source.job_code,
+        status: normalizeJobStatus(source.status),
+        invoice_state: normalizeInvoiceState(source),
+        urgency: normalizeUrgency(source),
+        created_at: source.created_at,
+        updated_at: source.updated_at,
+        dealership: {
+            name: source.dealership_name || 'Unknown Dealership',
+            contact_phone: formatPhoneForDisplay(''),
+            service_type: source.service_type || 'Unspecified Service',
+        },
+        vehicle: {
+            make: vehicleMake,
+            model: vehicleModel,
+            year: vehicleYear,
+            vin: '',
+            stock: '',
+            raw_text: vehicleSummary || 'No vehicle summary available.',
+            parsing_confidence: 0,
+        },
+        technician: source.assigned_technician_id ? {
+            id: source.assigned_technician_id,
+            name: source.assigned_technician_name || 'Assigned Technician',
+            phone: '',
+            status: 'assigned',
+        } : undefined,
+        invoice: {
+            items: [],
+            subtotal: 0,
+            tax: 0,
+            total: 0,
+        },
+        allowed_actions: buildAllowedActions(source),
+        timeline: buildTimeline(source),
+    };
+}
+
 // --- Components ---
 
 function StatusBadge({ status, type }: { status: string; type: 'job' | 'invoice' | 'urgency' }) {
@@ -287,6 +432,8 @@ export default function JobDetailPage() {
     const { jobId } = useParams();
     const [job, setJob] = useState<JobDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
 
@@ -314,14 +461,47 @@ export default function JobDetailPage() {
         vehicleStock: source.vehicle.stock
     });
 
-    // Mock Fetch
-    useEffect(() => {
-        setLoading(true);
-        setTimeout(() => {
-            setJob(MOCK_JOB);
+    const loadJob = useCallback((background = false) => {
+        const adminToken = getStoredAdminToken();
+        if (!adminToken) {
+            setLoadError('Admin session missing. Please login again.');
             setLoading(false);
-        }, 600);
+            setRefreshing(false);
+            return;
+        }
+
+        if (background) {
+            setRefreshing(true);
+        } else {
+            setLoading(true);
+        }
+
+        setLoadError(null);
+
+        void fetchAdminJobs(adminToken)
+            .then((jobs) => {
+                const matchedJob = jobs.find((item) => item.id === jobId || item.job_code === jobId);
+                if (!matchedJob) {
+                    throw new Error('Job not found.');
+                }
+                setJob(mapBackendJobToDetail(matchedJob));
+            })
+            .catch((error) => {
+                const message = error instanceof Error ? error.message : 'Unable to load job details.';
+                setLoadError(message);
+                if (!background) {
+                    setJob(null);
+                }
+            })
+            .finally(() => {
+                setLoading(false);
+                setRefreshing(false);
+            });
     }, [jobId]);
+
+    useEffect(() => {
+        loadJob(false);
+    }, [jobId, loadJob]);
 
     // Sync Form State
     useEffect(() => {
@@ -333,11 +513,28 @@ export default function JobDetailPage() {
     if (loading || !job) {
         return (
             <div className="space-y-6 max-w-[1600px] mx-auto p-6">
-                <Skeleton className="h-20 w-full" />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <Skeleton className="h-[600px] col-span-2" />
-                    <Skeleton className="h-[600px]" />
-                </div>
+                {loading ? (
+                    <>
+                        <Skeleton className="h-20 w-full" />
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <Skeleton className="h-[600px] col-span-2" />
+                            <Skeleton className="h-[600px]" />
+                        </div>
+                    </>
+                ) : (
+                    <Card className="p-6 border-red-200 bg-red-50/80">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 className="text-lg font-semibold text-red-700">Unable to load job</h2>
+                                <p className="text-sm text-red-600">{loadError || 'Job details are unavailable right now.'}</p>
+                            </div>
+                            <Button variant="outline" size="sm" className="h-9 gap-2 border-red-200 text-red-700 hover:text-red-800" onClick={() => loadJob(false)}>
+                                <RefreshCw className="w-4 h-4" />
+                                Refresh
+                            </Button>
+                        </div>
+                    </Card>
+                )}
             </div>
         );
     }
@@ -445,7 +642,17 @@ export default function JobDetailPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-2"
+                        onClick={() => loadJob(true)}
+                        disabled={refreshing}
+                    >
+                        <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
+                        Refresh
+                    </Button>
                     {isEditing && (
                         <div className="flex items-center gap-2 mr-2">
                             <Button variant="ghost" onClick={handleCancelEdit}>Cancel Edit</Button>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Search,
     Download,
+    RefreshCw,
     MoreHorizontal,
     ArrowUpDown,
     ChevronLeft,
@@ -1630,20 +1631,32 @@ export default function JobsPage() {
                         ) : null}
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
                     <Button
-                        className="h-9 rounded-xl bg-[#2F8E92] px-4 shadow-sm hover:bg-[#267276]"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-xl border-slate-200 bg-white/80 px-4 shadow-sm hover:bg-white"
+                        onClick={() => refreshJobs({ showErrorToast: true, background: false })}
+                        disabled={loading}
+                    >
+                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+                        Refresh
+                    </Button>
+                    <Button
+                        size="sm"
+                        className="h-9 gap-2 rounded-xl bg-[#2F8E92] px-4 shadow-sm hover:bg-[#267276]"
                         onClick={() => setCreateJobOpen(true)}
                     >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-4 h-4" />
                         New Job
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-9 rounded-xl border-slate-200 bg-white/80 px-4 shadow-sm hover:bg-white"
+                        size="sm"
+                        className="h-9 gap-2 rounded-xl border-slate-200 bg-white/80 px-4 shadow-sm hover:bg-white"
                         onClick={() => setExportModalOpen(true)}
                     >
-                        <Download className="w-4 h-4 mr-2 text-muted-foreground" />
+                        <Download className="w-4 h-4 text-muted-foreground" />
                         Export CSV
                     </Button>
                 </div>

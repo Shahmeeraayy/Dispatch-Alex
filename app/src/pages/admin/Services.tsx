@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     Search,
+    RefreshCw,
     Plus,
     MoreVertical,
     AlertCircle,
@@ -467,12 +468,15 @@ export default function ServicesPage() {
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Services & Pricing</h1>
                     <p className="text-sm text-gray-500 font-medium">Manage service catalog, default pricing, and approval flags</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" onClick={() => setExportModalOpen(true)} className="gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Button variant="outline" size="sm" onClick={() => void fetchServices()} className="h-9 gap-2" disabled={loading}>
+                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /> Refresh
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-9 gap-2">
                         <FileDown className="w-4 h-4" /> Export
                     </Button>
-                    <Button onClick={handleOpenAddModal} className="bg-[#2F8E92] hover:bg-[#267276]">
-                        <Plus className="w-4 h-4 mr-2" /> Add Service
+                    <Button size="sm" onClick={handleOpenAddModal} className="h-9 gap-2 bg-[#2F8E92] hover:bg-[#267276]">
+                        <Plus className="w-4 h-4" /> Add Service
                     </Button>
                 </div>
             </div>

@@ -872,20 +872,21 @@ export default function DealershipsPage() {
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dealerships</h1>
                     <p className="text-sm text-gray-500 font-medium">Manage dealership contacts and status</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
                     <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
                         Last updated: {lastSuccessfulFetchAt ? lastSuccessfulFetchAt.toLocaleTimeString() : 'Never'}
                     </div>
-                    <Button variant="outline" size="icon" onClick={fetchDealerships} disabled={loading}>
+                    <Button variant="outline" size="sm" onClick={fetchDealerships} disabled={loading} className="h-9 gap-2">
                         <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                        Refresh
                     </Button>
-                    <Button variant="outline" onClick={() => setExportModalOpen(true)} className="gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-9 gap-2">
                         <FileDown className="w-4 h-4" /> Export
                     </Button>
                     <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-[#2F8E92] hover:bg-[#267276]">
-                                <Plus className="w-4 h-4 mr-2" /> Add Dealership
+                            <Button size="sm" className="h-9 gap-2 bg-[#2F8E92] hover:bg-[#267276]">
+                                <Plus className="w-4 h-4" /> Add Dealership
                             </Button>
                         </DialogTrigger>
                         <DialogContent>

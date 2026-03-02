@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Search,
+    RefreshCw,
     Plus,
     MoreVertical,
     Clock,
@@ -880,14 +881,17 @@ export default function TechniciansPage() {
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Technicians</h1>
                     <p className="text-sm text-gray-500 font-medium">Manage technician profiles, skills, zones, and schedules</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" onClick={() => setExportModalOpen(true)} className="gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Button variant="outline" size="sm" onClick={() => void fetchTechs()} className="h-9 gap-2" disabled={loading}>
+                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /> Refresh
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-9 gap-2">
                         <FileDown className="w-4 h-4" /> Export
                     </Button>
                     <Dialog open={addTechModalOpen} onOpenChange={setAddTechModalOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-[#2F8E92] hover:bg-[#267276]">
-                                <Plus className="w-4 h-4 mr-2" /> Add Technician
+                            <Button size="sm" className="h-9 gap-2 bg-[#2F8E92] hover:bg-[#267276]">
+                                <Plus className="w-4 h-4" /> Add Technician
                             </Button>
                         </DialogTrigger>
                         <DialogContent>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Search,
+  RefreshCw,
   UserCog,
   Mail,
   Phone,
@@ -233,19 +234,32 @@ export default function TechnicianAccountsPage() {
           <p className="text-sm text-gray-500 font-medium">Admin-only account management for technician sign-in access.</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 md:w-[520px]">
-          <Card className="p-3 border-gray-200">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Total Accounts</p>
-            <p className="text-xl font-bold text-gray-900">{technicianAccounts.length}</p>
-          </Card>
-          <Card className="p-3 border-gray-200">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Active</p>
-            <p className="text-xl font-bold text-emerald-700">{activeCount}</p>
-          </Card>
-          <Card className="p-3 border-gray-200">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Pending Requests</p>
-            <p className="text-xl font-bold text-amber-700">{pendingCount}</p>
-          </Card>
+        <div className="flex flex-col gap-3 md:items-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => { void runSync(); }}
+            disabled={isRefreshing}
+            className="h-9 gap-2 self-start md:self-auto"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+          <div className="grid grid-cols-3 gap-3 md:w-[520px]">
+            <Card className="p-3 border-gray-200">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Total Accounts</p>
+              <p className="text-xl font-bold text-gray-900">{technicianAccounts.length}</p>
+            </Card>
+            <Card className="p-3 border-gray-200">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Active</p>
+              <p className="text-xl font-bold text-emerald-700">{activeCount}</p>
+            </Card>
+            <Card className="p-3 border-gray-200">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Pending Requests</p>
+              <p className="text-xl font-bold text-amber-700">{pendingCount}</p>
+            </Card>
+          </div>
         </div>
       </div>
 

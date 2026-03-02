@@ -7,6 +7,7 @@ import {
   Users,
   DollarSign,
   FileWarning,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { exportArrayData } from '@/lib/export';
 import {
   fetchAdminReportsOverview,
@@ -305,6 +307,18 @@ export default function ReportsPage() {
 
             <Button variant="outline" size="sm" className="h-9 gap-2" onClick={handleExport} disabled={!overview || loading}>
               <Download className="w-4 h-4" /> Export CSV
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-2"
+              onClick={handleRefresh}
+              disabled={!canRunRange || loading}
+              title="Refresh"
+            >
+              <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+              Refresh
             </Button>
           </div>
 

@@ -156,7 +156,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState('Updated 2 min ago');
-  const hideHeaderRefreshControls = location.pathname.startsWith('/admin/dealerships');
+  const hideHeaderRefreshControls = location.pathname.startsWith('/admin');
 
   const headerTitle = (() => {
     const pathname = location.pathname;

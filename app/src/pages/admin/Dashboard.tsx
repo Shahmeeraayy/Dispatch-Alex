@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -231,6 +231,7 @@ function DashboardSkeleton() {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
@@ -240,78 +241,73 @@ export default function Dashboard() {
     return { fromDate: today, toDate: today };
   }, []);
 
+  const loadDashboard = useCallback(async (options?: { background?: boolean }) => {
+    const background = options?.background ?? false;
+    if (background) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    const token = getStoredAdminToken();
+    if (!token) {
+      setError('Admin session missing. Please sign in again.');
+      setSnapshot(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    setError(null);
+
+    try {
+      const [reports, jobs, invoices, technicians, dealerships] = await Promise.all([
+        fetchAdminReportsOverview(token, {
+          from_date: todayRange.fromDate,
+          to_date: todayRange.toDate,
+        }),
+        fetchAdminJobs(token),
+        fetchInvoices(token),
+        fetchAdminTechnicians(token),
+        fetchAdminDealerships(token),
+      ]);
+
+      setSnapshot(buildSnapshot({ reports, jobs, invoices, technicians, dealerships }));
+      setLastUpdated(new Date());
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load dashboard data.');
+      setSnapshot(null);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [todayRange.fromDate, todayRange.toDate]);
+
   useEffect(() => {
-    let cancelled = false;
-
-    const loadDashboard = async () => {
-      const token = getStoredAdminToken();
-      if (!token) {
-        if (!cancelled) {
-          setError('Admin session missing. Please sign in again.');
-          setSnapshot(null);
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (!cancelled) {
-        setError(null);
-      }
-
-      try {
-        const [reports, jobs, invoices, technicians, dealerships] = await Promise.all([
-          fetchAdminReportsOverview(token, {
-            from_date: todayRange.fromDate,
-            to_date: todayRange.toDate,
-          }),
-          fetchAdminJobs(token),
-          fetchInvoices(token),
-          fetchAdminTechnicians(token),
-          fetchAdminDealerships(token),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        setSnapshot(buildSnapshot({ reports, jobs, invoices, technicians, dealerships }));
-        setLastUpdated(new Date());
-        setLoading(false);
-      } catch (fetchError) {
-        if (cancelled) {
-          return;
-        }
-        setError(fetchError instanceof Error ? fetchError.message : 'Failed to load dashboard data.');
-        setSnapshot(null);
-        setLoading(false);
-      }
-    };
-
     void loadDashboard();
 
     const intervalId = window.setInterval(() => {
       if (document.visibilityState !== 'hidden') {
-        void loadDashboard();
+        void loadDashboard({ background: true });
       }
     }, 30000);
 
     const handleFocus = () => {
-      void loadDashboard();
+      void loadDashboard({ background: true });
     };
     const handleRefresh = () => {
-      void loadDashboard();
+      void loadDashboard({ background: true });
     };
 
     window.addEventListener('focus', handleFocus);
     window.addEventListener(ADMIN_REFRESH_EVENT, handleRefresh);
 
     return () => {
-      cancelled = true;
       window.clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener(ADMIN_REFRESH_EVENT, handleRefresh);
     };
-  }, [todayRange.fromDate, todayRange.toDate]);
+  }, [loadDashboard]);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -326,17 +322,20 @@ export default function Dashboard() {
             Live operational metrics from the Neon-backed admin APIs.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <span className="hidden sm:block text-xs text-muted-foreground">
             Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}
           </span>
           <Button
             variant="outline"
-            size="icon"
-            onClick={() => window.dispatchEvent(new Event(ADMIN_REFRESH_EVENT))}
+            size="sm"
+            className="h-9 gap-2"
+            onClick={() => void loadDashboard({ background: true })}
             title="Refresh dashboard"
+            disabled={refreshing}
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
+            Refresh
           </Button>
         </div>
       </div>

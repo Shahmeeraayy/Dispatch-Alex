@@ -326,14 +326,15 @@ export default function AuditLogsPage() {
                     <h1 className="text-2xl font-bold text-foreground tracking-tight">Audit Logs</h1>
                     <p className="text-sm text-muted-foreground font-medium">System-wide immutable event timeline</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
                     <div className="hidden sm:flex items-center text-xs text-muted-foreground/60 font-medium mr-2">
                         Last updated: {new Date().toLocaleTimeString()}
                     </div>
-                    <Button variant="outline" size="icon" onClick={fetchLogs} disabled={loading} className="text-foreground border-border">
+                    <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="h-9 gap-2 text-foreground border-border">
                         <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                        Refresh
                     </Button>
-                    <Button variant="outline" onClick={() => setExportModalOpen(true)} className="gap-2 text-foreground border-border">
+                    <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-9 gap-2 text-foreground border-border">
                         <FileDown className="w-4 h-4" /> Export CSV
                     </Button>
                 </div>

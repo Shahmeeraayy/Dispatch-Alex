@@ -587,11 +587,7 @@ export default function SettingsPage() {
                     <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
                     <p className="text-sm text-muted-foreground font-medium">System configuration, integrations, and reliability controls</p>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                    <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => setRefreshSeed((current) => current + 1)}>
-                        <RefreshCw className="w-4 h-4" /> Refresh
-                    </Button>
-                </div>
+                <div />
             </div>
 
             <div className="grid gap-6">

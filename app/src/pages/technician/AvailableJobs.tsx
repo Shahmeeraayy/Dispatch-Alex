@@ -390,13 +390,14 @@ export default function AvailableJobsPage() {
                     </div>
                     <div className="flex items-center gap-2">
                         <Button
-                            variant="ghost"
-                            size="icon"
+                            variant="outline"
+                            size="sm"
                             onClick={handleRefresh}
-                            className="h-9 w-9 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            className="h-9 gap-2 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
                             disabled={loading}
                         >
-                            <RefreshCw className={cn("w-5 h-5 text-gray-600 dark:text-gray-400", loading && "animate-spin")} />
+                            <RefreshCw className={cn("w-4 h-4 text-gray-600 dark:text-gray-400", loading && "animate-spin")} />
+                            Refresh
                         </Button>
                     </div>
                 </div>

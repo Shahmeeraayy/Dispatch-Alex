@@ -8,6 +8,7 @@ import {
     Clock,
     LogOut,
     Plus,
+    RefreshCw,
     Save,
     Settings,
     Trash2,
@@ -192,6 +193,17 @@ export default function ProfilePage() {
         navigate(`${routeBase}/profile`);
     };
 
+    const handleRefresh = async () => {
+        if (isPreviewMode) {
+            setError(null);
+            setFullName(previewTech?.name || '');
+            setPhone(previewTech?.phone || '');
+            setProfilePictureUrl('');
+            return;
+        }
+        await loadBackendData();
+    };
+
     const toggleWorkingDay = (day: number) => {
         setWorkingDays((prev) => (
             prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day].sort((a, b) => a - b)
@@ -299,13 +311,25 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
             <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="max-w-2xl mx-auto px-5 py-4">
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                        {isSettingsView ? 'Profile Settings' : 'Profile'}
-                    </h1>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        {isSettingsView ? 'Manage your account and availability settings' : 'Manage your account'}
-                    </p>
+                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between gap-3">
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                            {isSettingsView ? 'Profile Settings' : 'Profile'}
+                        </h1>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {isSettingsView ? 'Manage your account and availability settings' : 'Manage your account'}
+                        </p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleRefresh()}
+                        className="h-9 gap-2 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                        disabled={loading}
+                    >
+                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+                        Refresh
+                    </Button>
                 </div>
             </div>
 

@@ -10,7 +10,8 @@ import {
     XCircle,
     AlertTriangle,
     Loader2,
-    X
+    X,
+    RefreshCw,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -620,13 +621,25 @@ export default function MyJobsPage({
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
             {/* Top Navigation Bar */}
             <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="max-w-2xl mx-auto px-5 py-4">
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                        {isHistoryMode ? 'Job History' : 'Current Job'}
-                    </h1>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        {isHistoryMode ? `${completedJobs.length} completed` : `${activeJobs.length} active`}
-                    </p>
+                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between gap-3">
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                            {isHistoryMode ? 'Job History' : 'Current Job'}
+                        </h1>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {isHistoryMode ? `${completedJobs.length} completed` : `${activeJobs.length} active`}
+                        </p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void fetchJobs()}
+                        className="h-9 gap-2 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                        disabled={loading}
+                    >
+                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+                        Refresh
+                    </Button>
                 </div>
             </div>
 

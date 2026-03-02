@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Calendar,
   Download,
-  RefreshCw,
   Briefcase,
   CheckCircle2,
   Users,
@@ -23,7 +22,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import { exportArrayData } from '@/lib/export';
 import {
   fetchAdminReportsOverview,
@@ -34,6 +32,7 @@ import {
 } from '@/lib/backend-api';
 
 type QuickRange = 'last_7_days' | 'last_30_days' | 'this_month';
+const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
 
 const QUICK_RANGE_LABEL: Record<QuickRange, string> = {
   last_7_days: 'Last Week',
@@ -107,6 +106,8 @@ export default function ReportsPage() {
   const [quickRange, setQuickRange] = useState<QuickRange>('last_7_days');
   const [fromDate, setFromDate] = useState<string>(() => resolveQuickRange('last_7_days').fromDate);
   const [toDate, setToDate] = useState<string>(() => resolveQuickRange('last_7_days').toDate);
+  const [technicianFilter, setTechnicianFilter] = useState('');
+  const [dealershipFilter, setDealershipFilter] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -156,10 +157,35 @@ export default function ReportsPage() {
     return parseDateInput(fromDate).getTime() <= parseDateInput(toDate).getTime();
   }, [fromDate, toDate]);
 
+  const activeRangeLabel = useMemo(() => {
+    if (!fromDate || !toDate) return '--';
+    const from = parseDateInput(fromDate);
+    const to = parseDateInput(toDate);
+    return `${from.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${to.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  }, [fromDate, toDate]);
+
   const handleRefresh = () => {
-    if (!canRunRange) return;
+    if (!canRunRange) {
+      setError('Start date must be on or before end date.');
+      return;
+    }
     void fetchOverview({ fromDate, toDate });
   };
+
+  useEffect(() => {
+    const handleAdminRefresh = () => {
+      if (!canRunRange) {
+        setError('Start date must be on or before end date.');
+        return;
+      }
+      void fetchOverview({ fromDate, toDate });
+    };
+
+    window.addEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
+    return () => {
+      window.removeEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
+    };
+  }, [fromDate, toDate, canRunRange]);
 
   const handleExport = () => {
     if (!overview) return;
@@ -198,117 +224,152 @@ export default function ReportsPage() {
     exportArrayData(rows, `reports_${fromDate}_${toDate}`, 'csv');
   };
 
+  const filteredTechnicianRows = useMemo(() => {
+    const rows = overview?.technician_performance ?? [];
+    const query = technicianFilter.trim().toLowerCase();
+    if (!query) return rows;
+    return rows.filter((row) => row.name.toLowerCase().includes(query));
+  }, [overview, technicianFilter]);
+
+  const filteredDealershipRows = useMemo(() => {
+    const rows = overview?.dealership_performance ?? [];
+    const query = dealershipFilter.trim().toLowerCase();
+    if (!query) return rows;
+    return rows.filter((row) => row.name.toLowerCase().includes(query));
+  }, [overview, dealershipFilter]);
+
   const kpis = overview?.kpis;
 
   return (
     <div className="flex flex-col h-full space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Reports</h1>
-          <p className="text-sm text-muted-foreground font-medium">Operational and financial performance overview</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-xs text-muted-foreground mr-2">
-            Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}
+      <div className="space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Reports</h1>
+            <p className="text-sm text-muted-foreground font-medium">Operational and financial performance overview</p>
           </div>
 
-          <Select value={quickRange} onValueChange={(value) => handleQuickRangeChange(value as QuickRange)}>
-            <SelectTrigger className="w-[140px] h-9">
-              <SelectValue placeholder="Range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="last_7_days">{QUICK_RANGE_LABEL.last_7_days}</SelectItem>
-              <SelectItem value="last_30_days">{QUICK_RANGE_LABEL.last_30_days}</SelectItem>
-              <SelectItem value="this_month">{QUICK_RANGE_LABEL.this_month}</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="font-medium">
+              {QUICK_RANGE_LABEL[quickRange]}
+            </Badge>
+            <span className="text-xs text-muted-foreground">Range: {activeRangeLabel}</span>
+            <span className="text-xs text-muted-foreground">Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}</span>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-2 h-9 border border-border rounded-md px-2 bg-background">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <Input
-              type="date"
-              value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
-              className="h-7 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
-            />
-            <span className="text-xs text-muted-foreground">-</span>
-            <Input
-              type="date"
-              value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
-              className="h-7 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
-            />
+        <Card className="p-4 border-border/70 shadow-sm">
+          <div className="grid grid-cols-1 xl:grid-cols-[170px_1fr_auto_auto] gap-3 items-end">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Quick range</p>
+              <Select value={quickRange} onValueChange={(value) => handleQuickRangeChange(value as QuickRange)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="last_7_days">{QUICK_RANGE_LABEL.last_7_days}</SelectItem>
+                  <SelectItem value="last_30_days">{QUICK_RANGE_LABEL.last_30_days}</SelectItem>
+                  <SelectItem value="this_month">{QUICK_RANGE_LABEL.this_month}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Custom range</p>
+              <div className="flex items-center gap-2 h-9 border border-border rounded-md px-2 bg-background">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={fromDate}
+                  onChange={(event) => setFromDate(event.target.value)}
+                  className="h-7 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <Input
+                  type="date"
+                  value={toDate}
+                  onChange={(event) => setToDate(event.target.value)}
+                  className="h-7 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
+                />
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              className="h-9 bg-[#2F8E92] text-white hover:bg-[#267276]"
+              onClick={handleRefresh}
+              disabled={!canRunRange || loading}
+            >
+              {loading ? 'Applying...' : 'Apply Filters'}
+            </Button>
+
+            <Button variant="outline" size="sm" className="h-9 gap-2" onClick={handleExport} disabled={!overview || loading}>
+              <Download className="w-4 h-4" /> Export CSV
+            </Button>
           </div>
 
-          <Button variant="outline" size="sm" className="h-9 gap-2" onClick={handleExport} disabled={!overview || loading}>
-            <Download className="w-4 h-4" /> Export CSV
-          </Button>
-
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9"
-            onClick={handleRefresh}
-            disabled={!canRunRange || loading}
-            title="Refresh"
-          >
-            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-          </Button>
-        </div>
+          {!canRunRange ? (
+            <p className="mt-2 text-xs text-destructive">Start date must be on or before end date.</p>
+          ) : null}
+        </Card>
       </div>
 
       {error ? (
-        <Card className="p-4 border-red-200 bg-red-50 text-red-700 text-sm">
-          {error}
+        <Card className="p-4 border-red-200 bg-red-50/80 text-red-700 text-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" className="border-red-200 text-red-700 hover:text-red-800" onClick={handleRefresh}>
+              Retry
+            </Button>
+          </div>
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
-        <Card className="p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <Card className="p-4 border-border/70 shadow-sm">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Jobs Created</span>
             <Briefcase className="w-4 h-4" />
           </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-3xl font-bold">{numberFmt.format(kpis?.jobs_created ?? 0)}</div>}
+          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{numberFmt.format(kpis?.jobs_created ?? 0)}</div>}
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 border-border/70 shadow-sm">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Jobs Completed</span>
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-3xl font-bold">{numberFmt.format(kpis?.jobs_completed ?? 0)}</div>}
+          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{numberFmt.format(kpis?.jobs_completed ?? 0)}</div>}
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 border-border/70 shadow-sm">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Technician Utilization</span>
             <Users className="w-4 h-4" />
           </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-3xl font-bold">{percentFmt.format(kpis?.technician_utilization ?? 0)}%</div>}
+          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{percentFmt.format(kpis?.technician_utilization ?? 0)}%</div>}
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 border-border/70 shadow-sm">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Invoice Total</span>
             <DollarSign className="w-4 h-4" />
           </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-3xl font-bold">{currencyFmt.format(kpis?.invoice_total ?? 0)}</div>}
+          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{currencyFmt.format(kpis?.invoice_total ?? 0)}</div>}
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 border-border/70 shadow-sm">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Pending Approvals</span>
             <FileWarning className="w-4 h-4" />
           </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-3xl font-bold">{numberFmt.format(kpis?.pending_approvals ?? 0)}</div>}
+          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{numberFmt.format(kpis?.pending_approvals ?? 0)}</div>}
         </Card>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <h2 className="text-xl font-semibold">Dispatch Performance</h2>
+        <Card className="p-5 border-border/70 shadow-sm">
+          <h2 className="text-lg font-semibold">Dispatch Performance</h2>
           <p className="text-sm text-muted-foreground mb-4">Job status distribution for selected range</p>
           {loading ? (
             <div className="space-y-2">
@@ -317,14 +378,22 @@ export default function ReportsPage() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : overview?.dispatch_performance.length ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {overview.dispatch_performance.map((row) => (
-                <div key={row.status} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={dispatchBadgeTone(row)}>{row.status}</Badge>
-                    <span className="text-sm text-muted-foreground">{row.count} jobs</span>
+                <div key={row.status} className="rounded-lg border border-border p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={dispatchBadgeTone(row)}>{row.status}</Badge>
+                      <span className="text-sm text-muted-foreground">{numberFmt.format(row.count)} jobs</span>
+                    </div>
+                    <span className="text-sm font-semibold">{percentFmt.format(row.percentage)}%</span>
                   </div>
-                  <span className="text-sm font-semibold">{row.percentage}%</span>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#2F8E92]"
+                      style={{ width: `${Math.max(3, Math.min(100, row.percentage))}%` }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -333,8 +402,8 @@ export default function ReportsPage() {
           )}
         </Card>
 
-        <Card className="p-5">
-          <h2 className="text-xl font-semibold">Invoice Performance</h2>
+        <Card className="p-5 border-border/70 shadow-sm">
+          <h2 className="text-lg font-semibold">Invoice Performance</h2>
           <p className="text-sm text-muted-foreground mb-4">Invoicing lifecycle states</p>
           {loading ? (
             <div className="space-y-2">
@@ -343,105 +412,141 @@ export default function ReportsPage() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : overview?.invoice_performance.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>State</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {overview.invoice_performance.map((row) => (
-                  <TableRow key={row.state}>
-                    <TableCell>
-                      <Badge variant="outline" className={statusBadgeTone(row)}>{row.state}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{row.count}</TableCell>
-                    <TableCell className="text-right font-medium">{currencyFmt.format(row.total_amount)}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>State</TableHead>
+                    <TableHead className="text-right">Count</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {overview.invoice_performance.map((row) => (
+                    <TableRow key={row.state}>
+                      <TableCell>
+                        <Badge variant="outline" className={statusBadgeTone(row)}>{row.state}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{numberFmt.format(row.count)}</TableCell>
+                      <TableCell className="text-right font-medium">{currencyFmt.format(row.total_amount)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">No invoice records in selected period.</p>
           )}
         </Card>
       </div>
 
-      <Card className="p-5">
-        <h2 className="text-xl font-semibold mb-4">Technician Performance</h2>
+      <Card className="p-5 border-border/70 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">Technician Performance</h2>
+            <p className="text-xs text-muted-foreground">
+              Showing {numberFmt.format(filteredTechnicianRows.length)} of {numberFmt.format(overview?.technician_performance.length ?? 0)}
+            </p>
+          </div>
+          <Input
+            value={technicianFilter}
+            onChange={(event) => setTechnicianFilter(event.target.value)}
+            placeholder="Filter technician..."
+            className="h-9 lg:w-72"
+          />
+        </div>
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : overview?.technician_performance.length ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Technician</TableHead>
-                <TableHead className="text-right">Assigned</TableHead>
-                <TableHead className="text-right">Completed</TableHead>
-                <TableHead className="text-right">Avg Time</TableHead>
-                <TableHead className="text-right">Delays</TableHead>
-                <TableHead className="text-right">Refusals</TableHead>
-                <TableHead className="text-right">Revenue</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {overview.technician_performance.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-medium">{row.name}</TableCell>
-                  <TableCell className="text-right">{row.jobs_assigned}</TableCell>
-                  <TableCell className="text-right">{row.jobs_completed}</TableCell>
-                  <TableCell className="text-right">{row.avg_completion_time}</TableCell>
-                  <TableCell className="text-right">{row.delays_count}</TableCell>
-                  <TableCell className="text-right">{row.refusals_count}</TableCell>
-                  <TableCell className="text-right font-medium">{currencyFmt.format(row.revenue_generated)}</TableCell>
+        ) : filteredTechnicianRows.length ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Technician</TableHead>
+                  <TableHead className="text-right">Assigned</TableHead>
+                  <TableHead className="text-right">Completed</TableHead>
+                  <TableHead className="text-right">Avg Time</TableHead>
+                  <TableHead className="text-right">Delays</TableHead>
+                  <TableHead className="text-right">Refusals</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredTechnicianRows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell className="text-right">{numberFmt.format(row.jobs_assigned)}</TableCell>
+                    <TableCell className="text-right">{numberFmt.format(row.jobs_completed)}</TableCell>
+                    <TableCell className="text-right">{row.avg_completion_time}</TableCell>
+                    <TableCell className="text-right">{numberFmt.format(row.delays_count)}</TableCell>
+                    <TableCell className="text-right">{numberFmt.format(row.refusals_count)}</TableCell>
+                    <TableCell className="text-right font-medium">{currencyFmt.format(row.revenue_generated)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : overview?.technician_performance.length ? (
+          <p className="text-sm text-muted-foreground">No technicians match the current filter.</p>
         ) : (
           <p className="text-sm text-muted-foreground">No technician records found.</p>
         )}
       </Card>
 
-      <Card className="p-5">
-        <h2 className="text-xl font-semibold mb-4">Dealership Overview</h2>
+      <Card className="p-5 border-border/70 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">Dealership Overview</h2>
+            <p className="text-xs text-muted-foreground">
+              Showing {numberFmt.format(filteredDealershipRows.length)} of {numberFmt.format(overview?.dealership_performance.length ?? 0)}
+            </p>
+          </div>
+          <Input
+            value={dealershipFilter}
+            onChange={(event) => setDealershipFilter(event.target.value)}
+            placeholder="Filter dealership..."
+            className="h-9 lg:w-72"
+          />
+        </div>
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : overview?.dealership_performance.length ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Dealership</TableHead>
-                <TableHead className="text-right">Created</TableHead>
-                <TableHead className="text-right">Completed</TableHead>
-                <TableHead className="text-right">Avg Res. Time</TableHead>
-                <TableHead className="text-right">Flags</TableHead>
-                <TableHead className="text-right">Total Invoiced</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {overview.dealership_performance.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-medium">{row.name}</TableCell>
-                  <TableCell className="text-right">{row.jobs_created}</TableCell>
-                  <TableCell className="text-right">{row.jobs_completed}</TableCell>
-                  <TableCell className="text-right">{row.avg_resolution_time}</TableCell>
-                  <TableCell className="text-right">{row.attention_flags}</TableCell>
-                  <TableCell className="text-right font-medium">{currencyFmt.format(row.invoice_total)}</TableCell>
+        ) : filteredDealershipRows.length ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Dealership</TableHead>
+                  <TableHead className="text-right">Created</TableHead>
+                  <TableHead className="text-right">Completed</TableHead>
+                  <TableHead className="text-right">Avg Res. Time</TableHead>
+                  <TableHead className="text-right">Flags</TableHead>
+                  <TableHead className="text-right">Total Invoiced</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredDealershipRows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell className="text-right">{numberFmt.format(row.jobs_created)}</TableCell>
+                    <TableCell className="text-right">{numberFmt.format(row.jobs_completed)}</TableCell>
+                    <TableCell className="text-right">{row.avg_resolution_time}</TableCell>
+                    <TableCell className="text-right">{numberFmt.format(row.attention_flags)}</TableCell>
+                    <TableCell className="text-right font-medium">{currencyFmt.format(row.invoice_total)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : overview?.dealership_performance.length ? (
+          <p className="text-sm text-muted-foreground">No dealerships match the current filter.</p>
         ) : (
           <p className="text-sm text-muted-foreground">No dealership records found.</p>
         )}

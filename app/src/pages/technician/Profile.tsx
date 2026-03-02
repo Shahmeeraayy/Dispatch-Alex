@@ -125,6 +125,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [profile, setProfile] = useState<BackendTechnicianProfile | null>(null);
+    const [previewEmail, setPreviewEmail] = useState('');
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
     const [profilePictureUrl, setProfilePictureUrl] = useState('');
@@ -144,10 +145,12 @@ export default function ProfilePage() {
         if (isPreviewMode) {
             const fallbackName = previewTech?.name || user?.name || '';
             const fallbackPhone = previewTech?.phone || user?.phone || '';
+            const fallbackEmail = previewTech?.email || '';
             const adminToken = getStoredAdminToken();
             if (!adminToken || !previewTechId) {
                 setFullName(fallbackName);
                 setPhone(fallbackPhone);
+                setPreviewEmail(fallbackEmail);
                 setProfilePictureUrl('');
                 setWorkingDays([]);
                 setWorkingHoursStart('08:00');
@@ -163,6 +166,7 @@ export default function ProfilePage() {
                 const selected = rows.find((item) => item.id === previewTechId);
                 setFullName(selected?.full_name || selected?.name || fallbackName);
                 setPhone(selected?.phone || fallbackPhone);
+                setPreviewEmail(selected?.email || fallbackEmail);
                 setProfilePictureUrl(selected?.profile_picture_url || '');
                 setWorkingDays(selected?.working_days || []);
                 setWorkingHoursStart((selected?.working_hours_start || '08:00').slice(0, 5));
@@ -173,6 +177,7 @@ export default function ProfilePage() {
                 setError(fetchError instanceof Error ? fetchError.message : 'Failed to load technician preview settings.');
                 setFullName(fallbackName);
                 setPhone(fallbackPhone);
+                setPreviewEmail(fallbackEmail);
                 setProfilePictureUrl('');
                 setWorkingDays([]);
                 setWorkingHoursStart('08:00');
@@ -197,6 +202,7 @@ export default function ProfilePage() {
         try {
             const profilePayload = await fetchTechnicianMeProfile(token);
             setProfile(profilePayload);
+            setPreviewEmail('');
             setFullName(profilePayload.full_name || profilePayload.name);
             setPhone(profilePayload.phone || '');
             setProfilePictureUrl(profilePayload.profile_picture_url || '');
@@ -335,7 +341,7 @@ export default function ProfilePage() {
         ? (previewTech?.name ?? 'Preview Technician')
         : (profile?.full_name || profile?.name || user?.name || 'Technician');
     const userEmail = isPreviewMode
-        ? `${(previewTechId ?? 'tech').toLowerCase()}@preview.local`
+        ? (previewEmail || previewTech?.email || 'Not set')
         : (profile?.email || user?.email || 'technician@sm2dispatch.com');
     const initials = userName
         .split(' ')
@@ -344,7 +350,6 @@ export default function ProfilePage() {
         .join('')
         .slice(0, 2)
         .toUpperCase();
-    const statusLabel = isPreviewMode ? 'Preview' : ((profile?.status || 'active').toString());
     const userPhone = phone || user?.phone || 'Not set';
     const workingDayLabels = DAY_OPTIONS
         .filter((day) => workingDays.includes(day.value))
@@ -579,15 +584,6 @@ export default function ProfilePage() {
                                 <div className="flex items-center justify-between py-3 text-sm">
                                     <span className="text-gray-500">Phone</span>
                                     <span className="font-medium text-gray-900">{userPhone}</span>
-                                </div>
-                                <div className="flex items-center justify-between py-3 text-sm">
-                                    <span className="text-gray-500">Status</span>
-                                    <span className={cn(
-                                        'font-medium',
-                                        statusLabel.toLowerCase() === 'active' ? 'text-emerald-600' : 'text-gray-600',
-                                    )}>
-                                        {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
-                                    </span>
                                 </div>
                             </div>
                         </Card>

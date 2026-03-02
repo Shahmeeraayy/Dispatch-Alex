@@ -63,7 +63,7 @@ function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-background border-r border-border',
+          'admin-sidebar fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-background border-r border-border',
           'flex flex-col transition-transform duration-300 ease-in-out',
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
@@ -93,11 +93,11 @@ function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full text-left group',
                   isActive
-                    ? 'bg-muted text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-muted text-primary shadow-sm dark:bg-slate-800/75 dark:text-cyan-300 dark:shadow-[inset_0_0_0_1px_rgba(45,212,191,0.18)]'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-800/55 dark:hover:text-slate-100'
                 )}
               >
-                <Icon className={cn('w-5 h-5 transition-colors', isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground')} />
+                <Icon className={cn('w-5 h-5 transition-colors', isActive ? 'text-primary dark:text-cyan-300' : 'text-muted-foreground group-hover:text-foreground dark:text-slate-500 dark:group-hover:text-slate-200')} />
                 {item.label}
               </Link>
             );
@@ -179,14 +179,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="admin-shell min-h-screen bg-muted/40">
       <div className="flex">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         {/* Main content */}
         <main className="flex-1 min-w-0 flex flex-col min-h-screen">
           {/* Top Header - Sticky */}
-          <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border px-4 sm:px-8 py-3 flex items-center justify-between shadow-sm">
+          <header className="admin-topbar sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border px-4 sm:px-8 py-3 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
@@ -227,7 +227,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
+          <div className="admin-content flex-1 p-4 lg:p-8 overflow-y-auto">
             {children}
           </div>
         </main>

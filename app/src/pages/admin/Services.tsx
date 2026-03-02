@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Search,
-    RefreshCw,
     Plus,
     MoreVertical,
     AlertCircle,
@@ -104,6 +103,8 @@ const mapBackendServiceToUi = (row: BackendServiceCatalogItem): ServiceItem => (
     updated_by: row.updated_by ?? undefined,
     allowed_actions: ['edit', row.status === 'active' ? 'archive' : 'unarchive', 'duplicate'],
 });
+
+const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
 
 // --- Mock Data ---
 
@@ -208,7 +209,6 @@ export default function ServicesPage() {
     const { hasBackendAdminToken } = useAuth();
     const [services, setServices] = useState<ServiceItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [lastSuccessfulFetchAt, setLastSuccessfulFetchAt] = useState<Date | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [minPrice, setMinPrice] = useState<string>('');
@@ -232,7 +232,7 @@ export default function ServicesPage() {
     });
 
     // Initial Fetch
-    const fetchServices = async () => {
+    const fetchServices = useCallback(async () => {
         setLoading(true);
         const token = getStoredAdminToken();
         if (!hasBackendAdminToken || !token) {
@@ -243,7 +243,6 @@ export default function ServicesPage() {
         try {
             const rows = await fetchAdminServices(token, true);
             setServices(rows.map(mapBackendServiceToUi));
-            setLastSuccessfulFetchAt(new Date());
         } catch (error) {
             const detail = error instanceof Error ? error.message : 'Unable to load services';
             alert(detail);
@@ -251,11 +250,22 @@ export default function ServicesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [hasBackendAdminToken]);
 
     useEffect(() => {
         void fetchServices();
-    }, [hasBackendAdminToken]);
+    }, [fetchServices]);
+
+    useEffect(() => {
+        const handleAdminRefresh = () => {
+            void fetchServices();
+        };
+
+        window.addEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
+        return () => {
+            window.removeEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
+        };
+    }, [fetchServices]);
 
     const getServiceExportRows = () => services.map(s => ({
             Code: s.code,
@@ -458,12 +468,6 @@ export default function ServicesPage() {
                     <p className="text-sm text-gray-500 font-medium">Manage service catalog, default pricing, and approval flags</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
-                        Last updated: {lastSuccessfulFetchAt ? lastSuccessfulFetchAt.toLocaleTimeString() : 'Never'}
-                    </div>
-                    <Button variant="outline" size="icon" onClick={fetchServices} disabled={loading}>
-                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                    </Button>
                     <Button variant="outline" onClick={() => setExportModalOpen(true)} className="gap-2">
                         <FileDown className="w-4 h-4" /> Export
                     </Button>

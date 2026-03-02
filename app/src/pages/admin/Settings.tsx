@@ -786,15 +786,6 @@ export default function SettingsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="grid sm:grid-cols-2 gap-6">
-                            <div className="space-y-2 sm:col-span-2">
-                                <Label htmlFor="invoice_company_logo_url" className="text-foreground">Logo URL (optional)</Label>
-                                <Input
-                                    id="invoice_company_logo_url"
-                                    value={invoiceCompany.logo_url ?? ''}
-                                    onChange={(e) => setInvoiceCompany({ ...invoiceCompany, logo_url: e.target.value })}
-                                    placeholder="https://example.com/logo.png"
-                                />
-                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="invoice_company_name" className="text-foreground">Company Name</Label>
                                 <Input

@@ -156,6 +156,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState('Updated 2 min ago');
+  const hideHeaderRefreshControls = location.pathname.startsWith('/admin/dealerships');
 
   const headerTitle = (() => {
     const pathname = location.pathname;
@@ -202,21 +203,25 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-3 sm:gap-6">
-              <span className="hidden sm:block text-xs font-medium text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-                {lastUpdated}
-              </span>
+              {!hideHeaderRefreshControls && (
+                <>
+                  <span className="hidden sm:block text-xs font-medium text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
+                    {lastUpdated}
+                  </span>
 
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 rounded-full border-border text-muted-foreground hover:text-primary hover:border-primary hover:bg-muted transition-all"
-                onClick={handleRefresh}
-                title="Refresh Data"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 rounded-full border-border text-muted-foreground hover:text-primary hover:border-primary hover:bg-muted transition-all"
+                    onClick={handleRefresh}
+                    title="Refresh Data"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
 
-              <div className="h-6 w-px bg-border hidden sm:block"></div>
+                  <div className="h-6 w-px bg-border hidden sm:block"></div>
+                </>
+              )}
 
               <UserMenu />
             </div>

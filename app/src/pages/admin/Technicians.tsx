@@ -295,7 +295,6 @@ const TECHNICIAN_EXPORT_COLUMNS = [
     'Name',
     'Phone',
     'Status',
-    'Availability',
     'Zones',
     'Skills',
     'WorkingHours',
@@ -845,7 +844,6 @@ export default function TechniciansPage() {
             Name: t.name,
             Phone: t.phone,
             Status: t.status,
-            Availability: t.availability,
             Zones: t.zones.join('; '),
             Skills: t.skills.join('; '),
             WorkingHours: JSON.stringify(t.working_hours) // Simplify for CSV
@@ -1020,7 +1018,6 @@ export default function TechniciansPage() {
                                 <TableHead className="w-[120px]">Availability</TableHead>
                                 <TableHead className="w-[200px]">Zones</TableHead>
                                 <TableHead className="w-[200px]">Skills</TableHead>
-                                <TableHead className="w-[100px] text-center">Jobs</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -1068,7 +1065,6 @@ export default function TechniciansPage() {
                                             {tech.skills.length > 2 && <span className="text-[10px] text-gray-400">+{tech.skills.length - 2}</span>}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-center font-medium">{tech.current_jobs_count}</TableCell>
                                     <TableCell>
                                         <div onClick={(e) => e.stopPropagation()}>
                                             <DropdownMenu>

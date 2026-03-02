@@ -88,6 +88,13 @@ export default function TechnicianAccountsPage() {
   const [emailChangeRequests, setEmailChangeRequests] = useState<BackendEmailChangeRequest[]>([]);
   const [emailRequestsLoading, setEmailRequestsLoading] = useState(false);
 
+  const refreshAllAdminData = async () => {
+    await Promise.all([
+      syncAdminData(),
+      loadEmailChangeRequests(),
+    ]);
+  };
+
   const loadEmailChangeRequests = async () => {
     const token = getStoredAdminToken();
     if (!token) {
@@ -110,7 +117,7 @@ export default function TechnicianAccountsPage() {
   }, []);
 
   useEffect(() => {
-    void syncAdminData().catch(() => {
+    void refreshAllAdminData().catch(() => {
       // Keep currently cached data if backend sync fails temporarily.
     });
   }, [syncAdminData]);
@@ -216,6 +223,7 @@ export default function TechnicianAccountsPage() {
 
     try {
       await approveTechnicianSignupRequest(request.id);
+      await refreshAllAdminData();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Unable to approve signup request.');
     }
@@ -228,6 +236,7 @@ export default function TechnicianAccountsPage() {
 
     try {
       await rejectTechnicianSignupRequest(request.id);
+      await refreshAllAdminData();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Unable to reject signup request.');
     }

@@ -1,19 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
     Search,
-    Filter,
     RefreshCw,
     Plus,
     MoreVertical,
-    CheckCircle2,
     AlertCircle,
     Building2,
-    Phone,
-    Calendar,
-    User,
     Power,
-    Edit2,
-    Trash2,
     FileDown
 } from 'lucide-react';
 import { exportArrayData, selectColumnsForExport, type ExportFormat } from '@/lib/export';
@@ -33,9 +26,6 @@ import {
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
 } from '@/components/ui/sheet';
 import {
     Dialog,
@@ -54,7 +44,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -642,33 +631,14 @@ const DEALERSHIP_EXPORT_COLUMNS = [
     'Notes',
 ];
 
-const DEALERSHIPS_STORAGE_KEY = 'sm_dispatch_dealerships';
-
-const loadDealershipsFromStorage = (): Dealership[] | null => {
-    try {
-        const raw = localStorage.getItem(DEALERSHIPS_STORAGE_KEY);
-        if (!raw) return null;
-
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return null;
-        return parsed as Dealership[];
-    } catch {
-        return null;
-    }
-};
-
-const persistDealershipsToStorage = (dealerships: Dealership[]) => {
-    localStorage.setItem(DEALERSHIPS_STORAGE_KEY, JSON.stringify(dealerships));
-};
-
 export default function DealershipsPage() {
     const { hasBackendAdminToken } = useAuth();
     const [dealerships, setDealerships] = useState<Dealership[]>([]);
     const [loading, setLoading] = useState(true);
+    const [lastSuccessfulFetchAt, setLastSuccessfulFetchAt] = useState<Date | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterCity, setFilterCity] = useState<string>('all');
-    const [isBackendSynced, setIsBackendSynced] = useState(false);
 
     // Drawers & Modals
     const [selectedDealership, setSelectedDealership] = useState<Dealership | null>(null);
@@ -681,42 +651,30 @@ export default function DealershipsPage() {
     const [addForm, setAddForm] = useState({ name: '', phone: '', email: '', address: '', city: '', postal_code: '', notes: '' });
     const [editForm, setEditForm] = useState<Dealership | null>(null);
 
-    const loadLocalFallback = () => {
-        const source = loadDealershipsFromStorage() ?? MOCK_DEALERSHIPS;
-        const normalized = source.map((dealership) => ({
-            ...dealership,
-            phone: formatPhoneForDisplay(dealership.phone),
-        }));
-        setDealerships(normalized);
-        setIsBackendSynced(false);
-        persistDealershipsToStorage(normalized);
-    };
-
     // Initial Fetch
     const fetchDealerships = async () => {
         setLoading(true);
         const adminToken = getStoredAdminToken();
 
-        if (hasBackendAdminToken && adminToken) {
-            try {
-                const rows = await fetchAdminDealerships(adminToken);
-                if (rows.length > 0) {
-                    setDealerships(rows.map(mapBackendDealership));
-                    setIsBackendSynced(true);
-                } else {
-                    loadLocalFallback();
-                }
-                setLoading(false);
-                return;
-            } catch {
-                // Fall through to legacy local/mock mode.
-            }
+        if (!hasBackendAdminToken || !adminToken) {
+            setDealerships([]);
+            setLoading(false);
+            return;
         }
 
-        setTimeout(() => {
-            loadLocalFallback();
+        try {
+            const rows = await fetchAdminDealerships(adminToken);
+            setDealerships(rows.map(mapBackendDealership));
+            setLastSuccessfulFetchAt(new Date());
+        } catch {
+            setDealerships([]);
+        } finally {
             setLoading(false);
-        }, 600);
+        }
+    };
+
+    const reloadDealerships = async () => {
+        await fetchDealerships();
     };
 
     useEffect(() => {
@@ -766,53 +724,29 @@ export default function DealershipsPage() {
         }
 
         const adminToken = getStoredAdminToken();
-        if (isBackendSynced && adminToken) {
-            try {
-                const created = await createAdminDealership(adminToken, {
-                    name: addForm.name.trim(),
-                    phone: formattedPhone,
-                    email: addForm.email.trim(),
-                    address: addForm.address.trim(),
-                    city: addForm.city.trim(),
-                    postal_code: addForm.postal_code.trim(),
-                    notes: addForm.notes.trim(),
-                });
-                const mapped = mapBackendDealership(created);
-                setDealerships((prev) => [mapped, ...prev]);
-                setAddModalOpen(false);
-                setAddForm({ name: '', phone: '', email: '', address: '', city: '', postal_code: '', notes: '' });
-                setTimeout(() => handleOpenDrawer(mapped), 300);
-                return;
-            } catch (error) {
-                alert(error instanceof Error ? error.message : 'Failed to create dealership.');
-                return;
-            }
+        if (!adminToken) {
+            alert('Admin backend connection is required to create a dealership.');
+            return;
         }
 
-        const newDealer: Dealership = {
-            id: Date.now().toString(),
-            name: addForm.name.trim(),
-            phone: formattedPhone,
-            email: addForm.email.trim(),
-            address: addForm.address.trim(),
-            city: addForm.city.trim(),
-            postal_code: addForm.postal_code.trim(),
-            status: 'active',
-            notes: addForm.notes.trim(),
-            recent_jobs: [],
-            allowed_actions: ['view_details', 'edit', 'deactivate']
-        };
-
-        setDealerships(prev => {
-            const next = [newDealer, ...prev];
-            persistDealershipsToStorage(next);
-            return next;
-        });
-        setAddModalOpen(false);
-        setAddForm({ name: '', phone: '', email: '', address: '', city: '', postal_code: '', notes: '' });
-
-        // Open drawer
-        setTimeout(() => handleOpenDrawer(newDealer), 300);
+        try {
+            const created = await createAdminDealership(adminToken, {
+                name: addForm.name.trim(),
+                phone: formattedPhone,
+                email: addForm.email.trim(),
+                address: addForm.address.trim(),
+                city: addForm.city.trim(),
+                postal_code: addForm.postal_code.trim(),
+                notes: addForm.notes.trim(),
+            });
+            const mapped = mapBackendDealership(created);
+            setAddModalOpen(false);
+            setAddForm({ name: '', phone: '', email: '', address: '', city: '', postal_code: '', notes: '' });
+            await reloadDealerships();
+            setTimeout(() => handleOpenDrawer(mapped), 300);
+        } catch (error) {
+            alert(error instanceof Error ? error.message : 'Failed to create dealership.');
+        }
     };
 
     const handleSaveEdit = async () => {
@@ -849,41 +783,33 @@ export default function DealershipsPage() {
         };
 
         const adminToken = getStoredAdminToken();
-        if (isBackendSynced && adminToken && selectedDealership.backend_id) {
-            try {
-                const updated = await updateAdminDealership(
-                    adminToken,
-                    selectedDealership.backend_id,
-                    {
-                        name: normalizedEdit.name,
-                        phone: normalizedEdit.phone || undefined,
-                        email: normalizedEdit.email || undefined,
-                        address: normalizedEdit.address || undefined,
-                        city: normalizedEdit.city || undefined,
-                        postal_code: normalizedEdit.postal_code || undefined,
-                        notes: normalizedEdit.notes || undefined,
-                        status: normalizedEdit.status,
-                    },
-                );
-                const mapped = mapBackendDealership(updated);
-                setDealerships((prev) => prev.map((d) => (d.backend_id === mapped.backend_id ? mapped : d)));
-                setSelectedDealership(mapped);
-                setEditForm({ ...mapped, phone: formatPhoneForDisplay(mapped.phone) });
-                return;
-            } catch (error) {
-                alert(error instanceof Error ? error.message : 'Failed to update dealership.');
-                return;
-            }
+        if (!adminToken || !selectedDealership.backend_id) {
+            alert('Admin backend connection is required to update a dealership.');
+            return;
         }
 
-        setDealerships(prev => {
-            const next = prev.map(d => d.id === normalizedEdit.id ? normalizedEdit : d);
-            persistDealershipsToStorage(next);
-            return next;
-        });
-
-        setSelectedDealership(normalizedEdit);
-        setEditForm({ ...normalizedEdit, phone: formatPhoneForDisplay(normalizedEdit.phone) });
+        try {
+            const updated = await updateAdminDealership(
+                adminToken,
+                selectedDealership.backend_id,
+                {
+                    name: normalizedEdit.name,
+                    phone: normalizedEdit.phone || undefined,
+                    email: normalizedEdit.email || undefined,
+                    address: normalizedEdit.address || undefined,
+                    city: normalizedEdit.city || undefined,
+                    postal_code: normalizedEdit.postal_code || undefined,
+                    notes: normalizedEdit.notes || undefined,
+                    status: normalizedEdit.status,
+                },
+            );
+            const mapped = mapBackendDealership(updated);
+            await reloadDealerships();
+            setSelectedDealership(mapped);
+            setEditForm({ ...mapped, phone: formatPhoneForDisplay(mapped.phone) });
+        } catch (error) {
+            alert(error instanceof Error ? error.message : 'Failed to update dealership.');
+        }
     };
 
     const handleCancelEdit = () => {
@@ -900,35 +826,25 @@ export default function DealershipsPage() {
         const newStatus: 'active' | 'inactive' = selectedDealership.status === 'active' ? 'inactive' : 'active';
         const adminToken = getStoredAdminToken();
 
-        if (isBackendSynced && adminToken && selectedDealership.backend_id) {
-            try {
-                const updatedResponse = await updateAdminDealershipStatus(
-                    adminToken,
-                    selectedDealership.backend_id,
-                    newStatus,
-                );
-                const mapped = mapBackendDealership(updatedResponse);
-                setDealerships((prev) => prev.map((d) => (d.backend_id === mapped.backend_id ? mapped : d)));
-                setSelectedDealership(mapped);
-                setEditForm({ ...mapped, phone: formatPhoneForDisplay(mapped.phone) });
-                setConfirmStatusModalOpen(false);
-                return;
-            } catch (error) {
-                alert(error instanceof Error ? error.message : 'Failed to change dealership status.');
-                return;
-            }
+        if (!adminToken || !selectedDealership.backend_id) {
+            alert('Admin backend connection is required to change dealership status.');
+            return;
         }
 
-        const updated = { ...selectedDealership, status: newStatus };
-
-        setDealerships(prev => {
-            const next = prev.map(d => d.id === updated.id ? updated : d);
-            persistDealershipsToStorage(next);
-            return next;
-        });
-        setSelectedDealership(updated);
-        setEditForm({ ...updated, phone: formatPhoneForDisplay(updated.phone) });
-        setConfirmStatusModalOpen(false);
+        try {
+            const updatedResponse = await updateAdminDealershipStatus(
+                adminToken,
+                selectedDealership.backend_id,
+                newStatus,
+            );
+            const mapped = mapBackendDealership(updatedResponse);
+            await reloadDealerships();
+            setSelectedDealership(mapped);
+            setEditForm({ ...mapped, phone: formatPhoneForDisplay(mapped.phone) });
+            setConfirmStatusModalOpen(false);
+        } catch (error) {
+            alert(error instanceof Error ? error.message : 'Failed to change dealership status.');
+        }
     };
 
     const getDealershipExportRows = () => dealerships.map(d => ({
@@ -958,7 +874,7 @@ export default function DealershipsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
-                        Last updated: {new Date().toLocaleTimeString()}
+                        Last updated: {lastSuccessfulFetchAt ? lastSuccessfulFetchAt.toLocaleTimeString() : 'Never'}
                     </div>
                     <Button variant="outline" size="icon" onClick={fetchDealerships} disabled={loading}>
                         <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
@@ -1101,7 +1017,6 @@ export default function DealershipsPage() {
                                 <TableHead className="w-[260px]">Location</TableHead>
                                 <TableHead className="w-[100px]">Status</TableHead>
                                 <TableHead className="w-[80px] text-center">Notes</TableHead>
-                                <TableHead className="w-[120px] text-right">Last Job</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -1129,9 +1044,6 @@ export default function DealershipsPage() {
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {dealer.notes && <AlertCircle className="w-4 h-4 text-amber-500 mx-auto" />}
-                                    </TableCell>
-                                    <TableCell className="text-right text-xs text-gray-400 font-mono">
-                                        {dealer.last_job_at ? new Date(dealer.last_job_at).toLocaleDateString() : 'Never'}
                                     </TableCell>
                                     <TableCell>
                                         <div onClick={(e) => e.stopPropagation()}>
@@ -1248,40 +1160,6 @@ export default function DealershipsPage() {
                                             placeholder="Gate codes, special instructions, preferred technicians..."
                                         />
                                     </Card>
-
-                                    {/* C) Recent Jobs */}
-                                    <Card className="p-4 border-gray-200 shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                            <Calendar className="w-4 h-4" /> Recent Jobs
-                                        </h3>
-                                        {selectedDealership.recent_jobs.length === 0 ? (
-                                            <div className="text-center py-6 text-gray-400 text-sm italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                                                No recent jobs found.
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                {selectedDealership.recent_jobs.map(job => (
-                                                    <div key={job.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-100 hover:bg-gray-100 transition-colors cursor-pointer">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-sm font-semibold text-gray-900 hover:text-[#2F8E92]">{job.job_code}</span>
-                                                            <span className="text-xs text-gray-400">{new Date(job.created_at).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <Badge variant="outline" className="capitalize text-xs font-normal">
-                                                                {job.status.replace('_', ' ')}
-                                                            </Badge>
-                                                            {job.assigned_tech && (
-                                                                <div className="flex items-center gap-1 text-xs text-gray-600">
-                                                                    <User className="w-3 h-3" /> {job.assigned_tech}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </Card>
-
                                 </div>
                             </ScrollArea>
                         </>

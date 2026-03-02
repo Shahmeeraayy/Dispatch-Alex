@@ -8,11 +8,9 @@ import {
     CheckCircle2,
     DollarSign,
     FileText,
-    History,
     Archive,
     Trash2,
     Edit2,
-    Copy,
     Info,
     FileDown
 } from 'lucide-react';
@@ -210,6 +208,7 @@ export default function ServicesPage() {
     const { hasBackendAdminToken } = useAuth();
     const [services, setServices] = useState<ServiceItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [lastSuccessfulFetchAt, setLastSuccessfulFetchAt] = useState<Date | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [minPrice, setMinPrice] = useState<string>('');
@@ -226,6 +225,7 @@ export default function ServicesPage() {
     const [formData, setFormData] = useState({
         code: '',
         name: '',
+        category: 'General',
         default_price: '',
         approval_required: false,
         notes: ''
@@ -243,6 +243,7 @@ export default function ServicesPage() {
         try {
             const rows = await fetchAdminServices(token, true);
             setServices(rows.map(mapBackendServiceToUi));
+            setLastSuccessfulFetchAt(new Date());
         } catch (error) {
             const detail = error instanceof Error ? error.message : 'Unable to load services';
             alert(detail);
@@ -338,7 +339,7 @@ export default function ServicesPage() {
 
     const handleOpenAddModal = () => {
         setModalMode('add');
-        setFormData({ code: '', name: '', default_price: '', approval_required: false, notes: '' });
+        setFormData({ code: '', name: '', category: 'General', default_price: '', approval_required: false, notes: '' });
         setModalOpen(true);
     };
 
@@ -347,6 +348,7 @@ export default function ServicesPage() {
         setFormData({
             code: s.code,
             name: s.name,
+            category: s.category || 'General',
             default_price: s.default_price.toString(),
             approval_required: s.approval_required,
             notes: s.notes || ''
@@ -367,15 +369,18 @@ export default function ServicesPage() {
             return;
         }
 
+        const normalizedCategory = formData.category.trim() || 'General';
+
         const price = parseFloat(formData.default_price);
         if (isNaN(price) || price < 0) {
             alert("Price must be a valid non-negative number.");
             return;
         }
 
+        const normalizedCode = formData.code.trim().toLowerCase();
+
         if (modalMode === 'add') {
-            // Check uniqueness
-            if (services.some(s => s.code === formData.code)) {
+            if (services.some((s) => s.code.trim().toLowerCase() === normalizedCode)) {
                 alert("Service code already exists.");
                 return;
             }
@@ -383,7 +388,7 @@ export default function ServicesPage() {
                 const created = await createAdminService(token, {
                     code: formData.code,
                     name: formData.name,
-                    category: 'General',
+                    category: normalizedCategory,
                     default_price: price,
                     approval_required: formData.approval_required,
                     notes: formData.notes || null,
@@ -396,11 +401,19 @@ export default function ServicesPage() {
             }
 
         } else if (modalMode === 'edit' && selectedService) {
+            if (
+                services.some(
+                    (s) => s.id !== selectedService.id && s.code.trim().toLowerCase() === normalizedCode,
+                )
+            ) {
+                alert("Service code already exists.");
+                return;
+            }
             try {
                 const updated = await updateAdminService(token, selectedService.id, {
                     code: formData.code,
                     name: formData.name,
-                    category: selectedService.category || 'General',
+                    category: normalizedCategory,
                     default_price: price,
                     approval_required: formData.approval_required,
                     notes: formData.notes || null,
@@ -446,7 +459,7 @@ export default function ServicesPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
-                        Last updated: {new Date().toLocaleTimeString()}
+                        Last updated: {lastSuccessfulFetchAt ? lastSuccessfulFetchAt.toLocaleTimeString() : 'Never'}
                     </div>
                     <Button variant="outline" size="icon" onClick={fetchServices} disabled={loading}>
                         <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
@@ -595,9 +608,6 @@ export default function ServicesPage() {
                                                     <DropdownMenuItem onClick={() => handleOpenEditModal(service)}>
                                                         <Edit2 className="w-4 h-4 mr-2" /> Edit Service
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        <Copy className="w-4 h-4 mr-2" /> Duplicate
-                                                    </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem onClick={() => handleArchiveToggle(service)} className={service.status === 'active' ? "text-red-600" : ""}>
                                                         {service.status === 'active' ? (
@@ -657,6 +667,14 @@ export default function ServicesPage() {
                         <div className="space-y-2">
                             <Label>Service Name <span className="text-red-500">*</span></Label>
                             <Input placeholder="e.g. Standard Inspection" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Category <span className="text-red-500">*</span></Label>
+                            <Input
+                                placeholder="e.g. PPF"
+                                value={formData.category}
+                                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                            />
                         </div>
 
                         <div className="flex items-center justify-between p-3 border border-gray-100 rounded-lg bg-gray-50">
@@ -751,33 +769,6 @@ export default function ServicesPage() {
                                         )}
                                     </Card>
 
-                                    <div className="space-y-2">
-                                        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 px-1">
-                                            <History className="w-4 h-4" /> Audit Trail
-                                        </h3>
-                                        <div className="text-xs text-gray-500 px-1 mb-2">
-                                            Recent changes to this service configuration.
-                                        </div>
-
-                                        <div className="relative pl-4 border-l-2 border-gray-200 space-y-6 py-2">
-                                            <div className="relative">
-                                                <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-blue-400 border-2 border-white ring-1 ring-gray-200"></div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-medium text-gray-900">Price Update</span>
-                                                    <span className="text-xs text-gray-500">{new Date(selectedService.updated_at).toLocaleString()} by {selectedService.updated_by}</span>
-                                                    <p className="text-xs mt-1 text-gray-600">Updated default price to ${selectedService.default_price.toFixed(2)}.</p>
-                                                </div>
-                                            </div>
-                                            {/* Mock history item */}
-                                            <div className="relative">
-                                                <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-gray-300 border-2 border-white ring-1 ring-gray-200"></div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-medium text-gray-900">Service Created</span>
-                                                    <span className="text-xs text-gray-500">2023-01-01 09:00:00 by System</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </ScrollArea>
                         </>

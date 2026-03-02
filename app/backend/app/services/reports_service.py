@@ -40,6 +40,14 @@ def _to_utc_end(value: date) -> datetime:
     return datetime.combine(value, time.max, tzinfo=UTC)
 
 
+def _job_completion_timestamp(row: Job) -> Optional[datetime]:
+    if row.completed_at is not None:
+        return row.completed_at
+    if _normalize_job_status(row.status) == "Completed":
+        return row.updated_at
+    return None
+
+
 def _duration_label(minutes: float) -> str:
     rounded = int(round(max(minutes, 0)))
     if rounded <= 0:
@@ -156,7 +164,15 @@ class ReportsService:
             .filter(Job.created_at >= start_dt, Job.created_at <= end_dt)
             .all()
         )
-        completed_jobs_in_range = [row for row in jobs_in_range if _normalize_job_status(row.status) == "Completed"]
+        completed_jobs_in_range = [
+            row
+            for row in self.db.query(Job).all()
+            if (
+                (completed_at := _job_completion_timestamp(row)) is not None
+                and completed_at >= start_dt
+                and completed_at <= end_dt
+            )
+        ]
 
         pending_approval_rows = (
             self.db.query(Job, Dealership)
@@ -275,13 +291,18 @@ class ReportsService:
             if row.assigned_tech_id is not None:
                 jobs_by_tech[row.assigned_tech_id].append(row)
 
+        completed_jobs_by_tech: dict = defaultdict(list)
+        for row in completed_jobs_in_range:
+            if row.assigned_tech_id is not None:
+                completed_jobs_by_tech[row.assigned_tech_id].append(row)
+
         tech_rows: list[TechnicianPerformanceRow] = []
         for row in all_techs:
             tech_jobs = jobs_by_tech.get(row.id, [])
-            completed = [item for item in tech_jobs if _normalize_job_status(item.status) == "Completed"]
+            completed = completed_jobs_by_tech.get(row.id, [])
             durations = []
             for item in completed:
-                completed_at = item.completed_at or item.updated_at
+                completed_at = _job_completion_timestamp(item)
                 if item.created_at and completed_at and completed_at >= item.created_at:
                     durations.append((completed_at - item.created_at).total_seconds() / 60)
             avg_minutes = float(sum(durations) / len(durations)) if durations else 0.0
@@ -305,13 +326,18 @@ class ReportsService:
             if row.dealership_id is not None:
                 jobs_by_dealership[row.dealership_id].append(row)
 
+        completed_jobs_by_dealership: dict = defaultdict(list)
+        for row in completed_jobs_in_range:
+            if row.dealership_id is not None:
+                completed_jobs_by_dealership[row.dealership_id].append(row)
+
         dealership_rows: list[DealershipPerformanceRow] = []
         for row in all_dealerships:
             dealership_jobs = jobs_by_dealership.get(row.id, [])
-            completed = [item for item in dealership_jobs if _normalize_job_status(item.status) == "Completed"]
+            completed = completed_jobs_by_dealership.get(row.id, [])
             durations = []
             for item in completed:
-                completed_at = item.completed_at or item.updated_at
+                completed_at = _job_completion_timestamp(item)
                 if item.created_at and completed_at and completed_at >= item.created_at:
                     durations.append((completed_at - item.created_at).total_seconds() / 60)
             avg_minutes = float(sum(durations) / len(durations)) if durations else 0.0

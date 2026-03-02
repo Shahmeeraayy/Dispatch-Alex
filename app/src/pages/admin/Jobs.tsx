@@ -353,18 +353,15 @@ const mapBackendJobToUiJob = (row: BackendAdminJob): Job => {
 
 const mergeBackendJobsIntoLocalStore = (backendRows: BackendAdminJob[]) => {
     const localJobs = loadPersistedJobs();
-
     const localByCode = new Map(localJobs.map((job) => [job.job_code, job]));
-    const backendMapped = backendRows.map(mapBackendJobToUiJob);
-    const backendJobCodes = new Set(backendMapped.map((job) => job.job_code));
-
-    const mergedBackendJobs = backendMapped.map((incoming) => {
+    const nextJobs = backendRows.map((row) => {
+        const incoming = mapBackendJobToUiJob(row);
         const existing = localByCode.get(incoming.job_code);
         if (!existing) {
             return incoming;
         }
 
-        // Keep UI-only fields that the backend does not currently manage.
+        // Keep UI-only decorations, but make backend rows authoritative.
         return {
             ...existing,
             ...incoming,
@@ -376,69 +373,8 @@ const mergeBackendJobsIntoLocalStore = (backendRows: BackendAdminJob[]) => {
         };
     });
 
-    const localOnlyJobs = localJobs.filter((job) => {
-        if (isBackendPersistedJobId(job.job_id)) {
-            return false;
-        }
-        return !backendJobCodes.has(job.job_code);
-    });
-    const nextJobs = [...mergedBackendJobs, ...localOnlyJobs];
     persistJobs(nextJobs);
     return true;
-};
-
-const buildDemoJobs = (techName: string | null, serviceNames: string[]): Job[] => {
-    const now = new Date();
-    const earlier = new Date(now.getTime() - (45 * 60 * 1000));
-    const dealershipA = DEALERSHIPS[0] ?? 'Audi de Quebec';
-    const dealershipB = DEALERSHIPS[1] ?? dealershipA;
-    const serviceA = serviceNames[0] ?? 'Ignition Repair';
-    const serviceB = serviceNames[1] ?? serviceA;
-
-    return [
-        {
-            job_id: 'job-demo-admin-preview-1',
-            job_code: 'SM2-DEMO-1001',
-            dealership_name: dealershipA,
-            service_name: serviceA,
-            vehicle_summary: '2024 Audi A4',
-            urgency: 'high',
-            assigned_technician_name: null,
-            pending_assigned_technician_name: techName,
-            job_status: 'admin_preview',
-            invoice_state: 'draft',
-            attention_flag: false,
-            created_at: earlier.toISOString(),
-            updated_at: earlier.toISOString(),
-            allowed_actions: ['view', 'edit', 'cancel', 'assign', 'confirm'],
-            ranking_score: 15,
-            applied_rules: ['Demo Rule: High priority dealership'],
-            requires_admin_confirmation: true,
-            admin_confirmed_at: null,
-            pending_push_to_available: true,
-        },
-        {
-            job_id: 'job-demo-pending-2',
-            job_code: 'SM2-DEMO-1002',
-            dealership_name: dealershipB,
-            service_name: serviceB,
-            vehicle_summary: '2023 Ford F-150',
-            urgency: 'normal',
-            assigned_technician_name: techName,
-            pending_assigned_technician_name: null,
-            job_status: techName ? 'scheduled' : 'pending',
-            invoice_state: 'draft',
-            attention_flag: false,
-            created_at: now.toISOString(),
-            updated_at: now.toISOString(),
-            allowed_actions: ['view', 'edit', 'cancel', 'assign'],
-            ranking_score: 8,
-            applied_rules: ['Demo Rule: Normal queue'],
-            requires_admin_confirmation: false,
-            admin_confirmed_at: now.toISOString(),
-            pending_push_to_available: false,
-        },
-    ];
 };
 
 const normalizeAssignedTechnicianStatus = (job: Job): Job => {
@@ -774,22 +710,6 @@ export default function JobsPage() {
             return { ...prev, service_name: serviceNames[0] ?? '' };
         });
     }, [serviceNames]);
-
-    useEffect(() => {
-        // Only seed demo jobs on a truly first-time local session.
-        // If the storage key exists (even as [] after user deletions), do not re-seed.
-        const hasStoredJobsKey = typeof window !== 'undefined'
-            && window.localStorage.getItem(ADMIN_JOBS_STORAGE_KEY) !== null;
-        if (hasStoredJobsKey) {
-            return;
-        }
-
-        const existing = loadPersistedJobs();
-        if (existing.length > 0) {
-            return;
-        }
-        persistJobs(buildDemoJobs(technicianOptions[0]?.name ?? null, serviceNames));
-    }, [technicianOptions, serviceNames]);
 
     const syncLegacyConfirmedLocalJobsToBackend = async (
         token: string,
@@ -1128,7 +1048,7 @@ export default function JobsPage() {
         setCreateJobOpen(false);
         setNewJobForm(initialNewJobForm);
         setPagination((prev) => ({ ...prev, page: 1 }));
-        fetchData();
+        refreshJobs({ showErrorToast: true, background: false });
     };
 
     const updatePersistedJob = (jobId: string, updater: (job: Job) => Job) => {
@@ -1253,7 +1173,7 @@ export default function JobsPage() {
             },
         );
         toast.success(`${job.job_code} confirmed and sent to technician portal`);
-        fetchData();
+        refreshJobs({ showErrorToast: true, background: false });
     };
 
     const handleAssignTechnician = (job: Job) => {
@@ -1539,7 +1459,7 @@ export default function JobsPage() {
                     : `${backendDeleteFailures[0].job_code} could not be removed`,
             );
         }
-        fetchData();
+        refreshJobs({ showErrorToast: true, background: false });
     };
     const getJobsForExport = () => (
         selectedRows.size > 0

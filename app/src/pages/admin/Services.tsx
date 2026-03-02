@@ -465,8 +465,8 @@ export default function ServicesPage() {
             {/* 1. Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Services & Pricing</h1>
-                    <p className="text-sm text-gray-500 font-medium">Manage service catalog, default pricing, and approval flags</p>
+                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Services & Pricing</h1>
+                    <p className="text-sm text-muted-foreground font-medium">Manage service catalog, default pricing, and approval flags</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-3">
                     <Button variant="outline" size="sm" onClick={() => void fetchServices()} className="h-9 gap-2" disabled={loading}>
@@ -482,19 +482,19 @@ export default function ServicesPage() {
             </div>
 
             {/* 2. Info Banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start sm:items-center gap-3 text-sm text-blue-800">
-                <Info className="w-4 h-4 mt-0.5 sm:mt-0 flex-shrink-0 text-blue-600" />
+            <div className="bg-card border border-blue-200/50 rounded-lg p-3 flex items-start sm:items-center gap-3 text-sm text-blue-700 dark:text-blue-300">
+                <Info className="w-4 h-4 mt-0.5 sm:mt-0 flex-shrink-0 text-blue-600 dark:text-blue-300" />
                 <p>Price changes affect future jobs only. Previously approved invoices remain unchanged.</p>
             </div>
 
             {/* 3. Filter Bar */}
-            <Card className="p-4 border-gray-200 shadow-sm space-y-4">
+            <Card className="p-4 border-border shadow-sm space-y-4 bg-card">
                 <div className="flex flex-col lg:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full lg:w-auto min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                             placeholder="Search by service code or name..."
-                            className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-all"
+                            className="pl-9 bg-muted/30 border-border focus:bg-background transition-all"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
@@ -518,7 +518,7 @@ export default function ServicesPage() {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="w-[180px] justify-start">
+                                <Button variant="outline" className="w-[180px] justify-start border-border bg-background">
                                     Prices
                                 </Button>
                             </DropdownMenuTrigger>
@@ -552,7 +552,7 @@ export default function ServicesPage() {
             </Card>
 
             {/* 4. Services Table */}
-            <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="flex-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
                 {loading ? (
                     <div className="p-4 space-y-4">
                         {Array.from({ length: 5 }).map((_, i) => (
@@ -560,11 +560,11 @@ export default function ServicesPage() {
                         ))}
                     </div>
                 ) : filteredServices.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-gray-500">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <FileText className="w-8 h-8 text-gray-400" />
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-muted-foreground">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                            <FileText className="w-8 h-8 text-muted-foreground" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900">No services found</h3>
+                        <h3 className="text-lg font-semibold text-foreground">No services found</h3>
                         <p className="text-sm mt-1">Try adjusting your filters or search query.</p>
                         <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterCategory('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</Button>
                     </div>

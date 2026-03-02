@@ -878,8 +878,8 @@ export default function TechniciansPage() {
             {/* 1. Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Technicians</h1>
-                    <p className="text-sm text-gray-500 font-medium">Manage technician profiles, skills, zones, and schedules</p>
+                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Technicians</h1>
+                    <p className="text-sm text-muted-foreground font-medium">Manage technician profiles, skills, zones, and schedules</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-3">
                     <Button variant="outline" size="sm" onClick={() => void fetchTechs()} className="h-9 gap-2" disabled={loading}>
@@ -936,36 +936,36 @@ export default function TechniciansPage() {
                 </div>
             </div>
 
-            <Card className="border-gray-200 shadow-sm overflow-hidden">
+            <Card className="border-border shadow-sm overflow-hidden bg-card">
                 <div className="grid grid-cols-2 lg:grid-cols-4">
-                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-gray-100">
-                        <p className="text-xs uppercase tracking-wider text-gray-500">Total Technicians</p>
-                        <p className="text-2xl font-semibold text-gray-900 mt-1">{totalTechCount}</p>
+                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-border/60">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Total Technicians</p>
+                        <p className="text-2xl font-semibold text-foreground mt-1">{totalTechCount}</p>
                     </div>
-                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-gray-100">
-                        <p className="text-xs uppercase tracking-wider text-gray-500">Active</p>
+                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-border/60">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Active</p>
                         <p className="text-2xl font-semibold text-blue-700 mt-1">{activeTechCount}</p>
                     </div>
-                    <div className="p-4 lg:border-r border-gray-100">
-                        <p className="text-xs uppercase tracking-wider text-gray-500">Inactive</p>
-                        <p className="text-2xl font-semibold text-gray-700 mt-1">{inactiveTechCount}</p>
+                    <div className="p-4 lg:border-r border-border/60">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Inactive</p>
+                        <p className="text-2xl font-semibold text-muted-foreground mt-1">{inactiveTechCount}</p>
                     </div>
                     <div className="p-4">
-                        <p className="text-xs uppercase tracking-wider text-gray-500">Assigned Jobs</p>
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Assigned Jobs</p>
                         <p className="text-2xl font-semibold text-amber-700 mt-1">{assignedJobsCount}</p>
-                        <p className="text-xs text-gray-500 mt-1">{busyTechniciansCount} technicians currently assigned</p>
+                        <p className="text-xs text-muted-foreground mt-1">{busyTechniciansCount} technicians currently assigned</p>
                     </div>
                 </div>
             </Card>
 
             {/* 2. Filter Bar */}
-            <Card className="p-4 border-gray-200 shadow-sm space-y-4">
+            <Card className="p-4 border-border shadow-sm space-y-4 bg-card">
                 <div className="flex flex-col lg:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full lg:w-auto min-w-0 lg:min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                             placeholder="Search technician, code, phone, zone, or skill..."
-                            className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-all"
+                            className="pl-9 bg-muted/30 border-border focus:bg-background transition-all"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
@@ -983,7 +983,7 @@ export default function TechniciansPage() {
                         </Select>
 
                         <Select value={filterZone} onValueChange={setFilterZone}>
-                            <SelectTrigger className="w-full sm:w-[160px] border-dashed text-gray-600">
+                            <SelectTrigger className="w-full sm:w-[160px] border-dashed text-muted-foreground bg-background">
                                 <div className="flex items-center gap-2">
                                     <MapPin className="w-4 h-4" />
                                     <SelectValue placeholder="Zone" />
@@ -999,7 +999,7 @@ export default function TechniciansPage() {
                             </SelectContent>
                         </Select>
                         <Select value={filterSkill} onValueChange={setFilterSkill}>
-                            <SelectTrigger className="w-full sm:w-[170px] border-dashed text-gray-600">
+                            <SelectTrigger className="w-full sm:w-[170px] border-dashed text-muted-foreground bg-background">
                                 <div className="flex items-center gap-2">
                                     <Briefcase className="w-4 h-4" />
                                     <SelectValue placeholder="Skills" />
@@ -1015,7 +1015,7 @@ export default function TechniciansPage() {
                             </SelectContent>
                         </Select>
 
-                        <div className="h-6 w-px bg-gray-200 mx-2" />
+                        <div className="h-6 w-px bg-border mx-2" />
 
                         <Badge variant="secondary" className="cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200">
                             Active ({activeTechCount})
@@ -1023,11 +1023,11 @@ export default function TechniciansPage() {
                         <Badge variant="secondary" className="cursor-pointer bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200">
                             Assigned Jobs ({assignedJobsCount})
                         </Badge>
-                        <Badge variant="outline" className="bg-white border-gray-200 text-gray-600">
+                        <Badge variant="outline" className="bg-card border-border text-muted-foreground">
                             Showing {filteredTechs.length} of {totalTechCount}
                         </Badge>
                         {hasActiveFilters ? (
-                            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-gray-600">
+                            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-muted-foreground">
                                 Clear Filters
                             </Button>
                         ) : null}
@@ -1036,7 +1036,7 @@ export default function TechniciansPage() {
             </Card>
 
             {/* 3. Technicians Table */}
-            <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="flex-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
                 {loading ? (
                     <div className="p-4 space-y-4">
                         {Array.from({ length: 5 }).map((_, i) => (
@@ -1044,11 +1044,11 @@ export default function TechniciansPage() {
                         ))}
                     </div>
                 ) : filteredTechs.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-gray-500">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <User className="w-8 h-8 text-gray-400" />
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-muted-foreground">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                            <User className="w-8 h-8 text-muted-foreground" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900">No technicians found</h3>
+                        <h3 className="text-lg font-semibold text-foreground">No technicians found</h3>
                         <p className="text-sm mt-1">Try adjusting your filters or search query.</p>
                         <Button variant="outline" className="mt-4" onClick={clearFilters}>Clear Filters</Button>
                     </div>

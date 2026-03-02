@@ -1624,7 +1624,7 @@ export default function JobsPage() {
                             Live sync every 30s
                         </Badge>
                         {selectedRows.size > 0 ? (
-                            <Badge variant="outline" className="h-6 rounded-full border-slate-300 bg-white text-slate-700">
+                            <Badge variant="outline" className="h-6 rounded-full border-border bg-card text-foreground">
                                 <Users className="mr-1.5 h-3 w-3" />
                                 {selectedRows.size} selected
                             </Badge>
@@ -1635,7 +1635,7 @@ export default function JobsPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 rounded-xl border-slate-200 bg-white/80 px-4 shadow-sm hover:bg-white"
+                        className="h-9 rounded-xl border-border bg-card px-4 shadow-sm hover:bg-muted"
                         onClick={() => refreshJobs({ showErrorToast: true, background: false })}
                         disabled={loading}
                     >
@@ -1653,7 +1653,7 @@ export default function JobsPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 gap-2 rounded-xl border-slate-200 bg-white/80 px-4 shadow-sm hover:bg-white"
+                        className="h-9 gap-2 rounded-xl border-border bg-card px-4 shadow-sm hover:bg-muted"
                         onClick={() => setExportModalOpen(true)}
                     >
                         <Download className="w-4 h-4 text-muted-foreground" />
@@ -1925,15 +1925,15 @@ export default function JobsPage() {
                     return (
                         <Card
                             key={card.key}
-                            className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur"
+                            className="relative overflow-hidden border-border/70 bg-card shadow-sm backdrop-blur"
                         >
-                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
                             <div className="p-4 flex items-center justify-between gap-3">
                                 <div className="min-w-0">
-                                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                                         {card.label}
                                     </div>
-                                    <div className="mt-1 text-2xl font-bold text-slate-900">{card.value}</div>
+                                    <div className="mt-1 text-2xl font-bold text-foreground">{card.value}</div>
                                 </div>
                                 <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl border', card.badgeClassName)}>
                                     <Icon className={cn('h-5 w-5', card.iconClassName)} />
@@ -1945,7 +1945,7 @@ export default function JobsPage() {
             </div>
 
             {/* 2. Filter Bar (Enterprise Grade) */}
-            <Card className="relative overflow-hidden border-slate-200/80 bg-white/90 shadow-sm backdrop-blur">
+            <Card className="relative overflow-hidden border-border/70 bg-card shadow-sm backdrop-blur">
                 <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-r from-[#2F8E92]/6 via-transparent to-blue-500/5 pointer-events-none" />
                 <div className="relative p-4 md:p-5 space-y-4">
                     <div className="flex flex-col lg:flex-row gap-4">
@@ -2003,7 +2003,7 @@ export default function JobsPage() {
                 </div>
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex flex-wrap items-center gap-2">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm">
                                 <SlidersHorizontal className="h-3.5 w-3.5" />
                                 Queue Filters
                             </div>
@@ -2018,7 +2018,7 @@ export default function JobsPage() {
                                         size="sm"
                                         onClick={() => handleQuickFilterChipClick(filter.key)}
                                         className={cn(
-                                            'h-9 rounded-xl border-slate-200 bg-white px-3 text-slate-700 hover:bg-slate-50 shadow-sm',
+                                            'h-9 rounded-xl border-border bg-card px-3 text-foreground hover:bg-muted shadow-sm',
                                             isActive && filter.activeClassName,
                                         )}
                                     >
@@ -2029,7 +2029,7 @@ export default function JobsPage() {
                                                 'ml-2 inline-flex min-w-5 items-center justify-center rounded-full border px-1.5 text-[10px] font-semibold leading-4',
                                                 isActive
                                                     ? 'border-current/20 bg-white/70'
-                                                    : 'border-slate-200 bg-slate-50 text-slate-600',
+                                                    : 'border-border bg-muted text-muted-foreground',
                                             )}
                                         >
                                             {filter.count}
@@ -2040,12 +2040,12 @@ export default function JobsPage() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <Badge variant="outline" className="h-8 rounded-full border-slate-200 bg-white text-slate-600">
+                            <Badge variant="outline" className="h-8 rounded-full border-border bg-card text-muted-foreground">
                                 <TrendingUp className="mr-1.5 h-3 w-3" />
                                 Sorted by rank
                             </Badge>
                             {activeFilterCount > 0 ? (
-                                <Badge variant="outline" className="h-8 rounded-full border-slate-200 bg-white text-slate-700">
+                                <Badge variant="outline" className="h-8 rounded-full border-border bg-card text-foreground">
                                     {activeFilterCount} active filter{activeFilterCount === 1 ? '' : 's'}
                                 </Badge>
                             ) : null}
@@ -2055,7 +2055,7 @@ export default function JobsPage() {
             </Card>
 
             {/* 3. Jobs Table */}
-            <div className="relative flex-1 min-h-[560px] bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+            <div className="relative flex-1 min-h-[560px] bg-card border border-border/70 rounded-2xl shadow-sm overflow-hidden flex flex-col">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-r from-[#2F8E92]/5 via-transparent to-blue-500/5" />
                 {loading ? (
                     <div className="p-4 md:p-5 space-y-4 min-h-[420px]">
@@ -2069,15 +2069,15 @@ export default function JobsPage() {
                         ))}
                     </div>
                 ) : data.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 px-4 text-gray-500 min-h-[420px]">
-                        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4 shadow-inner">
-                            <Search className="w-8 h-8 text-slate-400" />
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 px-4 text-muted-foreground min-h-[420px]">
+                        <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4 shadow-inner">
+                            <Search className="w-8 h-8 text-muted-foreground/70" />
                         </div>
-                        <h3 className="text-lg font-semibold text-slate-900">No jobs found</h3>
-                        <p className="text-sm mt-1 max-w-sm text-center text-slate-500">
+                        <h3 className="text-lg font-semibold text-foreground">No jobs found</h3>
+                        <p className="text-sm mt-1 max-w-sm text-center text-muted-foreground">
                             We couldn't find any jobs matching your filters. Try adjusting your search criteria.
                         </p>
-                        <Button variant="outline" className="mt-4 rounded-xl bg-white" onClick={clearFilters}>
+                        <Button variant="outline" className="mt-4 rounded-xl bg-card" onClick={clearFilters}>
                             Clear all filters
                         </Button>
                     </div>

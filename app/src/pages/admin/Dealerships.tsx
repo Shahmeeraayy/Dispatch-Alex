@@ -869,11 +869,11 @@ export default function DealershipsPage() {
             {/* 1. Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dealerships</h1>
-                    <p className="text-sm text-gray-500 font-medium">Manage dealership contacts and status</p>
+                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Dealerships</h1>
+                    <p className="text-sm text-muted-foreground font-medium">Manage dealership contacts and status</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-3">
-                    <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
+                    <div className="hidden sm:flex items-center text-xs text-muted-foreground font-medium mr-2">
                         Last updated: {lastSuccessfulFetchAt ? lastSuccessfulFetchAt.toLocaleTimeString() : 'Never'}
                     </div>
                     <Button variant="outline" size="sm" onClick={fetchDealerships} disabled={loading} className="h-9 gap-2">
@@ -940,13 +940,13 @@ export default function DealershipsPage() {
             </div>
 
             {/* 2. Filter Bar */}
-            <Card className="p-4 border-gray-200 shadow-sm space-y-4">
+            <Card className="p-4 border-border shadow-sm space-y-4 bg-card">
                 <div className="flex flex-col lg:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full lg:w-auto min-w-0 lg:min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                             placeholder="Search by dealership name, phone, or city/ville..."
-                            className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-all"
+                            className="pl-9 bg-muted/30 border-border focus:bg-background transition-all"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
@@ -964,7 +964,7 @@ export default function DealershipsPage() {
                         </Select>
 
                         <Select value={filterCity} onValueChange={setFilterCity}>
-                            <SelectTrigger className="w-full sm:w-[180px] border-dashed text-gray-600">
+                            <SelectTrigger className="w-full sm:w-[180px] border-dashed text-muted-foreground bg-background">
                                 <div className="flex items-center gap-2">
                                     <Building2 className="w-4 h-4" />
                                     <SelectValue placeholder="City/Ville" />
@@ -980,7 +980,7 @@ export default function DealershipsPage() {
                             </SelectContent>
                         </Select>
 
-                        <div className="h-6 w-px bg-gray-200 mx-2" />
+                        <div className="h-6 w-px bg-border mx-2" />
 
                         <Badge variant="secondary" className="cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200">
                             Active ({dealerships.filter(d => d.status === 'active').length})
@@ -993,7 +993,7 @@ export default function DealershipsPage() {
             </Card>
 
             {/* 3. Dealerships Table */}
-            <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="flex-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
                 {loading ? (
                     <div className="p-4 space-y-4">
                         {Array.from({ length: 5 }).map((_, i) => (
@@ -1001,11 +1001,11 @@ export default function DealershipsPage() {
                         ))}
                     </div>
                 ) : filteredDealerships.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-gray-500">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <Building2 className="w-8 h-8 text-gray-400" />
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-muted-foreground">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                            <Building2 className="w-8 h-8 text-muted-foreground" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900">No dealerships found</h3>
+                        <h3 className="text-lg font-semibold text-foreground">No dealerships found</h3>
                         <p className="text-sm mt-1">Try adjusting your filters or search query.</p>
                         <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterCity('all'); }}>Clear Filters</Button>
                     </div>

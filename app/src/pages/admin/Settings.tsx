@@ -7,9 +7,7 @@ import {
     Clock,
     Moon,
     Sun,
-    Smartphone,
     Monitor,
-    Mail,
     FileText,
     ListFilter,
     PlusCircle
@@ -27,7 +25,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
     Dialog,
     DialogContent,
@@ -89,7 +86,6 @@ interface IntegrationState {
     isConnecting: boolean;
     lastSync?: string;
     accountName?: string;
-    phoneNumber?: string;
 }
 
 
@@ -188,12 +184,6 @@ export default function SettingsPage() {
         isConnecting: false,
         lastSync: '2 hours ago',
         accountName: 'SM2 Dispatch Inc.'
-    });
-
-    const [twilioState, setTwilioState] = useState<IntegrationState>({
-        isConnected: true,
-        isConnecting: false,
-        phoneNumber: '+1(555) ***-8821'
     });
 
     useEffect(() => {
@@ -410,19 +400,6 @@ export default function SettingsPage() {
                 isConnecting: false
             });
         }
-    };
-
-    const handleConnectTwilio = () => {
-        setTwilioState(prev => ({ ...prev, isConnecting: true }));
-        // Simulate API Key validation
-        setTimeout(() => {
-            setTwilioState({
-                isConnected: true,
-                isConnecting: false,
-                phoneNumber: '+1(555) ***-8821'
-            });
-            alert("Successfully connected to Twilio!");
-        }, 1200);
     };
 
     const handleTestIntegration = (integration: string) => {
@@ -984,7 +961,7 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* Section D - Integrations */}
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid gap-6">
                     {/* QuickBooks */}
                     <Card className="border-border shadow-sm relative overflow-hidden bg-card">
                         <div className="absolute top-0 right-0 p-3">
@@ -1037,108 +1014,7 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Twilio */}
-                    <Card className="border-border shadow-sm relative overflow-hidden bg-card">
-                        <div className="absolute top-0 right-0 p-3">
-                            <StatusBadge status={twilioState.isConnected ? 'connected' : 'disconnected'} />
-                        </div>
-                        <CardHeader>
-                            <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                                <Smartphone className="w-4 h-4 text-red-500" /> Twilio SMS
-                            </CardTitle>
-                            <CardDescription className="text-muted-foreground">Messaging gateway status</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {twilioState.isConnected ? (
-                                <>
-                                    <div className="p-3 bg-muted/50 rounded-md border border-border">
-                                        <span className="text-xs text-muted-foreground uppercase font-bold">Active Number</span>
-                                        <p className="text-sm font-medium text-foreground mt-1 font-mono">{twilioState.phoneNumber}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Webhook: Active</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" className="w-full" onClick={() => handleTestIntegration('Twilio')}>
-                                            Send Test SMS
-                                        </Button>
-                                        <Button variant="ghost" size="sm" onClick={() => setTwilioState(prev => ({ ...prev, isConnected: false }))} className="w-full text-red-600 hover:text-red-700 hover:bg-red-50">
-                                            Disconnect
-                                        </Button>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-muted/30 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center text-center">
-                                        <Smartphone className="w-8 h-8 text-muted-foreground mb-2 opacity-50" />
-                                        <p className="text-sm text-muted-foreground">Configure Twilio to enable SMS notifications and dispatching.</p>
-                                    </div>
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button className="w-full bg-[#F22F46] hover:bg-[#F22F46]/90 text-white">
-                                                Configure Twilio
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>Connect Twilio</DialogTitle>
-                                                <DialogDescription>
-                                                    Enter your Twilio API credentials to enable SMS functionality.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="space-y-4 py-4">
-                                                <div className="space-y-2">
-                                                    <Label>Account SID</Label>
-                                                    <Input placeholder="AC..." />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Auth Token</Label>
-                                                    <Input type="password" placeholder="••••••••••••••••" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Phone Number</Label>
-                                                    <Input placeholder="+1(586) 556-0113" />
-                                                </div>
-                                            </div>
-                                            <DialogFooter>
-                                                <Button variant="outline" onClick={() => { }}>Cancel</Button>
-                                                <Button onClick={handleConnectTwilio} disabled={twilioState.isConnecting}>
-                                                    {twilioState.isConnecting ? 'Verifying...' : 'Save & Connect'}
-                                                </Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
                 </div>
-
-                {/* Section E - Notifications */}
-                <Card className="border-border shadow-sm bg-card">
-                    <CardHeader>
-                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                            <Mail className="w-4 h-4 text-foreground" /> Notification Preferences
-                        </CardTitle>
-                        <CardDescription className="text-muted-foreground">Manage administrator alerts</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label className="text-sm font-medium text-foreground">Invoice Failures</Label>
-                                <p className="text-xs text-muted-foreground">Notify when sync fails</p>
-                            </div>
-                            <Switch checked={true} />
-                        </div>
-                        <Separator />
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label className="text-sm font-medium text-foreground">Worker Offline</Label>
-                                <p className="text-xs text-muted-foreground">Critical alert for downtime</p>
-                            </div>
-                            <Switch checked={true} />
-                        </div>
-                    </CardContent>
-                </Card>
-
             </div>
         </div>
     );

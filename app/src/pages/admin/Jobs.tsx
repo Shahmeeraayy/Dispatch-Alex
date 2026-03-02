@@ -2084,7 +2084,7 @@ export default function JobsPage() {
                 ) : (
                     <div className="flex-1 overflow-auto min-h-[420px]">
                         <Table>
-                            <TableHeader className="bg-slate-50/90 sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-slate-50/75">
+                            <TableHeader className="bg-muted/80 sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
                                 <TableRow>
                                     <TableHead className="w-[40px] pl-4">
                                         <Checkbox
@@ -2093,21 +2093,21 @@ export default function JobsPage() {
                                         />
                                     </TableHead>
                                     <TableHead className="w-[200px]">
-                                        <Button variant="ghost" size="sm" className="-ml-3 h-8 text-xs font-bold text-slate-700 uppercase tracking-wider hover:bg-slate-100">
+                                        <Button variant="ghost" size="sm" className="-ml-3 h-8 text-xs font-bold text-muted-foreground uppercase tracking-wider hover:bg-muted">
                                             Job Details <ArrowUpDown className="ml-2 h-3 w-3" />
                                         </Button>
                                     </TableHead>
-                                    <TableHead className="w-[180px] font-semibold text-xs text-slate-600 uppercase tracking-wider">Dealership</TableHead>
-                                    <TableHead className="w-[200px] font-semibold text-xs text-slate-600 uppercase tracking-wider">Vehicle</TableHead>
-                                    <TableHead className="w-[180px] font-semibold text-xs text-slate-600 uppercase tracking-wider">Technician</TableHead>
-                                    <TableHead className="w-[120px] font-semibold text-xs text-slate-600 uppercase tracking-wider">Urgency</TableHead>
-                                    <TableHead className="w-[100px] font-semibold text-xs text-slate-600 uppercase tracking-wider">Ranking</TableHead>
+                                    <TableHead className="w-[180px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Dealership</TableHead>
+                                    <TableHead className="w-[200px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Vehicle</TableHead>
+                                    <TableHead className="w-[180px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Technician</TableHead>
+                                    <TableHead className="w-[120px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Urgency</TableHead>
+                                    <TableHead className="w-[100px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Ranking</TableHead>
 
-                                    <TableHead className="w-[140px] font-semibold text-xs text-slate-600 uppercase tracking-wider">Status</TableHead>
+                                    <TableHead className="w-[140px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Status</TableHead>
 
-                                    <TableHead className="w-[140px] font-semibold text-xs text-slate-600 uppercase tracking-wider">Date</TableHead>
-                                    <TableHead className="w-[120px] font-semibold text-xs text-slate-600 uppercase tracking-wider">Time</TableHead>
-                                    <TableHead className="w-[220px] text-right font-semibold text-xs text-slate-600 uppercase tracking-wider">Actions</TableHead>
+                                    <TableHead className="w-[140px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Date</TableHead>
+                                    <TableHead className="w-[120px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Time</TableHead>
+                                    <TableHead className="w-[220px] text-right font-semibold text-xs text-muted-foreground uppercase tracking-wider">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -2115,9 +2115,9 @@ export default function JobsPage() {
                                     <TableRow
                                         key={job.job_id}
                                         className={cn(
-                                            "group cursor-pointer border-b border-slate-100/80 transition-colors hover:bg-slate-50/70",
-                                            "even:bg-slate-50/20",
-                                            job.attention_flag && "bg-red-50/20 hover:bg-red-50/35"
+                                            "group cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/40",
+                                            "even:bg-muted/10",
+                                            job.attention_flag && "bg-red-500/5 hover:bg-red-500/10"
                                         )}
                                     >
                                         <TableCell className="pl-4 relative">
@@ -2132,8 +2132,8 @@ export default function JobsPage() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-900 group-hover:text-[#2F8E92] transition-colors">{job.job_code}</span>
-                                                <span className="text-xs text-slate-500">{job.service_name}</span>
+                                                <span className="font-bold text-foreground group-hover:text-[#2F8E92] transition-colors">{job.job_code}</span>
+                                                <span className="text-xs text-muted-foreground">{job.service_name}</span>
                                                 {job.attention_flag && (
                                                     <span className="text-[10px] font-bold text-red-600 flex items-center gap-1 mt-1">
                                                         <AlertCircle className="w-3 h-3" /> Attention
@@ -2143,12 +2143,12 @@ export default function JobsPage() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Building2Icon className="w-4 h-4 text-slate-400" />
-                                                <span className="text-sm font-medium text-slate-700">{job.dealership_name}</span>
+                                                <Building2Icon className="w-4 h-4 text-muted-foreground" />
+                                                <span className="text-sm font-medium text-foreground">{job.dealership_name}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="text-sm text-slate-700 font-medium">{job.vehicle_summary}</div>
+                                            <div className="text-sm text-foreground font-medium">{job.vehicle_summary}</div>
                                         </TableCell>
                                         <TableCell>
                                             {job.assigned_technician_name ? (
@@ -2156,7 +2156,7 @@ export default function JobsPage() {
                                                     <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700">
                                                         {job.assigned_technician_name.substring(0, 2)}
                                                     </div>
-                                                    <span className="text-sm text-gray-700">{job.assigned_technician_name}</span>
+                                                    <span className="text-sm text-foreground">{job.assigned_technician_name}</span>
                                                 </div>
                                             ) : (job.job_status === 'admin_preview' || job.job_status === 'pending_admin_confirmation') && job.pending_assigned_technician_name ? (
                                                 <div className="flex items-center gap-2">
@@ -2169,7 +2169,7 @@ export default function JobsPage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-slate-400 italic">Unassigned</span>
+                                                <span className="text-xs text-muted-foreground italic">Unassigned</span>
                                             )}
                                         </TableCell>
                                         <TableCell>
@@ -2183,7 +2183,7 @@ export default function JobsPage() {
 
 
                                                 {job.applied_rules && job.applied_rules.length > 0 && (
-                                                    <span className="text-[10px] text-slate-400 mt-1 truncate max-w-[80px]" title={job.applied_rules.join(', ')}>
+                                                    <span className="text-[10px] text-muted-foreground mt-1 truncate max-w-[80px]" title={job.applied_rules.join(', ')}>
                                                         {job.applied_rules.length} rules
                                                     </span>
                                                 )}
@@ -2194,10 +2194,10 @@ export default function JobsPage() {
                                             <StatusBadge status={job.job_status} type="job" />
                                         </TableCell>
                                         <TableCell>
-                                            <div className="text-sm text-slate-700">{formatJobDate(job.created_at)}</div>
+                                            <div className="text-sm text-foreground">{formatJobDate(job.created_at)}</div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="text-sm text-slate-500">{formatJobTime(job.created_at)}</div>
+                                            <div className="text-sm text-muted-foreground">{formatJobTime(job.created_at)}</div>
                                         </TableCell>
                                         <TableCell className="text-right pr-4">
                                             <div className="flex items-center justify-end gap-2">
@@ -2216,7 +2216,7 @@ export default function JobsPage() {
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        className="h-8 rounded-lg border-slate-200 bg-white hover:bg-slate-50"
+                                                        className="h-8 rounded-lg border-border bg-card hover:bg-muted"
                                                         onClick={() => handleAssignTechnician(job)}
                                                     >
                                                         {job.job_status === 'scheduled' && Boolean(job.assigned_technician_name?.trim())
@@ -2234,13 +2234,13 @@ export default function JobsPage() {
                 )}
 
                 {/* Pagination & Footer */}
-                <div className="border-t border-slate-200/80 bg-slate-50/80 px-4 py-3 md:px-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                <div className="border-t border-border/70 bg-muted/40 px-4 py-3 md:px-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span>
-                            Showing <span className="font-medium text-slate-900">{footerStart}</span> to <span className="font-medium text-slate-900">{footerEnd}</span> of <span className="font-medium text-slate-900">{pagination.total}</span> entries
+                            Showing <span className="font-medium text-foreground">{footerStart}</span> to <span className="font-medium text-foreground">{footerEnd}</span> of <span className="font-medium text-foreground">{pagination.total}</span> entries
                         </span>
                         {selectedRows.size > 0 ? (
-                            <Badge variant="outline" className="h-7 rounded-full border-slate-200 bg-white text-slate-700">
+                            <Badge variant="outline" className="h-7 rounded-full border-border bg-card text-foreground">
                                 <Users className="mr-1.5 h-3 w-3" />
                                 {selectedRows.size} selected
                             </Badge>
@@ -2249,12 +2249,12 @@ export default function JobsPage() {
 
                     <div className="flex flex-wrap items-center gap-4 md:gap-6">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-slate-500">Rows per page</span>
+                            <span className="text-sm text-muted-foreground">Rows per page</span>
                             <Select
                                 value={pagination.pageSize.toString()}
                                 onValueChange={(val) => setPagination(prev => ({ ...prev, pageSize: Number(val), page: 1 }))}
                             >
-                                <SelectTrigger className="w-[74px] h-8 rounded-lg bg-white border-slate-200">
+                                <SelectTrigger className="w-[74px] h-8 rounded-lg bg-card border-border">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2269,19 +2269,19 @@ export default function JobsPage() {
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-slate-200 bg-white"
+                                className="h-8 w-8 rounded-lg border-border bg-card"
                                 disabled={pagination.page === 1}
                                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                             >
                                 <ChevronLeft className="w-4 h-4" />
                             </Button>
-                            <div className="text-sm font-medium px-2 text-slate-700">
+                            <div className="text-sm font-medium px-2 text-foreground">
                                 Page {pagination.page} of {pagination.totalPages}
                             </div>
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-slate-200 bg-white"
+                                className="h-8 w-8 rounded-lg border-border bg-card"
                                 disabled={pagination.page >= pagination.totalPages}
                                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                             >

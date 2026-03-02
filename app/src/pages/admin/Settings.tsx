@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-    Database,
     AlertCircle,
     Pencil,
     RefreshCw,
@@ -21,11 +20,11 @@ import type { PriorityRule, UrgencyLevel } from '@/types';
 
 
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -75,7 +74,6 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 // --- Mock Data & Types ---
 
-type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting' | 'degraded' | 'online';
 type ThemeMode = 'light' | 'dark' | 'system';
 
 type DealershipOption = {
@@ -83,45 +81,7 @@ type DealershipOption = {
     name: string;
 };
 
-interface IntegrationState {
-    isConnected: boolean;
-    isConnecting: boolean;
-    lastSync?: string;
-    accountName?: string;
-}
-
-
 // --- Components ---
-
-function StatusBadge({ status }: { status: ConnectionStatus }) {
-    const styles = {
-        healthy: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30",
-        online: "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30",
-        connected: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30",
-        degraded: "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-100 dark:hover:bg-yellow-900/30",
-        reconnecting: "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-100 dark:hover:bg-yellow-900/30",
-        down: "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30",
-        maintenance: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800",
-        disconnected: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800",
-    };
-
-    const labels = {
-        healthy: "Healthy",
-        online: "Online",
-        connected: "Connected",
-        degraded: "Degraded",
-        reconnecting: "Reconnecting",
-        down: "Down",
-        maintenance: "Maintenance",
-        disconnected: "Disconnected",
-    };
-
-    return (
-        <Badge variant="outline" className={cn("font-medium", styles[status])}>
-            {labels[status]}
-        </Badge>
-    );
-}
 
 const normalizeInvoiceCompanyProfile = (profile: InvoiceCompanyProfile): InvoiceCompanyProfile => ({
     logo_url: profile.logo_url?.trim() || undefined,
@@ -188,16 +148,6 @@ export default function SettingsPage() {
     const MOCK_DEALERSHIPS = dealershipOptions.length > 0 ? dealershipOptions : FALLBACK_DEALERSHIPS;
 
     const { theme, setTheme } = useTheme();
-
-
-
-    const [qbState, setQbState] = useState<IntegrationState>({
-        isConnected: true,
-        isConnecting: false,
-        lastSync: '2 hours ago',
-        accountName: 'SM2 Dispatch Inc.'
-    });
-
     useEffect(() => {
         const handleAdminRefresh = () => {
             setRefreshSeed((current) => current + 1);
@@ -444,33 +394,6 @@ export default function SettingsPage() {
         setTheme(newTheme);
         // In real app: update context, persist to backend, update document class
         // useTheme hook handles document class update
-    };
-
-    const handleConnectQB = () => {
-        setQbState(prev => ({ ...prev, isConnecting: true }));
-        // Simulate OAuth flow
-        setTimeout(() => {
-            setQbState({
-                isConnected: true,
-                isConnecting: false,
-                lastSync: 'Just now',
-                accountName: 'SM2 Dispatch Inc.'
-            });
-            alert("Successfully connected to QuickBooks Online!");
-        }, 1500);
-    };
-
-    const handleDisconnectQB = () => {
-        if (confirm("Are you sure you want to disconnect QuickBooks? This will stop invoice syncing.")) {
-            setQbState({
-                isConnected: false,
-                isConnecting: false
-            });
-        }
-    };
-
-    const handleTestIntegration = (integration: string) => {
-        alert(`Testing ${integration} connection...`);
     };
 
     const handleDeleteRule = async (id: string) => {
@@ -1095,61 +1018,6 @@ export default function SettingsPage() {
                     </CardContent>
                 </Card>
 
-                {/* Section D - Integrations */}
-                <div className="grid gap-6">
-                    {/* QuickBooks */}
-                    <Card className="border-border shadow-sm relative overflow-hidden bg-card">
-                        <div className="absolute top-0 right-0 p-3">
-                            <StatusBadge status={qbState.isConnected ? 'connected' : 'disconnected'} />
-                        </div>
-                        <CardHeader>
-                            <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                                <Database className="w-4 h-4 text-green-600" /> QuickBooks Online
-                            </CardTitle>
-                            <CardDescription className="text-muted-foreground">Accounting synchronization</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {qbState.isConnected ? (
-                                <>
-                                    <div className="p-3 bg-muted/50 rounded-md border border-border">
-                                        <span className="text-xs text-muted-foreground uppercase font-bold">Connected Account</span>
-                                        <p className="text-sm font-medium text-foreground mt-1">{qbState.accountName}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Last sync: {qbState.lastSync}</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" className="w-full" onClick={() => handleTestIntegration('QuickBooks')}>
-                                            Test Connection
-                                        </Button>
-                                        <Button variant="ghost" size="sm" onClick={handleDisconnectQB} className="w-full text-red-600 hover:text-red-700 hover:bg-red-50">
-                                            Disconnect
-                                        </Button>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-muted/30 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center text-center">
-                                        <Database className="w-8 h-8 text-muted-foreground mb-2 opacity-50" />
-                                        <p className="text-sm text-muted-foreground">Connect your QuickBooks account to enable automatic invoicing.</p>
-                                    </div>
-                                    <Button
-                                        className="w-full bg-[#2CA01C] hover:bg-[#2CA01C]/90 text-white"
-                                        onClick={handleConnectQB}
-                                        disabled={qbState.isConnecting}
-                                    >
-                                        {qbState.isConnecting ? (
-                                            <>
-                                                <RefreshCw className="w-3 h-3 mr-2 animate-spin" /> Connecting...
-                                            </>
-                                        ) : (
-                                            'Connect QuickBooks'
-                                        )}
-                                    </Button>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                </div>
             </div>
         </div>
     );

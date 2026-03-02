@@ -254,6 +254,26 @@ function StatusBadge({ status }: { status: 'active' | 'inactive' }) {
     return <Badge variant="outline" className="text-gray-500 border-gray-200">Inactive</Badge>;
 }
 
+function ProfileStat({
+    label,
+    value,
+    hint,
+    valueClassName = 'text-gray-900',
+}: {
+    label: string;
+    value: string;
+    hint?: string;
+    valueClassName?: string;
+}) {
+    return (
+        <div className="rounded-lg border border-gray-200 bg-gray-50/70 p-3">
+            <p className="text-[11px] uppercase tracking-wider text-gray-500">{label}</p>
+            <p className={cn('mt-1 text-lg font-semibold leading-none', valueClassName)}>{value}</p>
+            {hint ? <p className="mt-1 text-[11px] text-gray-500">{hint}</p> : null}
+        </div>
+    );
+}
+
 const TECHNICIAN_EXPORT_COLUMNS = [
     'TechCode',
     'Name',
@@ -416,6 +436,21 @@ export default function TechniciansPage() {
             time_off: techDraft.time_off,
         });
     }, [selectedTech, techDraft]);
+
+    const profileSummary = useMemo(() => {
+        if (!techDraft) {
+            return null;
+        }
+
+        const openDaysCount = techDraft.working_hours.filter((row) => !row.is_closed).length;
+        return {
+            activeJobs: techDraft.current_jobs_count,
+            zonesCount: techDraft.zones.length,
+            skillsCount: techDraft.skills.length,
+            openDaysCount,
+            timeOffCount: techDraft.time_off.length,
+        };
+    }, [techDraft]);
 
     const updateDraft = (updater: (draft: Technician) => Technician) => {
         setTechDraft((prev) => (prev ? updater(prev) : prev));
@@ -1140,56 +1175,87 @@ export default function TechniciansPage() {
 
             {/* 5. Technician Profile Drawer */}
             <Sheet open={drawerOpen} onOpenChange={handleDrawerOpenChange}>
-                <SheetContent className="sm:max-w-xl w-full p-0 flex flex-col gap-0 bg-gray-50/50">
+                <SheetContent className="w-full sm:max-w-2xl lg:max-w-3xl p-0 flex flex-col gap-0 bg-gray-50/50">
                     {selectedTech && techDraft && (
                         <>
-                            <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-start justify-between">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h2 className="text-xl font-bold text-gray-900">{selectedTech.name}</h2>
-                                        <StatusBadge status={selectedTech.status} />
-                                    </div>
-                                    <div className="flex items-center gap-3 text-sm text-gray-500">
-                                        <span className="font-mono">{selectedTech.tech_code}</span>
-                                        <span>•</span>
-                                        <span>{formatPhoneForDisplay(selectedTech.phone)}</span>
-                                    </div>
-                                    {selectedTech.has_pending_email_change_request ? (
-                                        <div className="mt-2">
-                                            <Badge
-                                                variant="outline"
-                                                className="text-[10px] h-5 px-2 bg-amber-50 text-amber-700 border-amber-200"
-                                            >
-                                                Pending Email Change: {selectedTech.pending_email_change_requested_email || 'Review required'}
-                                            </Badge>
+                            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                                <div className="px-6 pt-5 pb-4 pr-14">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <h2 className="text-xl font-bold text-gray-900">{selectedTech.name}</h2>
+                                                <StatusBadge status={selectedTech.status} />
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                <span className="font-mono">{selectedTech.tech_code}</span>
+                                                <span>|</span>
+                                                <span>{formatPhoneForDisplay(selectedTech.phone)}</span>
+                                            </div>
+                                            {selectedTech.has_pending_email_change_request ? (
+                                                <div className="pt-0.5">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-[10px] h-5 px-2 bg-amber-50 text-amber-700 border-amber-200"
+                                                    >
+                                                        Pending Email Change: {selectedTech.pending_email_change_requested_email || 'Review required'}
+                                                    </Badge>
+                                                </div>
+                                            ) : null}
                                         </div>
-                                    ) : null}
-                                </div>
 
-                                <div className="flex gap-2 flex-wrap justify-end">
-                                    <Button variant="outline" size="sm" onClick={() => openEditTechModal(selectedTech)} disabled={hasDrawerChanges}>
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={!hasDrawerChanges}
-                                        onClick={handleCancelDrawerChanges}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        disabled={!hasDrawerChanges}
-                                        className="bg-[#2F8E92] hover:bg-[#267276]"
-                                        onClick={handleSaveDrawerChanges}
-                                    >
-                                        Save Changes
-                                    </Button>
-                                    {/* Activation Toggle Logic */}
-                                    <Button variant={selectedTech.status === 'active' ? "outline" : "default"} size="sm" onClick={handleToggleStatus}>
-                                        {selectedTech.status === 'active' ? 'Deactivate' : 'Activate'}
-                                    </Button>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openEditTechModal(selectedTech)}
+                                                disabled={hasDrawerChanges}
+                                            >
+                                                Edit
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={!hasDrawerChanges}
+                                                onClick={handleCancelDrawerChanges}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                disabled={!hasDrawerChanges}
+                                                className="bg-[#2F8E92] hover:bg-[#267276]"
+                                                onClick={handleSaveDrawerChanges}
+                                            >
+                                                Save Changes
+                                            </Button>
+                                            <Button
+                                                variant={selectedTech.status === 'active' ? 'outline' : 'default'}
+                                                size="sm"
+                                                className={cn(
+                                                    selectedTech.status === 'active'
+                                                        ? 'border-red-200 text-red-700 hover:bg-red-50 hover:text-red-700'
+                                                        : 'bg-[#2F8E92] hover:bg-[#267276]'
+                                                )}
+                                                onClick={handleToggleStatus}
+                                            >
+                                                {selectedTech.status === 'active' ? 'Deactivate' : 'Activate'}
+                                            </Button>
+                                        </div>
+
+                                        {profileSummary ? (
+                                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                                                <ProfileStat
+                                                    label="Active Jobs"
+                                                    value={String(profileSummary.activeJobs)}
+                                                    valueClassName={profileSummary.activeJobs > 0 ? 'text-amber-700' : 'text-gray-700'}
+                                                />
+                                                <ProfileStat label="Zones" value={String(profileSummary.zonesCount)} />
+                                                <ProfileStat label="Skills" value={String(profileSummary.skillsCount)} />
+                                                <ProfileStat label="Open Days" value={String(profileSummary.openDaysCount)} hint="Per week" />
+                                                <ProfileStat label="Time Off" value={String(profileSummary.timeOffCount)} hint="Upcoming entries" />
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </div>
 
@@ -1219,7 +1285,7 @@ export default function TechniciansPage() {
                                                         </Badge>
                                                     ))}
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-2">
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
                                                     <Input
                                                         value={newZoneInput}
                                                         onChange={(e) => setNewZoneInput(e.target.value)}
@@ -1232,7 +1298,7 @@ export default function TechniciansPage() {
                                                         placeholder="Add zone (e.g. Quebec)"
                                                         className="h-8 text-xs"
                                                     />
-                                                    <Button variant="outline" size="sm" className="h-8 text-xs border-dashed text-gray-600" onClick={handleAddZone}>
+                                                    <Button variant="outline" size="sm" className="h-8 text-xs border-dashed text-gray-600 sm:w-auto" onClick={handleAddZone}>
                                                         + Add Zone
                                                     </Button>
                                                 </div>
@@ -1255,7 +1321,7 @@ export default function TechniciansPage() {
                                                         </Badge>
                                                     ))}
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-2">
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
                                                     <Input
                                                         value={newSkillInput}
                                                         onChange={(e) => setNewSkillInput(e.target.value)}
@@ -1268,7 +1334,7 @@ export default function TechniciansPage() {
                                                         placeholder="Add skill (e.g. Towing)"
                                                         className="h-8 text-xs"
                                                     />
-                                                    <Button variant="outline" size="sm" className="h-8 text-xs border-dashed text-gray-600" onClick={handleAddSkill}>
+                                                    <Button variant="outline" size="sm" className="h-8 text-xs border-dashed text-gray-600 sm:w-auto" onClick={handleAddSkill}>
                                                         + Add Skill
                                                     </Button>
                                                 </div>
@@ -1466,5 +1532,6 @@ export default function TechniciansPage() {
         </div>
     );
 }
+
 
 

@@ -9,7 +9,6 @@ import {
     Sun,
     Smartphone,
     Monitor,
-    Zap,
     Mail,
     FileText,
     ListFilter,
@@ -83,22 +82,6 @@ type ThemeMode = 'light' | 'dark' | 'system';
 type DealershipOption = {
     id: string;
     name: string;
-};
-
-interface OperationalSettings {
-    callback_timeout_min: number;
-    invoice_timeout_min: number;
-    parsing_confidence: number;
-    unassigned_alert_min: number;
-    max_retries: number;
-}
-
-const MOCK_SETTINGS: OperationalSettings = {
-    callback_timeout_min: 5,
-    invoice_timeout_min: 2,
-    parsing_confidence: 0.85,
-    unassigned_alert_min: 15,
-    max_retries: 3
 };
 
 interface IntegrationState {
@@ -185,8 +168,6 @@ const getDefaultNewRule = (): Partial<PriorityRule> => ({
 export default function SettingsPage() {
     const { hasBackendAdminToken } = useAuth();
     const [loading, setLoading] = useState(false);
-    const [savedSettings, setSavedSettings] = useState<OperationalSettings>(MOCK_SETTINGS);
-    const [settings, setSettings] = useState<OperationalSettings>(MOCK_SETTINGS);
     const [savedInvoiceCompany, setSavedInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [invoiceCompany, setInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [priorityRules, setPriorityRules] = useState<PriorityRule[]>([]);
@@ -380,7 +361,6 @@ export default function SettingsPage() {
                 });
             }
 
-            setSavedSettings({ ...settings });
             setSavedInvoiceCompany(nextCompanyProfile);
             setInvoiceCompany(nextCompanyProfile);
             saveInvoiceCompanyProfile(nextCompanyProfile);
@@ -395,19 +375,11 @@ export default function SettingsPage() {
         }
     };
 
-    const handleSaveSettings = async () => {
-        const didSave = await saveInvoiceBrandingSettings("Settings saved successfully.");
-        if (didSave) {
-            setSavedSettings({ ...settings });
-        }
-    };
-
     const handleSaveInvoiceBranding = async () => {
         await saveInvoiceBrandingSettings("Invoice branding saved successfully.");
     };
 
-    const handleCancelSettings = () => {
-        setSettings({ ...savedSettings });
+    const handleCancelInvoiceBranding = () => {
         setInvoiceCompany({ ...savedInvoiceCompany });
     };
 
@@ -940,7 +912,7 @@ export default function SettingsPage() {
                     </CardContent>
                     <CardFooter className="bg-muted/30 border-t border-border py-3">
                         <div className="ml-auto flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={handleCancelSettings} disabled={loading}>
+                            <Button size="sm" variant="outline" onClick={handleCancelInvoiceBranding} disabled={loading}>
                                 Cancel
                             </Button>
                             <Button size="sm" onClick={handleSaveInvoiceBranding} disabled={loading}>
@@ -1009,73 +981,6 @@ export default function SettingsPage() {
                             </button>
                         </div>
                     </CardContent>
-                </Card>
-
-                {/* Section C - Operational Thresholds */}
-                <Card className="border-border shadow-sm bg-card">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                            <Zap className="w-4 h-4 text-amber-600" /> Operational Thresholds
-                        </CardTitle>
-                        <CardDescription className="text-muted-foreground">Configure system timeouts and alert triggers</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid sm:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="callback_timeout" className="text-foreground">Callback Timeout (min)</Label>
-                                <Input
-                                    id="callback_timeout"
-                                    type="number"
-                                    value={settings.callback_timeout_min}
-                                    onChange={(e) => setSettings({ ...settings, callback_timeout_min: parseInt(e.target.value) })}
-                                />
-                                <p className="text-[10px] text-muted-foreground">Max wait time for webhook return</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="invoice_timeout" className="text-foreground">Invoice Timeout (min)</Label>
-                                <Input
-                                    id="invoice_timeout"
-                                    type="number"
-                                    value={settings.invoice_timeout_min}
-                                    onChange={(e) => setSettings({ ...settings, invoice_timeout_min: parseInt(e.target.value) })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="parsing_confidence" className="text-foreground">Parsing Confidence Threshold</Label>
-                                <Input
-                                    id="parsing_confidence"
-                                    type="number" step="0.01"
-                                    value={settings.parsing_confidence}
-                                    onChange={(e) => setSettings({ ...settings, parsing_confidence: parseFloat(e.target.value) })}
-                                />
-                                <p className="text-[10px] text-muted-foreground">Value between 0.0 and 1.0</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="max_retries" className="text-foreground">Max Retry Attempts</Label>
-                                <Select defaultValue={settings.max_retries.toString()} onValueChange={(v) => setSettings({ ...settings, max_retries: parseInt(v) })}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select retries" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="1">1 Attempt</SelectItem>
-                                        <SelectItem value="3">3 Attempts</SelectItem>
-                                        <SelectItem value="5">5 Attempts</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                    </CardContent>
-                    <CardFooter className="bg-muted/30 border-t border-border py-3">
-                        <div className="ml-auto flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={handleCancelSettings} disabled={loading}>
-                                Cancel
-                            </Button>
-                            <Button size="sm" onClick={handleSaveSettings} disabled={loading}>
-                                {loading && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
-                                {loading ? 'Saving...' : 'Save Changes'}
-                            </Button>
-                        </div>
-                    </CardFooter>
                 </Card>
 
                 {/* Section D - Integrations */}

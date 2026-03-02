@@ -93,6 +93,7 @@ import {
     confirmAdminJob,
     createAdminJob,
     deleteAdminJob,
+    fetchAdminDealerships,
     fetchAdminPriorityRules,
     fetchAdminServices,
     fetchAdminJobs,
@@ -100,11 +101,11 @@ import {
     getStoredAdminToken,
     updateAdminJobAssignment,
     type BackendAdminJob,
+    type BackendDealership,
     type BackendPriorityRule,
     type BackendServiceCatalogItem,
     type BackendTechnicianListItem,
 } from '@/lib/backend-api';
-import { MOCK_DEALERSHIPS } from './Dealerships';
 
 // --- Types ---
 
@@ -171,9 +172,15 @@ type QuickFilterKey =
     | 'awaiting_tech_acceptance'
     | 'attention_required';
 
+type DealershipOption = {
+    id: string;
+    code: string;
+    name: string;
+    city: string;
+};
+
 // --- Reference Data ---
 
-const DEALERSHIPS = MOCK_DEALERSHIPS.map(d => d.name);
 const ADMIN_JOBS_STORAGE_KEY = 'sm_dispatch_admin_jobs';
 const JOB_EXPORT_COLUMNS = [
     'JobCode',
@@ -233,6 +240,13 @@ const mapBackendPriorityRule = (row: BackendPriorityRule): PriorityRule => ({
     isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+});
+
+const mapBackendDealershipOption = (row: BackendDealership): DealershipOption => ({
+    id: row.id,
+    code: row.code,
+    name: (row.name || '').trim(),
+    city: (row.city || '').trim(),
 });
 
 const formatJobDate = (value: string) => {
@@ -539,13 +553,18 @@ export default function JobsPage() {
         [backendTechnicianRows, technicianAccounts, technicianDetailsById],
     );
     const [serviceCatalog, setServiceCatalog] = useState<Array<{ id: string; name: string }>>([]);
+    const [dealershipOptions, setDealershipOptions] = useState<DealershipOption[]>([]);
     const [dispatchRankingRules, setDispatchRankingRules] = useState<PriorityRule[]>([]);
+    const dealershipNames = useMemo(
+        () => dealershipOptions.map((entry) => entry.name),
+        [dealershipOptions],
+    );
     const serviceNames = useMemo(
         () => serviceCatalog.map((entry) => entry.name),
         [serviceCatalog],
     );
     const initialNewJobForm: NewJobFormState = {
-        dealership_name: DEALERSHIPS[0] ?? '',
+        dealership_name: dealershipNames[0] ?? '',
         service_name: serviceNames[0] ?? '',
         vehicle_summary: '2024 Ford F-150',
         urgency: 'normal',
@@ -578,8 +597,8 @@ export default function JobsPage() {
 
     const assignJobZone = useMemo(() => {
         if (!jobToAssign) return '';
-        return MOCK_DEALERSHIPS.find((dealership) => dealership.name === jobToAssign.dealership_name)?.city ?? '';
-    }, [jobToAssign]);
+        return dealershipOptions.find((dealership) => dealership.name === jobToAssign.dealership_name)?.city ?? '';
+    }, [dealershipOptions, jobToAssign]);
 
     const eligibleTechnicianIds = useMemo(() => {
         if (!jobToAssign) return new Set<string>();
@@ -654,6 +673,39 @@ export default function JobsPage() {
     useEffect(() => {
         const token = getStoredAdminToken();
         if (!token) {
+            setDealershipOptions([]);
+            return;
+        }
+
+        let cancelled = false;
+        const loadDealershipOptions = async () => {
+            try {
+                const rows = await fetchAdminDealerships(token);
+                if (cancelled) {
+                    return;
+                }
+
+                setDealershipOptions(
+                    rows
+                        .map(mapBackendDealershipOption)
+                        .filter((row) => row.name.length > 0),
+                );
+            } catch {
+                if (!cancelled) {
+                    setDealershipOptions([]);
+                }
+            }
+        };
+
+        void loadDealershipOptions();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        const token = getStoredAdminToken();
+        if (!token) {
             setServiceCatalog([]);
             return;
         }
@@ -702,6 +754,14 @@ export default function JobsPage() {
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        if (dealershipNames.length === 0) return;
+        setNewJobForm((prev) => {
+            if (prev.dealership_name) return prev;
+            return { ...prev, dealership_name: dealershipNames[0] ?? '' };
+        });
+    }, [dealershipNames]);
 
     useEffect(() => {
         if (serviceNames.length === 0) return;
@@ -937,7 +997,7 @@ export default function JobsPage() {
             return;
         }
 
-        const dealership = MOCK_DEALERSHIPS.find((entry) => entry.name === dealershipName);
+        const dealership = dealershipOptions.find((entry) => entry.name === dealershipName);
         const service = serviceCatalog.find((entry) => entry.name === serviceName);
         const vehicleMake = vehicleSummary.split(' ')[1] || '';
 
@@ -1609,7 +1669,7 @@ export default function JobsPage() {
                                         <SelectValue placeholder="Select dealership" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {DEALERSHIPS.map((dealership) => (
+                                        {dealershipNames.map((dealership) => (
                                             <SelectItem key={dealership} value={dealership}>{dealership}</SelectItem>
                                         ))}
                                     </SelectContent>

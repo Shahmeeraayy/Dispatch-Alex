@@ -15,7 +15,7 @@ import {
     ListFilter,
     PlusCircle
 } from 'lucide-react';
-import { MOCK_DEALERSHIPS } from './Dealerships';
+import { MOCK_DEALERSHIPS as FALLBACK_DEALERSHIPS } from './Dealerships';
 import type { PriorityRule, UrgencyLevel } from '@/types';
 
 
@@ -63,23 +63,27 @@ import {
 import {
     createAdminPriorityRule,
     deleteAdminPriorityRule,
+    fetchAdminDealerships,
     fetchAdminPriorityRules,
     fetchAdminServices,
     fetchAdminInvoiceBrandingSettings,
     getStoredAdminToken,
     updateAdminPriorityRule,
     updateAdminInvoiceBrandingSettings,
+    type BackendDealership,
     type BackendPriorityRule,
     type BackendServiceCatalogItem,
 } from '@/lib/backend-api';
 import { useAuth } from '@/contexts/AuthContext';
-
-
-
 // --- Mock Data & Types ---
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting' | 'degraded' | 'online';
 type ThemeMode = 'light' | 'dark' | 'system';
+
+type DealershipOption = {
+    id: string;
+    name: string;
+};
 
 interface OperationalSettings {
     callback_timeout_min: number;
@@ -162,6 +166,11 @@ const mapBackendPriorityRule = (row: BackendPriorityRule): PriorityRule => ({
     updatedAt: row.updated_at,
 });
 
+const mapBackendDealershipOption = (row: BackendDealership): DealershipOption => ({
+    id: row.id,
+    name: row.name?.trim() || '',
+});
+
 const getDefaultNewRule = (): Partial<PriorityRule> => ({
     targetUrgency: 'HIGH',
     rankingScore: 10,
@@ -181,11 +190,13 @@ export default function SettingsPage() {
     const [savedInvoiceCompany, setSavedInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [invoiceCompany, setInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [priorityRules, setPriorityRules] = useState<PriorityRule[]>([]);
+    const [dealershipOptions, setDealershipOptions] = useState<DealershipOption[]>([]);
     const [serviceOptions, setServiceOptions] = useState<Array<{ id: string; name: string }>>([]);
     const [isAddingRule, setIsAddingRule] = useState(false);
     const [newRule, setNewRule] = useState<Partial<PriorityRule>>(getDefaultNewRule());
     const [isEditingRule, setIsEditingRule] = useState(false);
     const [editRule, setEditRule] = useState<Partial<PriorityRule> & { id?: string }>(getDefaultNewRule());
+    const MOCK_DEALERSHIPS = dealershipOptions.length > 0 ? dealershipOptions : FALLBACK_DEALERSHIPS;
 
     const { theme, setTheme } = useTheme();
 
@@ -245,6 +256,34 @@ export default function SettingsPage() {
 
         void loadInvoiceBrandingSettings();
 
+        return () => {
+            cancelled = true;
+        };
+    }, [hasBackendAdminToken]);
+
+    useEffect(() => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken) {
+            setDealershipOptions([]);
+            return;
+        }
+
+        let cancelled = false;
+        const loadDealerships = async () => {
+            try {
+                const rows = await fetchAdminDealerships(adminToken);
+                if (cancelled) return;
+                setDealershipOptions(
+                    rows
+                        .map(mapBackendDealershipOption)
+                        .filter((row) => row.name.length > 0),
+                );
+            } catch {
+                if (!cancelled) setDealershipOptions([]);
+            }
+        };
+
+        void loadDealerships();
         return () => {
             cancelled = true;
         };
@@ -467,7 +506,7 @@ export default function SettingsPage() {
         try {
             const created = await createAdminPriorityRule(adminToken, {
                 description: newRule.description || 'New Priority Rule',
-                dealership_id: newRule.dealershipId || (MOCK_DEALERSHIPS[0]?.id || ''),
+                dealership_id: newRule.dealershipId || (dealershipOptions[0]?.id || ''),
                 service_id: newRule.serviceId === 'any' ? null : (newRule.serviceId || null),
                 target_urgency: newRule.targetUrgency || 'HIGH',
                 ranking_score: (newRule.rankingScore !== undefined) ? newRule.rankingScore : 10,
@@ -505,7 +544,7 @@ export default function SettingsPage() {
         try {
             const updated = await updateAdminPriorityRule(adminToken, editRule.id, {
                 description: editRule.description || 'Updated Priority Rule',
-                dealership_id: editRule.dealershipId || (MOCK_DEALERSHIPS[0]?.id || ''),
+                dealership_id: editRule.dealershipId || (dealershipOptions[0]?.id || ''),
                 service_id: editRule.serviceId === 'any' ? null : (editRule.serviceId || null),
                 target_urgency: editRule.targetUrgency || 'HIGH',
                 ranking_score: (editRule.rankingScore !== undefined) ? editRule.rankingScore : 10,

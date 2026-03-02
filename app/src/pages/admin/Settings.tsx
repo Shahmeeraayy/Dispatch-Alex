@@ -161,10 +161,13 @@ const getDefaultNewRule = (): Partial<PriorityRule> => ({
     description: ''
 });
 
+const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
+
 
 
 export default function SettingsPage() {
     const { hasBackendAdminToken, user } = useAuth();
+    const [refreshSeed, setRefreshSeed] = useState(0);
     const [loading, setLoading] = useState(false);
     const [savedInvoiceCompany, setSavedInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [invoiceCompany, setInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
@@ -194,6 +197,17 @@ export default function SettingsPage() {
         lastSync: '2 hours ago',
         accountName: 'SM2 Dispatch Inc.'
     });
+
+    useEffect(() => {
+        const handleAdminRefresh = () => {
+            setRefreshSeed((current) => current + 1);
+        };
+
+        window.addEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
+        return () => {
+            window.removeEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
+        };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -239,7 +253,7 @@ export default function SettingsPage() {
         return () => {
             cancelled = true;
         };
-    }, [hasBackendAdminToken]);
+    }, [hasBackendAdminToken, refreshSeed]);
 
     useEffect(() => {
         const adminToken = getStoredAdminToken();
@@ -267,7 +281,7 @@ export default function SettingsPage() {
         return () => {
             cancelled = true;
         };
-    }, [hasBackendAdminToken]);
+    }, [hasBackendAdminToken, refreshSeed]);
 
     useEffect(() => {
         const adminToken = getStoredAdminToken();
@@ -297,7 +311,7 @@ export default function SettingsPage() {
         return () => {
             cancelled = true;
         };
-    }, [hasBackendAdminToken]);
+    }, [hasBackendAdminToken, refreshSeed]);
 
     useEffect(() => {
         const adminToken = getStoredAdminToken();
@@ -321,7 +335,7 @@ export default function SettingsPage() {
         return () => {
             cancelled = true;
         };
-    }, [hasBackendAdminToken]);
+    }, [hasBackendAdminToken, refreshSeed]);
 
     const saveInvoiceBrandingSettings = async (successMessage: string): Promise<boolean> => {
         const normalizedCompanyProfile: InvoiceCompanyProfile = normalizeInvoiceCompanyProfile(invoiceCompany);
@@ -572,14 +586,6 @@ export default function SettingsPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
                     <p className="text-sm text-muted-foreground font-medium">System configuration, integrations, and reliability controls</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground font-medium hidden sm:block">
-                        Last updated: {new Date().toLocaleTimeString()}
-                    </span>
-                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                        <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-                    </Button>
                 </div>
             </div>
 

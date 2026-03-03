@@ -64,3 +64,71 @@
 - `001_technician_module.sql` and `002_admin_technician_profile.sql` are core schema migrations.
 - `003_technician.sql` is a development seed migration (legacy frontend technicians, zones, skills).
 - `scripts/migrate.py` tracks applied versions in `schema_migrations` and skips already-applied files.
+
+## QuickBooks Setup
+
+### What Is Implemented
+- OAuth start route: `GET /integrations/quickbooks/connect`
+- OAuth callback route: `GET /integrations/quickbooks/callback`
+- Webhook routes:
+  - `GET /integrations/quickbooks/webhook`
+  - `POST /integrations/quickbooks/webhook`
+- Connection persistence in database table: `quickbooks_connections`
+- Connection status route: `GET /integrations/quickbooks/status`
+
+### Required Environment Variables
+- `QB_CLIENT_ID`
+- `QB_CLIENT_SECRET`
+- `QB_REDIRECT_URI`
+- `QB_ENV`
+- `QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN`
+
+Local example:
+```env
+QB_CLIENT_ID=
+QB_CLIENT_SECRET=
+QB_REDIRECT_URI=http://localhost:8000/integrations/quickbooks/callback
+QB_ENV=sandbox
+QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN=
+```
+
+Render example:
+```env
+QB_REDIRECT_URI=https://dispatch-alex.onrender.com/integrations/quickbooks/callback
+QB_ENV=sandbox
+```
+
+### Intuit Configuration
+- Redirect URI must exactly match `QB_REDIRECT_URI`
+- Webhook endpoint must be:
+  `https://dispatch-alex.onrender.com/integrations/quickbooks/webhook`
+- If `QB_ENV=sandbox`, the Intuit account must have at least one sandbox company
+
+### How To Connect
+1. Open `/integrations/quickbooks/connect`
+2. Sign in to Intuit
+3. Approve the app
+4. Intuit redirects to `/integrations/quickbooks/callback`
+5. Backend exchanges the code for tokens and stores the active connection in `quickbooks_connections`
+
+### How To Verify
+- Webhook config:
+  `GET /integrations/quickbooks/webhook`
+- Connection status:
+  `GET /integrations/quickbooks/status`
+
+Successful status response should show:
+- `connected: true`
+- `realm_id`
+- `is_active: true`
+- `has_access_token: true`
+- `has_refresh_token: true`
+
+### Current Production State
+- Render service URL: `https://dispatch-alex.onrender.com`
+- QuickBooks connection is working in `sandbox`
+- Webhook verification is configured
+- Tokens are stored in database, not in a local file
+
+### Remaining Improvement
+- Automatic refresh-token rotation is not implemented yet

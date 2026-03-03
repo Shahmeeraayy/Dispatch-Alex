@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import os
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -15,6 +16,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_FILE.replace(os.sep, '/')}"
 os.environ["QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN"] = "qb-webhook-test-token"
 
 from app.api.deps import engine
+from app.api.endpoints import integrations_quickbooks_webhooks
 from app.main import app
 from app.models.base import Base
 
@@ -39,6 +41,19 @@ class QuickBooksWebhookApiTests(unittest.TestCase):
         engine.dispose()
         if os.path.exists(_TEST_DB_FILE):
             os.remove(_TEST_DB_FILE)
+
+    def setUp(self):
+        self.patches = [
+            patch.object(integrations_quickbooks_webhooks, "QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN", "qb-webhook-test-token"),
+            patch.object(integrations_quickbooks_webhooks, "QUICKBOOKS_WEBHOOK_DEVELOPMENT_VERIFIER_TOKEN", ""),
+            patch.object(integrations_quickbooks_webhooks, "QUICKBOOKS_WEBHOOK_PRODUCTION_VERIFIER_TOKEN", ""),
+        ]
+        for item in self.patches:
+            item.start()
+
+    def tearDown(self):
+        for item in reversed(self.patches):
+            item.stop()
 
     def test_status_endpoint_reports_configured(self):
         res = self.client.get("/integrations/quickbooks/webhook")

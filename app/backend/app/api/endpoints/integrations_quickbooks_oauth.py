@@ -3,10 +3,13 @@ import secrets
 from urllib.parse import urlencode
 
 import requests
-from fastapi import APIRouter, Cookie, HTTPException, Query
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
 
+from ...api.deps import get_db
 from ...core.config import QB_CLIENT_ID, QB_CLIENT_SECRET, QB_REDIRECT_URI
+from ...services.quickbooks_connection_service import QuickBooksConnectionService
 
 router = APIRouter(prefix="/integrations/quickbooks", tags=["integrations-quickbooks"])
 
@@ -46,12 +49,18 @@ def qb_connect(scope: str = Query(DEFAULT_SCOPE)) -> RedirectResponse:
     return response
 
 
+@router.get("/status")
+def qb_status(db: Session = Depends(get_db)) -> dict[str, str | bool | None]:
+    return QuickBooksConnectionService(db).get_status()
+
+
 @router.get("/callback")
 def qb_callback(
     code: str = Query(...),
     realmId: str = Query(...),
     state: str = Query(...),
     qb_oauth_state: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
 ):
     if not QB_CLIENT_ID or not QB_CLIENT_SECRET or not QB_REDIRECT_URI:
         raise HTTPException(
@@ -84,5 +93,17 @@ def qb_callback(
         raise HTTPException(status_code=response.status_code, detail=payload)
 
     payload["realmId"] = realmId
-    payload["state"] = state
-    return payload
+    stored = QuickBooksConnectionService(db).upsert_connection(payload)
+
+    return {
+        "status": "connected",
+        "provider": "quickbooks",
+        "environment": stored.environment,
+        "realmId": stored.realm_id,
+        "token_type": stored.token_type,
+        "created_at": stored.created_at.isoformat() if stored.created_at else None,
+        "updated_at": stored.updated_at.isoformat() if stored.updated_at else None,
+        "access_token_expires_at": stored.expires_at.isoformat() if stored.expires_at else None,
+        "refresh_token_expires_at": stored.refresh_expires_at.isoformat() if stored.refresh_expires_at else None,
+        "is_active": stored.is_active,
+    }

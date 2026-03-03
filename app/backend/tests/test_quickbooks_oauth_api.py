@@ -1,6 +1,7 @@
 import os
 import unittest
 from urllib.parse import parse_qs, urlparse
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -15,6 +16,7 @@ os.environ["QB_CLIENT_SECRET"] = "qb-client-secret"
 os.environ["QB_REDIRECT_URI"] = "http://localhost:8000/integrations/quickbooks/callback"
 
 from app.api.deps import engine
+from app.api.endpoints import integrations_quickbooks_oauth
 from app.main import app
 from app.models.base import Base
 
@@ -30,6 +32,19 @@ class QuickBooksOauthApiTests(unittest.TestCase):
         engine.dispose()
         if os.path.exists(_TEST_DB_FILE):
             os.remove(_TEST_DB_FILE)
+
+    def setUp(self):
+        self.patches = [
+            patch.object(integrations_quickbooks_oauth, "QB_CLIENT_ID", "qb-client-id"),
+            patch.object(integrations_quickbooks_oauth, "QB_CLIENT_SECRET", "qb-client-secret"),
+            patch.object(integrations_quickbooks_oauth, "QB_REDIRECT_URI", "http://localhost:8000/integrations/quickbooks/callback"),
+        ]
+        for item in self.patches:
+            item.start()
+
+    def tearDown(self):
+        for item in reversed(self.patches):
+            item.stop()
 
     def test_connect_redirects_to_intuit_authorize_url(self):
         response = self.client.get("/integrations/quickbooks/connect", follow_redirects=False)

@@ -58,6 +58,10 @@ def get_env_csv(name: str, default: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def get_backend_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
 def normalize_database_url(value: str) -> str:
     normalized = value.strip()
     # Accept hosted Postgres URLs in common forms and route them to SQLAlchemy's psycopg driver.

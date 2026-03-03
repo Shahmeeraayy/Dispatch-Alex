@@ -14,6 +14,8 @@ from .api.endpoints import (
     admin_technicians,
     auth,
     integrations_make_jobs,
+    integrations_quickbooks_oauth,
+    integrations_quickbooks_webhooks,
     invoices,
     signup_requests,
     technician_profile,
@@ -55,6 +57,8 @@ app.include_router(technician_time_off.router)
 app.include_router(auth.router)
 app.include_router(invoices.router)
 app.include_router(integrations_make_jobs.router)
+app.include_router(integrations_quickbooks_oauth.router)
+app.include_router(integrations_quickbooks_webhooks.router)
 app.include_router(signup_requests.public_router)
 app.include_router(signup_requests.admin_router)
 

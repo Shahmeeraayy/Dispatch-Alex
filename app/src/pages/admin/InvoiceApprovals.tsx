@@ -82,13 +82,13 @@ const toNumber = (value: string | number | null | undefined): number => {
 function StatusBadge({ status }: { status: string }) {
     if (status === 'creating') {
         return (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 animate-pulse">
+            <Badge variant="outline" className="animate-pulse border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
                 Generating...
             </Badge>
         );
     }
     return (
-        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+        <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300">
             Needs Approval
         </Badge>
     );
@@ -238,19 +238,19 @@ export default function InvoiceApprovalsPage() {
         <div className="flex flex-col h-full space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Invoice Approvals</h1>
-                    <p className="text-sm text-gray-500 font-medium">Review pricing and approve invoice creation</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Invoice Approvals</h1>
+                    <p className="text-sm font-medium text-muted-foreground">Review pricing and approve invoice creation</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-3">
-                    <div className="hidden sm:flex items-center text-xs text-gray-400 font-medium mr-2">
+                    <div className="mr-2 hidden items-center text-xs font-medium text-muted-foreground sm:flex">
                         Last updated: {new Date().toLocaleTimeString()}
                     </div>
                     <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => void fetchInvoicesData()}>
-                        <RefreshCw className={cn('w-4 h-4 text-gray-500', loading && 'animate-spin')} />
+                        <RefreshCw className={cn('h-4 w-4 text-muted-foreground', loading && 'animate-spin')} />
                         Refresh
                     </Button>
                     <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => setExportModalOpen(true)}>
-                        <Download className="w-4 h-4 text-gray-500" />
+                        <Download className="h-4 w-4 text-muted-foreground" />
                         Export CSV
                     </Button>
                 </div>
@@ -265,20 +265,20 @@ export default function InvoiceApprovalsPage() {
                 onConfirm={handleExport}
             />
 
-            <Card className="p-4 border-gray-200 shadow-sm space-y-4">
+            <Card className="space-y-4 border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur">
                 <div className="flex flex-col lg:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full lg:w-auto min-w-0 lg:min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             placeholder="Search by Job Code, Dealership, or VIN..."
-                            className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-all"
+                            className="border-border/60 bg-background/60 pl-9 text-foreground transition-all placeholder:text-muted-foreground focus:bg-background"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                         <Select value={filterDealership} onValueChange={setFilterDealership}>
-                            <SelectTrigger className="w-full sm:w-[170px] border-dashed text-gray-600">
+                            <SelectTrigger className="w-full border-dashed border-border/60 bg-background/60 text-foreground sm:w-[170px]">
                                 <div className="flex items-center gap-2">
                                     <Filter className="w-4 h-4" />
                                     <SelectValue placeholder="Dealership" />
@@ -294,7 +294,7 @@ export default function InvoiceApprovalsPage() {
                             </SelectContent>
                         </Select>
                         <Select value={filterTechnician} onValueChange={setFilterTechnician}>
-                            <SelectTrigger className="w-full sm:w-[160px] border-dashed text-gray-600">
+                            <SelectTrigger className="w-full border-dashed border-border/60 bg-background/60 text-foreground sm:w-[160px]">
                                 <div className="flex items-center gap-2">
                                     <User className="w-4 h-4" />
                                     <SelectValue placeholder="Technician" />
@@ -309,15 +309,15 @@ export default function InvoiceApprovalsPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <div className="h-6 w-px bg-gray-200 mx-2" />
-                        <Button variant="secondary" className="bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200">
+                        <div className="mx-2 h-6 w-px bg-border/70" />
+                        <Button variant="secondary" className="border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20">
                             All Pending ({filteredInvoices.length})
                         </Button>
                     </div>
                 </div>
             </Card>
 
-            <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[420px]">
+            <div className="flex min-h-[420px] flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm">
                 {loading ? (
                     <div className="p-4 space-y-4">
                         {Array.from({ length: 5 }).map((_, i) => (
@@ -325,11 +325,11 @@ export default function InvoiceApprovalsPage() {
                         ))}
                     </div>
                 ) : filteredInvoices.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-gray-500">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <CheckCircle2 className="w-8 h-8 text-gray-400" />
+                    <div className="flex flex-1 flex-col items-center justify-center py-20 text-muted-foreground">
+                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted/40">
+                            <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900">No invoices found</h3>
+                        <h3 className="text-lg font-semibold text-foreground">No invoices found</h3>
                         <p className="text-sm mt-1 max-w-sm text-center">
                             {blockedInvoices.length > 0
                                 ? 'Completed jobs exist, but they are blocked from invoice approval until required data is fixed.'
@@ -345,15 +345,15 @@ export default function InvoiceApprovalsPage() {
                     </div>
                 ) : (
                     <Table>
-                        <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                        <TableHeader className="sticky top-0 z-10 bg-muted/30">
                             <TableRow>
-                                <TableHead className="w-[180px] pl-6 font-semibold text-xs text-gray-600 uppercase tracking-wider">Job Code</TableHead>
-                                <TableHead className="w-[200px] font-semibold text-xs text-gray-600 uppercase tracking-wider">Dealership</TableHead>
-                                <TableHead className="w-[180px] font-semibold text-xs text-gray-600 uppercase tracking-wider">Technician</TableHead>
-                                <TableHead className="w-[150px] font-semibold text-xs text-gray-600 uppercase tracking-wider">Completed At</TableHead>
-                                <TableHead className="w-[180px] font-semibold text-xs text-gray-600 uppercase tracking-wider">Service</TableHead>
-                                <TableHead className="w-[120px] text-right font-semibold text-xs text-gray-600 uppercase tracking-wider">Est. Total</TableHead>
-                                <TableHead className="w-[140px] text-center font-semibold text-xs text-gray-600 uppercase tracking-wider">Status</TableHead>
+                                <TableHead className="w-[180px] pl-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Job Code</TableHead>
+                                <TableHead className="w-[200px] text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dealership</TableHead>
+                                <TableHead className="w-[180px] text-xs font-semibold uppercase tracking-wider text-muted-foreground">Technician</TableHead>
+                                <TableHead className="w-[150px] text-xs font-semibold uppercase tracking-wider text-muted-foreground">Completed At</TableHead>
+                                <TableHead className="w-[180px] text-xs font-semibold uppercase tracking-wider text-muted-foreground">Service</TableHead>
+                                <TableHead className="w-[120px] text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Est. Total</TableHead>
+                                <TableHead className="w-[140px] text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
                                 <TableHead className="w-[100px] text-right pr-6">Action</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -361,30 +361,30 @@ export default function InvoiceApprovalsPage() {
                             {filteredInvoices.map((inv) => (
                                 <TableRow
                                     key={inv.job_id}
-                                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                                    className="group cursor-pointer border-border/40 transition-colors hover:bg-muted/20"
                                     onClick={() => handleOpenDrawer(inv)}
                                 >
-                                    <TableCell className="pl-6 font-medium text-gray-900 group-hover:text-[#2F8E92]">{inv.job_code}</TableCell>
-                                    <TableCell className="text-gray-600">{inv.dealership_name}</TableCell>
+                                    <TableCell className="pl-6 font-medium text-foreground group-hover:text-cyan-300">{inv.job_code}</TableCell>
+                                    <TableCell className="text-muted-foreground">{inv.dealership_name}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700">
+                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-300">
                                                 {inv.technician_name?.substring(0, 2) || 'NA'}
                                             </div>
-                                            <span className="text-sm text-gray-700">{inv.technician_name || 'Unassigned'}</span>
+                                            <span className="text-sm text-foreground">{inv.technician_name || 'Unassigned'}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-gray-500 text-xs font-mono">
+                                    <TableCell className="font-mono text-xs text-muted-foreground">
                                         {inv.completed_at ? new Date(inv.completed_at).toLocaleDateString() : '-'}
                                     </TableCell>
-                                    <TableCell className="text-gray-600 max-w-[180px] truncate">{inv.service_summary}</TableCell>
-                                    <TableCell className="text-right font-mono font-medium text-gray-900">${toNumber(inv.estimated_total).toFixed(2)}</TableCell>
+                                    <TableCell className="max-w-[180px] truncate text-muted-foreground">{inv.service_summary}</TableCell>
+                                    <TableCell className="text-right font-mono font-medium text-foreground">${toNumber(inv.estimated_total).toFixed(2)}</TableCell>
                                     <TableCell className="text-center">
                                         <StatusBadge status={inv.invoice_state} />
                                     </TableCell>
                                     <TableCell className="text-right pr-6">
                                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -395,36 +395,36 @@ export default function InvoiceApprovalsPage() {
             </div>
 
             {blockedInvoices.length > 0 && (
-                <Card className="border-orange-200 bg-orange-50/60 p-4 space-y-4">
+                <Card className="space-y-4 border-amber-500/20 bg-amber-500/8 p-4">
                     <div className="flex items-start gap-3">
-                        <div className="mt-0.5 rounded-full bg-orange-100 p-2">
-                            <AlertTriangle className="w-4 h-4 text-orange-700" />
+                        <div className="mt-0.5 rounded-full bg-amber-500/15 p-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-300" />
                         </div>
                         <div>
-                            <h2 className="text-sm font-semibold text-gray-900">Blocked Invoice Jobs</h2>
-                            <p className="text-sm text-gray-600">
+                            <h2 className="text-sm font-semibold text-foreground">Blocked Invoice Jobs</h2>
+                            <p className="text-sm text-muted-foreground">
                                 These completed jobs are not shown in the approval queue because required invoice data is missing.
                             </p>
                         </div>
                     </div>
                     <div className="space-y-3">
                         {blockedInvoices.map((invoice) => (
-                            <div key={invoice.job_id} className="rounded-lg border border-orange-200 bg-white p-4">
+                            <div key={invoice.job_id} className="rounded-lg border border-amber-500/20 bg-background/70 p-4">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <p className="font-semibold text-gray-900">{invoice.job_code}</p>
-                                        <p className="text-sm text-gray-600">
+                                        <p className="font-semibold text-foreground">{invoice.job_code}</p>
+                                        <p className="text-sm text-muted-foreground">
                                             {invoice.dealership_name} {invoice.technician_name ? `• ${invoice.technician_name}` : ''}
                                         </p>
-                                        <p className="text-sm text-gray-500">{invoice.service_summary}</p>
+                                        <p className="text-sm text-muted-foreground">{invoice.service_summary}</p>
                                     </div>
-                                    <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
+                                    <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300">
                                         Blocked
                                     </Badge>
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {invoice.blocking_reasons.map((reason) => (
-                                        <Badge key={`${invoice.job_id}-${reason}`} variant="outline" className="border-red-200 bg-red-50 text-red-700">
+                                        <Badge key={`${invoice.job_id}-${reason}`} variant="outline" className="border-red-500/30 bg-red-500/10 text-red-300">
                                             {reason}
                                         </Badge>
                                     ))}
@@ -436,19 +436,19 @@ export default function InvoiceApprovalsPage() {
             )}
 
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                <SheetContent className="sm:max-w-xl w-full flex flex-col gap-0 p-0 shadow-2xl">
+                <SheetContent className="flex w-full flex-col gap-0 overflow-hidden border-l border-border/60 bg-[#07101f] p-0 text-foreground shadow-2xl sm:max-w-xl">
                     {selectedInvoice && (
                         <>
-                            <div className="p-6 border-b border-gray-200 bg-gray-50">
+                            <div className="border-b border-border/60 bg-slate-950/80 p-6 backdrop-blur">
                                 <SheetHeader>
                                     <div className="flex items-center justify-between mb-2">
-                                        <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">
+                                        <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300">
                                             Pending Approval
                                         </Badge>
-                                        <span className="text-xs font-mono text-gray-400">ID: {selectedInvoice.job_id}</span>
+                                        <span className="text-xs font-mono text-muted-foreground">ID: {selectedInvoice.job_id}</span>
                                     </div>
-                                    <SheetTitle className="text-xl font-bold text-gray-900">Invoice Preview - {selectedInvoice.job_code}</SheetTitle>
-                                    <SheetDescription className="text-sm text-gray-500">
+                                    <SheetTitle className="text-xl font-bold text-foreground">Invoice Preview - {selectedInvoice.job_code}</SheetTitle>
+                                    <SheetDescription className="text-sm text-muted-foreground">
                                         Review and approve services for invoice generation.
                                     </SheetDescription>
                                 </SheetHeader>
@@ -456,22 +456,22 @@ export default function InvoiceApprovalsPage() {
 
                             <ScrollArea className="flex-1">
                                 <div className="p-6 space-y-8">
-                                    <section className="grid grid-cols-2 gap-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                                    <section className="grid grid-cols-2 gap-4 rounded-xl border border-cyan-500/15 bg-slate-900/80 p-4 shadow-[0_0_0_1px_rgba(34,211,238,0.04)]">
                                         <div>
-                                            <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Dealership</h4>
-                                            <div className="font-medium text-gray-900">{selectedInvoice.dealership_name}</div>
+                                            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Dealership</h4>
+                                            <div className="font-medium text-slate-100">{selectedInvoice.dealership_name}</div>
                                         </div>
                                         <div>
-                                            <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Vehicle</h4>
-                                            <div className="font-medium text-gray-900">{selectedInvoice.vehicle_summary}</div>
+                                            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Vehicle</h4>
+                                            <div className="font-medium text-slate-100">{selectedInvoice.vehicle_summary}</div>
                                         </div>
                                         <div>
-                                            <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Technician</h4>
-                                            <div className="font-medium text-gray-900">{selectedInvoice.technician_name || 'Unassigned'}</div>
+                                            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Technician</h4>
+                                            <div className="font-medium text-slate-100">{selectedInvoice.technician_name || 'Unassigned'}</div>
                                         </div>
                                         <div>
-                                            <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Completed</h4>
-                                            <div className="font-medium text-gray-900">
+                                            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Completed</h4>
+                                            <div className="font-medium text-slate-100">
                                                 {selectedInvoice.completed_at ? new Date(selectedInvoice.completed_at).toLocaleDateString() : '-'}
                                             </div>
                                         </div>
@@ -479,61 +479,61 @@ export default function InvoiceApprovalsPage() {
 
                                     <section>
                                         <div className="flex items-center justify-between mb-3">
-                                            <h3 className="tex-sm font-bold text-gray-900 flex items-center gap-2">
-                                                <DollarSign className="w-4 h-4" /> Billable Items
+                                            <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
+                                                <DollarSign className="h-4 w-4 text-cyan-300" /> Billable Items
                                             </h3>
                                         </div>
-                                        <div className="rounded-lg border border-gray-200 overflow-hidden">
+                                        <div className="overflow-hidden rounded-xl border border-border/60 bg-slate-950/70">
                                             <Table>
-                                                <TableHeader className="bg-gray-50">
+                                                <TableHeader className="bg-slate-900/90">
                                                     <TableRow>
-                                                        <TableHead className="h-8 text-xs font-semibold">Service / Description</TableHead>
-                                                        <TableHead className="h-8 w-[60px] text-xs font-semibold text-center">Qty</TableHead>
-                                                        <TableHead className="h-8 w-[100px] text-xs font-semibold text-right">Price</TableHead>
-                                                        <TableHead className="h-8 w-[100px] text-xs font-semibold text-right">Total</TableHead>
+                                                        <TableHead className="h-10 text-xs font-semibold text-slate-300">Service / Description</TableHead>
+                                                        <TableHead className="h-10 w-[60px] text-center text-xs font-semibold text-slate-300">Qty</TableHead>
+                                                        <TableHead className="h-10 w-[100px] text-right text-xs font-semibold text-slate-300">Price</TableHead>
+                                                        <TableHead className="h-10 w-[100px] text-right text-xs font-semibold text-slate-300">Total</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {selectedInvoice.services.map((item) => (
-                                                        <TableRow key={item.id}>
-                                                            <TableCell className="py-2 text-sm text-gray-900">
+                                                        <TableRow key={item.id} className="border-border/50">
+                                                            <TableCell className="py-3 text-sm text-slate-100">
                                                                 <div>{item.name}</div>
                                                                 {item.notes && (
-                                                                    <div className="text-xs text-gray-500 mt-1">{item.notes}</div>
+                                                                    <div className="mt-1 text-xs text-slate-400">{item.notes}</div>
                                                                 )}
                                                             </TableCell>
-                                                            <TableCell className="py-2 text-sm text-center">{toNumber(item.quantity).toFixed(2)}</TableCell>
-                                                            <TableCell className="py-2 text-sm text-right">${toNumber(item.price).toFixed(2)}</TableCell>
-                                                            <TableCell className="text-right py-2 font-mono text-sm text-gray-700">${toNumber(item.total).toFixed(2)}</TableCell>
+                                                            <TableCell className="py-3 text-center text-sm text-slate-200">{toNumber(item.quantity).toFixed(2)}</TableCell>
+                                                            <TableCell className="py-3 text-right text-sm text-slate-100">${toNumber(item.price).toFixed(2)}</TableCell>
+                                                            <TableCell className="py-3 text-right font-mono text-sm text-cyan-200">${toNumber(item.total).toFixed(2)}</TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
                                             </Table>
-                                            <div className="bg-gray-50/50 p-4 border-t border-gray-200 space-y-2">
-                                                <div className="flex justify-between text-sm text-gray-600">
+                                            <div className="space-y-2 border-t border-border/60 bg-slate-900/90 p-4">
+                                                <div className="flex justify-between text-sm text-slate-300">
                                                     <span>Subtotal</span>
-                                                    <span>${totals.subtotal.toFixed(2)}</span>
+                                                    <span className="font-mono">${totals.subtotal.toFixed(2)}</span>
                                                 </div>
-                                                <div className="flex justify-between text-sm text-gray-600">
+                                                <div className="flex justify-between text-sm text-slate-300">
                                                     <span>Tax</span>
-                                                    <span>${totals.tax.toFixed(2)}</span>
+                                                    <span className="font-mono">${totals.tax.toFixed(2)}</span>
                                                 </div>
-                                                <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
+                                                <div className="flex justify-between border-t border-border/60 pt-2 text-lg font-bold text-slate-50">
                                                     <span>Total</span>
-                                                    <span>${totals.total.toFixed(2)}</span>
+                                                    <span className="font-mono text-cyan-200">${totals.total.toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </section>
 
                                     <section>
-                                        <Label htmlFor="audit-note" className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
+                                        <Label htmlFor="audit-note" className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">
                                             Internal Approval Note (Optional)
                                         </Label>
                                         <Textarea
                                             id="audit-note"
                                             placeholder="Add an internal note for invoice approval..."
-                                            className="resize-none"
+                                            className="min-h-[112px] resize-none border-cyan-500/40 bg-slate-950/70 text-slate-100 placeholder:text-slate-500 focus-visible:ring-cyan-400/50"
                                             value={approvalNote}
                                             onChange={(e) => setApprovalNote(e.target.value)}
                                         />
@@ -541,9 +541,9 @@ export default function InvoiceApprovalsPage() {
                                 </div>
                             </ScrollArea>
 
-                            <div className="p-6 border-t border-gray-200 bg-white sticky bottom-0 z-20">
+                            <div className="sticky bottom-0 z-20 border-t border-border/60 bg-slate-950/95 p-6 backdrop-blur">
                                 <div className="flex gap-3">
-                                    <Button variant="outline" className="flex-1" onClick={() => setDrawerOpen(false)}>Cancel</Button>
+                                    <Button variant="outline" className="flex-1 border-border/70 bg-transparent text-slate-200 hover:bg-slate-900 hover:text-white" onClick={() => setDrawerOpen(false)}>Cancel</Button>
                                     <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
                                         <DialogTrigger asChild>
                                             <Button className="flex-[2] bg-[#2F8E92] hover:bg-[#267276] text-white shadow-sm font-semibold">
@@ -551,19 +551,19 @@ export default function InvoiceApprovalsPage() {
                                                 Approve & Generate
                                             </Button>
                                         </DialogTrigger>
-                                        <DialogContent>
+                                        <DialogContent className="border-border/60 bg-slate-950 text-foreground">
                                             <DialogHeader>
-                                                <DialogTitle className="flex items-center gap-2 text-gray-900">
-                                                    <ShieldAlert className="w-5 h-5 text-orange-600" /> Confirm Invoice Generation
+                                                <DialogTitle className="flex items-center gap-2 text-foreground">
+                                                    <ShieldAlert className="h-5 w-5 text-amber-300" /> Confirm Invoice Generation
                                                 </DialogTitle>
-                                                <DialogDescription className="pt-2">
+                                                <DialogDescription className="pt-2 text-muted-foreground">
                                                     This will immediately create an invoice for <strong>{selectedInvoice.job_code}</strong> with a total of <strong>${totals.total.toFixed(2)}</strong>.
                                                     <br /><br />
                                                     This action cannot be undone from the portal. Are you sure?
                                                 </DialogDescription>
                                             </DialogHeader>
                                             <DialogFooter className="mt-4">
-                                                <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
+                                                <Button variant="outline" className="border-border/70 bg-transparent text-slate-200 hover:bg-slate-900 hover:text-white" onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
                                                 <Button onClick={() => void handleApprove()} disabled={isApproving} className="bg-[#2F8E92] hover:bg-[#267276]">
                                                     {isApproving ? 'Processing...' : 'Yes, Create Invoice'}
                                                 </Button>

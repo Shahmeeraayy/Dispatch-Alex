@@ -1,9 +1,16 @@
+import base64
 from datetime import UTC, datetime, timedelta
 
+import requests
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..core.config import QB_ENV
+from ..core.config import QB_CLIENT_ID, QB_CLIENT_SECRET, QB_ENV
 from ..models.quickbooks_connection import QuickBooksConnection
+
+
+TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
+ACCESS_TOKEN_REFRESH_BUFFER = timedelta(minutes=5)
 
 
 class QuickBooksConnectionService:
@@ -17,6 +24,67 @@ class QuickBooksConnectionService:
             .order_by(QuickBooksConnection.updated_at.desc())
             .first()
         )
+
+    def _is_access_token_stale(self, row: QuickBooksConnection, *, now: datetime | None = None) -> bool:
+        reference = now or datetime.now(UTC)
+        if row.expires_at is None:
+            return True
+        return row.expires_at <= (reference + ACCESS_TOKEN_REFRESH_BUFFER)
+
+    def _refresh_access_token(self, row: QuickBooksConnection) -> QuickBooksConnection:
+        if not QB_CLIENT_ID or not QB_CLIENT_SECRET:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="QuickBooks OAuth environment variables are not fully configured.",
+            )
+        if not row.refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="QuickBooks connection does not have a refresh token.",
+            )
+
+        now = datetime.now(UTC)
+        if row.refresh_expires_at is not None and row.refresh_expires_at <= now:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="QuickBooks refresh token has expired. Reconnect QuickBooks.",
+            )
+
+        auth = base64.b64encode(f"{QB_CLIENT_ID}:{QB_CLIENT_SECRET}".encode("utf-8")).decode("utf-8")
+        response = requests.post(
+            TOKEN_URL,
+            headers={
+                "Authorization": f"Basic {auth}",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+            },
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": row.refresh_token,
+            },
+            timeout=30,
+        )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="QuickBooks refresh response was not valid JSON.",
+            ) from exc
+
+        if not response.ok:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "message": "QuickBooks token refresh failed.",
+                    "provider_status": response.status_code,
+                    "provider_response": payload,
+                },
+            )
+
+        payload["realmId"] = row.realm_id
+        return self.upsert_connection(payload)
 
     def upsert_connection(self, payload: dict[str, object]) -> QuickBooksConnection:
         realm_id = str(payload.get("realmId") or "").strip()
@@ -75,6 +143,14 @@ class QuickBooksConnectionService:
                 "environment": QB_ENV,
             }
 
+        refresh_error: str | None = None
+        if self._is_access_token_stale(row):
+            try:
+                row = self._refresh_access_token(row)
+            except HTTPException as exc:
+                detail = exc.detail
+                refresh_error = detail if isinstance(detail, str) else str(detail)
+
         return {
             "connected": True,
             "provider": "quickbooks",
@@ -88,4 +164,6 @@ class QuickBooksConnectionService:
             "is_active": row.is_active,
             "has_access_token": bool(row.access_token),
             "has_refresh_token": bool(row.refresh_token),
+            "token_expired": self._is_access_token_stale(row),
+            "refresh_error": refresh_error,
         }

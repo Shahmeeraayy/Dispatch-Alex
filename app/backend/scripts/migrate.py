@@ -95,13 +95,28 @@ def mark_versions_applied(conn, versions: Iterable[str]) -> None:
 
 
 def ensure_sqlite_technician_password_column(conn) -> None:
-    if not DATABASE_URL.startswith("sqlite"):
-        return
-
     def ensure_column(table_name: str, column_name: str, ddl: str) -> None:
+        if DATABASE_URL.startswith("sqlite"):
+            columns = {
+                row[1]
+                for row in conn.exec_driver_sql(f"PRAGMA table_info('{table_name}')").fetchall()
+            }
+            if columns and column_name not in columns:
+                conn.exec_driver_sql(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {ddl}")
+            return
+
         columns = {
-            row[1]
-            for row in conn.exec_driver_sql(f"PRAGMA table_info('{table_name}')").fetchall()
+            row[0]
+            for row in conn.execute(
+                text(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = :table_name
+                    """
+                ),
+                {"table_name": table_name},
+            ).fetchall()
         }
         if columns and column_name not in columns:
             conn.exec_driver_sql(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {ddl}")
@@ -141,6 +156,9 @@ def ensure_sqlite_technician_password_column(conn) -> None:
     ensure_column("jobs", "source_metadata", "TEXT")
     ensure_column("jobs", "pre_assigned_technician_id", "CHAR(32)")
     ensure_column("jobs", "pre_assignment_reason", "VARCHAR(64)")
+    ensure_column("job_services", "quantity", "NUMERIC(10,2) DEFAULT 1 NOT NULL")
+    ensure_column("job_services", "unit_price", "NUMERIC(12,2) DEFAULT 0 NOT NULL")
+    ensure_column("invoices", "approval_note", "TEXT")
 
 
 def backfill_job_services(engine) -> None:

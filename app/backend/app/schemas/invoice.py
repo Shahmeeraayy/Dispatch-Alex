@@ -148,12 +148,13 @@ class InvoiceCreateRequest(BaseModel):
     custom_term_days: Optional[int] = Field(default=None, ge=0, le=3650)
     shipping: Decimal = Field(default=Decimal("0"), ge=0)
     customer_message: Optional[str] = None
+    approval_note: Optional[str] = None
     status: InvoiceStatus = InvoiceStatus.DRAFT
     payment_recorded_at: Optional[datetime] = None
     dispatch_job_ids: List[UUID] = Field(default_factory=list)
     line_items: List[InvoiceLineItemPayload] = Field(default_factory=list)
 
-    @field_validator("invoice_number", "customer_message")
+    @field_validator("invoice_number", "customer_message", "approval_note")
     @classmethod
     def _normalize_optional_text(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
@@ -191,12 +192,13 @@ class InvoiceUpdateRequest(BaseModel):
     custom_term_days: Optional[int] = Field(default=None, ge=0, le=3650)
     shipping: Optional[Decimal] = Field(default=None, ge=0)
     customer_message: Optional[str] = None
+    approval_note: Optional[str] = None
     status: Optional[InvoiceStatus] = None
     payment_recorded_at: Optional[datetime] = None
     dispatch_job_ids: Optional[List[UUID]] = None
     line_items: Optional[List[InvoiceLineItemPayload]] = None
 
-    @field_validator("invoice_number", "customer_message")
+    @field_validator("invoice_number", "customer_message", "approval_note")
     @classmethod
     def _normalize_optional_text(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
@@ -254,6 +256,16 @@ class InvoicePendingApprovalLineItemResponse(BaseModel):
     total: Decimal
 
 
+class InvoicePendingApprovalServiceResponse(BaseModel):
+    id: str
+    name: str
+    quantity: Decimal
+    price: Decimal
+    total: Decimal
+    source: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class InvoicePendingApprovalResponse(BaseModel):
     job_id: UUID
     job_code: str
@@ -267,6 +279,7 @@ class InvoicePendingApprovalResponse(BaseModel):
     estimated_total: Decimal
     invoice_state: str = "pending_approval"
     allowed_actions: List[str] = Field(default_factory=lambda: ["approve_invoice", "edit_invoice"])
+    services: List[InvoicePendingApprovalServiceResponse] = Field(default_factory=list)
     items: List[InvoicePendingApprovalLineItemResponse] = Field(default_factory=list)
     bill_to: Optional[InvoicePartyPayload] = None
     ship_to: Optional[InvoicePartyPayload] = None
@@ -315,6 +328,7 @@ class InvoiceResponse(BaseModel):
     total: Decimal
 
     customer_message: Optional[str] = None
+    approval_note: Optional[str] = None
     status: InvoiceStatus
     payment_recorded_at: Optional[datetime] = None
     voided_at: Optional[datetime] = None

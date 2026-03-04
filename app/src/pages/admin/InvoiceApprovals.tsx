@@ -192,7 +192,7 @@ export default function InvoiceApprovalsPage() {
                 status: 'sent',
                 terms: 'NET_15',
                 shipping: 0,
-                customer_message: approvalNote.trim() || undefined,
+                approval_note: approvalNote.trim() || undefined,
             });
 
             setInvoices((prev) => prev.filter((inv) => inv.job_id !== selectedInvoice.job_id));
@@ -437,11 +437,16 @@ export default function InvoiceApprovalsPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {selectedInvoice.items.map((item) => (
+                                                    {selectedInvoice.services.map((item) => (
                                                         <TableRow key={item.id}>
-                                                            <TableCell className="py-2 text-sm text-gray-900">{item.description}</TableCell>
+                                                            <TableCell className="py-2 text-sm text-gray-900">
+                                                                <div>{item.name}</div>
+                                                                {item.notes && (
+                                                                    <div className="text-xs text-gray-500 mt-1">{item.notes}</div>
+                                                                )}
+                                                            </TableCell>
                                                             <TableCell className="py-2 text-sm text-center">{toNumber(item.quantity).toFixed(2)}</TableCell>
-                                                            <TableCell className="py-2 text-sm text-right">${toNumber(item.unit_price).toFixed(2)}</TableCell>
+                                                            <TableCell className="py-2 text-sm text-right">${toNumber(item.price).toFixed(2)}</TableCell>
                                                             <TableCell className="text-right py-2 font-mono text-sm text-gray-700">${toNumber(item.total).toFixed(2)}</TableCell>
                                                         </TableRow>
                                                     ))}
@@ -466,11 +471,11 @@ export default function InvoiceApprovalsPage() {
 
                                     <section>
                                         <Label htmlFor="audit-note" className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-                                            Approval Note (Optional)
+                                            Internal Approval Note (Optional)
                                         </Label>
                                         <Textarea
                                             id="audit-note"
-                                            placeholder="Add a note to the audit log about this approval..."
+                                            placeholder="Add an internal note for invoice approval..."
                                             className="resize-none"
                                             value={approvalNote}
                                             onChange={(e) => setApprovalNote(e.target.value)}

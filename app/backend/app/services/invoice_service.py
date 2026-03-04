@@ -15,6 +15,7 @@ from ..models.dealership import Dealership
 from ..models.invoice import Invoice, InvoiceLineItem
 from ..models.invoice_branding_settings import InvoiceBrandingSettings
 from ..models.job import Job
+from ..models.job_service import JobService
 from ..models.technician import Technician
 from ..repositories.invoice_repository import InvoiceRepository
 from ..schemas.invoice import (
@@ -23,6 +24,7 @@ from ..schemas.invoice import (
     InvoiceCreateRequest,
     InvoicePendingApprovalLineItemResponse,
     InvoicePendingApprovalResponse,
+    InvoicePendingApprovalServiceResponse,
     InvoiceLineItemPayload,
     InvoicePartyPayload,
     InvoiceResponse,
@@ -35,6 +37,7 @@ from .invoice_branding_settings_service import (
     INVOICE_BRANDING_SETTINGS_KEY,
     get_default_invoice_branding_payload,
 )
+from .job_services_service import JobServicesService
 
 
 CENTS = Decimal("0.01")
@@ -231,6 +234,7 @@ class InvoiceService:
                 "shipping": invoice.shipping,
                 "total": invoice.total,
                 "customer_message": invoice.customer_message,
+                "approval_note": invoice.approval_note,
                 "status": invoice.status,
                 "payment_recorded_at": invoice.payment_recorded_at,
                 "voided_at": invoice.voided_at,
@@ -324,6 +328,58 @@ class InvoiceService:
 
         return built, compute_subtotal(built), compute_tax(built, QUICKBOOKS_TAX_CODE_RATES)
 
+    def _list_job_service_rows(self, job: Job) -> list[JobService]:
+        rows = JobServicesService(self.db).list_service_rows(job)
+        if rows:
+            return rows
+
+        return [
+            JobService(
+                job_id=job.id,
+                service_name_snapshot=(job.service_type or "Dispatch Service"),
+                source="dealership",
+                quantity=_to_money(job.hours_worked if job.hours_worked is not None else Decimal("1")),
+                unit_price=_to_money(job.rate if job.rate is not None else ZERO),
+                sort_order=0,
+            )
+        ]
+
+    def _resolve_job_dispatch_line_inputs(self, job: Job) -> list[InvoiceLineItemPayload]:
+        service_rows = self._list_job_service_rows(job)
+        line_items: list[InvoiceLineItemPayload] = []
+        for service_row in service_rows:
+            quantity = _to_money(service_row.quantity if service_row.quantity is not None else Decimal("1"))
+            rate = _to_money(service_row.unit_price if service_row.unit_price is not None else ZERO)
+            if quantity <= ZERO:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Job {job.job_code} has invalid service quantity for invoicing",
+                )
+            if rate < ZERO:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Job {job.job_code} has invalid service pricing for invoicing",
+                )
+
+            description_parts = [part for part in [job.job_code, job.location, job.vehicle] if part]
+            if service_row.notes:
+                description_parts.append(service_row.notes)
+
+            line_items.append(
+                InvoiceLineItemPayload(
+                    product_service=service_row.service_name_snapshot or job.service_type or "Dispatch Service",
+                    description=" | ".join(description_parts) or None,
+                    quantity=quantity,
+                    qty=quantity,
+                    rate=rate,
+                    tax_code=(job.tax_code or "EXEMPT"),
+                    tax_rate=job.tax_rate,
+                    job_id=job.id,
+                )
+            )
+
+        return line_items
+
     def _build_dispatch_line_items(
         self,
         dispatch_job_ids: list[UUID],
@@ -394,32 +450,7 @@ class InvoiceService:
                     detail="All merged dispatch jobs must belong to the same bill-to customer",
                 )
 
-            quantity = _to_money(job.hours_worked if job.hours_worked is not None else Decimal("1"))
-            rate = _to_money(job.rate if job.rate is not None else ZERO)
-            if quantity <= ZERO:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=f"Job {job.job_code} has invalid hours_worked for invoicing",
-                )
-            if rate < ZERO:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=f"Job {job.job_code} has invalid rate for invoicing",
-                )
-
-            description_parts = [part for part in [job.job_code, job.location, job.vehicle] if part]
-            line_items.append(
-                InvoiceLineItemPayload(
-                    product_service=job.service_type or "Dispatch Service",
-                    description=" | ".join(description_parts) or None,
-                    quantity=quantity,
-                    qty=quantity,
-                    rate=rate,
-                    tax_code=(job.tax_code or "EXEMPT"),
-                    tax_rate=job.tax_rate,
-                    job_id=job.id,
-                )
-            )
+            line_items.extend(self._resolve_job_dispatch_line_inputs(job))
             linked_job_ids.append(job.id)
 
         return line_items, billing_payload or InvoiceBillingPayload(), linked_job_ids
@@ -566,11 +597,6 @@ class InvoiceService:
         payload: list[InvoicePendingApprovalResponse] = []
 
         for job, dealership, technician in rows:
-            quantity = _to_money(job.hours_worked if job.hours_worked is not None else Decimal("1"))
-            rate = _to_money(job.rate if job.rate is not None else ZERO)
-            if quantity <= ZERO or rate < ZERO:
-                continue
-            amount = compute_line_item_amount(quantity, rate)
             try:
                 tax_rate = self._resolve_tax_rate(
                     tax_code=(job.tax_code or "EXEMPT"),
@@ -579,8 +605,6 @@ class InvoiceService:
             except HTTPException:
                 # Exclude jobs with invalid tax configuration from approval queue.
                 continue
-            tax_amount = _to_money(amount * tax_rate)
-            estimated_total = compute_total(amount, tax_amount, ZERO)
 
             bill_to_name = (job.customer_name or (dealership.name if dealership else None) or "").strip()
             bill_to_street = (job.customer_address or (dealership.address if dealership else None) or "").strip()
@@ -589,6 +613,57 @@ class InvoiceService:
             bill_to_zip = job.customer_zip_code or (dealership.postal_code if dealership else None)
             if not bill_to_name or not bill_to_street:
                 continue
+
+            try:
+                dispatch_line_inputs = self._resolve_job_dispatch_line_inputs(job)
+            except HTTPException:
+                continue
+
+            if not dispatch_line_inputs:
+                continue
+
+            services: list[InvoicePendingApprovalServiceResponse] = []
+            items: list[InvoicePendingApprovalLineItemResponse] = []
+            estimated_subtotal = ZERO
+            estimated_sales_tax = ZERO
+            service_rows = self._list_job_service_rows(job)
+
+            for index, line in enumerate(dispatch_line_inputs):
+                quantity = _to_money(line.quantity if line.quantity is not None else Decimal("1"))
+                rate = _to_money(line.rate)
+                amount = compute_line_item_amount(quantity, rate)
+                line_tax_amount = _to_money(amount * tax_rate)
+                estimated_subtotal += amount
+                estimated_sales_tax += line_tax_amount
+
+                service_row = service_rows[index] if index < len(service_rows) else None
+                service_id = str(service_row.id) if service_row is not None and service_row.id is not None else f"{job.id}:{index}"
+                service_name = line.product_service or "Dispatch Service"
+
+                services.append(
+                    InvoicePendingApprovalServiceResponse(
+                        id=service_id,
+                        name=service_name,
+                        quantity=quantity,
+                        price=rate,
+                        total=amount,
+                        source=service_row.source if service_row is not None else None,
+                        notes=service_row.notes if service_row is not None else None,
+                    )
+                )
+                items.append(
+                    InvoicePendingApprovalLineItemResponse(
+                        id=service_id,
+                        description=service_name,
+                        quantity=quantity,
+                        unit_price=rate,
+                        total=amount,
+                    )
+                )
+
+            estimated_subtotal = _to_money(estimated_subtotal)
+            estimated_sales_tax = _to_money(estimated_sales_tax)
+            estimated_total = compute_total(estimated_subtotal, estimated_sales_tax, ZERO)
 
             bill_to = (
                 InvoicePartyPayload(
@@ -619,21 +694,14 @@ class InvoiceService:
                     job_code=job.job_code,
                     dealership_name=(dealership.name if dealership else bill_to_name) or "Unknown Dealership",
                     technician_name=technician.name if technician else None,
-                    service_summary=job.service_type or "Dispatch Service",
+                    service_summary=", ".join([service.name for service in services]) or (job.service_type or "Dispatch Service"),
                     vehicle_summary=job.vehicle or "-",
                     completed_at=job.completed_at,
-                    estimated_subtotal=amount,
-                    estimated_sales_tax=tax_amount,
+                    estimated_subtotal=estimated_subtotal,
+                    estimated_sales_tax=estimated_sales_tax,
                     estimated_total=estimated_total,
-                    items=[
-                        InvoicePendingApprovalLineItemResponse(
-                            id=str(job.id),
-                            description=job.service_type or "Dispatch Service",
-                            quantity=quantity,
-                            unit_price=rate,
-                            total=amount,
-                        )
-                    ],
+                    services=services,
+                    items=items,
                     bill_to=bill_to,
                     ship_to=ship_to,
                 )
@@ -688,6 +756,7 @@ class InvoiceService:
             custom_term_days=payload.custom_term_days,
             due_date=due_date,
             customer_message=payload.customer_message,
+            approval_note=payload.approval_note,
             status=resolved_status.value,
             payment_recorded_at=payload.payment_recorded_at,
         )
@@ -732,6 +801,7 @@ class InvoiceService:
                 "shipping": str(created.shipping),
                 "total": str(created.total),
                 "dispatch_job_ids": [str(job_id) for job_id in dispatch_job_ids],
+                "approval_note": created.approval_note,
             },
         )
         self.db.commit()
@@ -840,6 +910,8 @@ class InvoiceService:
         invoice.due_date = due_date
         if payload.customer_message is not None:
             invoice.customer_message = payload.customer_message
+        if payload.approval_note is not None:
+            invoice.approval_note = payload.approval_note
 
         normalized_invoice_number = self._normalize_invoice_number(payload.invoice_number)
         if normalized_invoice_number and normalized_invoice_number != invoice.invoice_number:
@@ -897,6 +969,7 @@ class InvoiceService:
                 "sales_tax": str(invoice.sales_tax),
                 "shipping": str(invoice.shipping),
                 "total": str(invoice.total),
+                "approval_note": invoice.approval_note,
             },
         )
         self.db.commit()

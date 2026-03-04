@@ -170,6 +170,8 @@ export type BackendAdminJob = {
     service_name: string;
     source: string;
     notes?: string | null;
+    quantity: string | number;
+    unit_price: string | number;
     sort_order: number;
   }>;
   vehicle?: string | null;
@@ -193,6 +195,8 @@ export type BackendTechnicianJobFeedItem = {
     service_name: string;
     source: string;
     notes?: string | null;
+    quantity: string | number;
+    unit_price: string | number;
     sort_order: number;
   }>;
   vehicle_summary?: string | null;
@@ -314,6 +318,7 @@ export type BackendInvoice = {
   shipping: string | number;
   total: string | number;
   customer_message?: string | null;
+  approval_note?: string | null;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
   payment_recorded_at?: string | null;
   voided_at?: string | null;
@@ -335,6 +340,15 @@ export type BackendPendingInvoiceApproval = {
   estimated_total: string | number;
   invoice_state: 'pending_approval';
   allowed_actions: string[];
+  services: Array<{
+    id: string;
+    name: string;
+    quantity: string | number;
+    price: string | number;
+    total: string | number;
+    source?: string | null;
+    notes?: string | null;
+  }>;
   items: Array<{
     id: string;
     description: string;
@@ -974,6 +988,7 @@ export async function createInvoice(
     custom_term_days?: number;
     shipping?: string | number;
     customer_message?: string;
+    approval_note?: string;
     status?: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
   },
 ): Promise<BackendInvoice> {

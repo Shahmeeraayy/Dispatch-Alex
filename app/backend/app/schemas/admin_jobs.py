@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -10,6 +11,8 @@ class JobServiceResponse(BaseModel):
     service_name: str
     source: str
     notes: Optional[str] = None
+    quantity: Decimal
+    unit_price: Decimal
     sort_order: int
 
 

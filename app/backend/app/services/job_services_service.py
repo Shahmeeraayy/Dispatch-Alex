@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -53,6 +54,8 @@ class JobServicesService:
                     service_name_snapshot=service_name,
                     service_catalog_id=self._resolve_service_catalog_id(service_name),
                     source=source,
+                    quantity=self._default_quantity_for_job(job, index=index),
+                    unit_price=self._default_unit_price_for_service(job, service_name, index=index),
                     sort_order=index,
                     created_by_user_id=created_by_user_id,
                 )
@@ -85,6 +88,8 @@ class JobServicesService:
             service_catalog_id=self._resolve_service_catalog_id(normalized),
             source=source,
             notes=(notes or "").strip() or None,
+            quantity=Decimal("1.00"),
+            unit_price=self._default_unit_price_for_service(job, normalized, index=next_sort_order),
             sort_order=next_sort_order,
             created_by_user_id=created_by_user_id,
         )
@@ -140,6 +145,10 @@ class JobServicesService:
         row.service_name_snapshot = normalized
         row.service_catalog_id = self._resolve_service_catalog_id(normalized)
         row.notes = (notes or "").strip() or None
+        if row.unit_price is None or Decimal(str(row.unit_price)) < Decimal("0"):
+            row.unit_price = self._default_unit_price_for_service(job, normalized, index=row.sort_order)
+        if row.quantity is None or Decimal(str(row.quantity)) <= Decimal("0"):
+            row.quantity = Decimal("1.00")
 
         self._sync_primary_service(job)
 
@@ -195,11 +204,19 @@ class JobServicesService:
     def backfill_job(self, job: Job) -> bool:
         rows = self.list_service_rows(job)
         if rows:
+            changed = False
+            for index, row in enumerate(rows):
+                if row.quantity is None or Decimal(str(row.quantity)) <= Decimal("0"):
+                    row.quantity = self._default_quantity_for_job(job, index=index)
+                    changed = True
+                if row.unit_price is None or Decimal(str(row.unit_price)) < Decimal("0"):
+                    row.unit_price = self._default_unit_price_for_service(job, row.service_name_snapshot, index=index)
+                    changed = True
             primary = rows[0].service_name_snapshot.strip()
             if primary and job.service_type != primary:
                 job.service_type = primary
-                return True
-            return False
+                changed = True
+            return changed
 
         legacy = (job.service_type or "").strip()
         if not legacy:
@@ -210,6 +227,8 @@ class JobServicesService:
                 job_id=job.id,
                 service_name_snapshot=legacy,
                 source="dealership",
+                quantity=self._default_quantity_for_job(job, index=0),
+                unit_price=self._default_unit_price_for_service(job, legacy, index=0),
                 sort_order=0,
             )
         )
@@ -223,6 +242,8 @@ class JobServicesService:
                 "service_name": row.service_name_snapshot,
                 "source": row.source,
                 "notes": row.notes,
+                "quantity": row.quantity,
+                "unit_price": row.unit_price,
                 "sort_order": row.sort_order,
             }
             for row in rows
@@ -252,6 +273,29 @@ class JobServicesService:
             .first()
         )
         return row[0] if row is not None else None
+
+    def _resolve_service_catalog(self, service_name: str) -> ServiceCatalog | None:
+        return (
+            self.db.query(ServiceCatalog)
+            .filter(ServiceCatalog.name.ilike(service_name.strip()))
+            .first()
+        )
+
+    def _default_unit_price_for_service(self, job: Job, service_name: str, *, index: int) -> Decimal:
+        if index == 0 and job.rate is not None:
+            return Decimal(str(job.rate)).quantize(Decimal("0.01"))
+
+        catalog = self._resolve_service_catalog(service_name)
+        if catalog is not None and catalog.default_price is not None:
+            return Decimal(str(catalog.default_price)).quantize(Decimal("0.01"))
+
+        return Decimal("0.00")
+
+    @staticmethod
+    def _default_quantity_for_job(job: Job, *, index: int) -> Decimal:
+        if index == 0 and job.hours_worked is not None:
+            return Decimal(str(job.hours_worked)).quantize(Decimal("0.01"))
+        return Decimal("1.00")
 
     def _reorder_services(self, job: Job) -> None:
         for index, row in enumerate(self.list_service_rows(job)):

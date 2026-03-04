@@ -58,6 +58,7 @@ class Invoice(Base):
     total = Column(Numeric(12, 2), nullable=False, server_default=text("0"))
 
     customer_message = Column(Text, nullable=True)
+    approval_note = Column(Text, nullable=True)
     status = Column(String(16), nullable=False, server_default=text("'draft'"))
     payment_recorded_at = Column(DateTime(timezone=True), nullable=True)
     voided_at = Column(DateTime(timezone=True), nullable=True)

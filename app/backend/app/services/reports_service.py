@@ -40,11 +40,19 @@ def _to_utc_end(value: date) -> datetime:
     return datetime.combine(value, time.max, tzinfo=UTC)
 
 
+def _ensure_utc(value: Optional[datetime]) -> Optional[datetime]:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 def _job_completion_timestamp(row: Job) -> Optional[datetime]:
     if row.completed_at is not None:
-        return row.completed_at
+        return _ensure_utc(row.completed_at)
     if _normalize_job_status(row.status) == "Completed":
-        return row.updated_at
+        return _ensure_utc(row.updated_at)
     return None
 
 
@@ -201,9 +209,10 @@ class ReportsService:
 
         completion_minutes = []
         for row in completed_jobs_in_range:
-            completed_at = row.completed_at or row.updated_at
-            if row.created_at and completed_at and completed_at >= row.created_at:
-                completion_minutes.append((completed_at - row.created_at).total_seconds() / 60)
+            completed_at = _ensure_utc(row.completed_at or row.updated_at)
+            created_at = _ensure_utc(row.created_at)
+            if created_at and completed_at and completed_at >= created_at:
+                completion_minutes.append((completed_at - created_at).total_seconds() / 60)
         avg_completion_minutes = float(sum(completion_minutes) / len(completion_minutes)) if completion_minutes else 0.0
 
         invoices_in_range = (
@@ -303,8 +312,9 @@ class ReportsService:
             durations = []
             for item in completed:
                 completed_at = _job_completion_timestamp(item)
-                if item.created_at and completed_at and completed_at >= item.created_at:
-                    durations.append((completed_at - item.created_at).total_seconds() / 60)
+                created_at = _ensure_utc(item.created_at)
+                if created_at and completed_at and completed_at >= created_at:
+                    durations.append((completed_at - created_at).total_seconds() / 60)
             avg_minutes = float(sum(durations) / len(durations)) if durations else 0.0
 
             tech_rows.append(
@@ -338,8 +348,9 @@ class ReportsService:
             durations = []
             for item in completed:
                 completed_at = _job_completion_timestamp(item)
-                if item.created_at and completed_at and completed_at >= item.created_at:
-                    durations.append((completed_at - item.created_at).total_seconds() / 60)
+                created_at = _ensure_utc(item.created_at)
+                if created_at and completed_at and completed_at >= created_at:
+                    durations.append((completed_at - created_at).total_seconds() / 60)
             avg_minutes = float(sum(durations) / len(durations)) if durations else 0.0
 
             dealership_rows.append(

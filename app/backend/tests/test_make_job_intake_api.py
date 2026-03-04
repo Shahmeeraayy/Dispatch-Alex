@@ -24,6 +24,8 @@ from app.models.zone import Zone, technician_zones
 
 
 class MakeJobIntakeApiTests(unittest.TestCase):
+    ADMIN_TOKEN_PAYLOAD = {"email": "admin@sm2dispatch.com", "password": "admin123"}
+
     @classmethod
     def setUpClass(cls):
         Base.metadata.create_all(bind=engine)
@@ -142,7 +144,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
         create_res = self.client.post("/integrations/make/jobs", json=self._make_payload())
         self.assertEqual(create_res.status_code, 201, create_res.text)
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -166,7 +168,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
         create_res = self.client.post("/integrations/make/jobs", json=self._make_payload())
         self.assertEqual(create_res.status_code, 201, create_res.text)
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -209,7 +211,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
         create_res = self.client.post("/integrations/make/jobs", json=self._make_payload())
         self.assertEqual(create_res.status_code, 201, create_res.text)
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -246,7 +248,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             db.refresh(tech)
             tech_id = str(tech.id)
 
-        admin_token_response = self.client.post("/auth/dev/admin-token")
+        admin_token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(admin_token_response.status_code, 200, admin_token_response.text)
         admin_header = {"Authorization": f"Bearer {admin_token_response.json()['access_token']}"}
 
@@ -281,7 +283,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
         create_res = self.client.post("/integrations/make/jobs", json=self._make_payload())
         self.assertEqual(create_res.status_code, 201, create_res.text)
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -309,7 +311,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             job.pre_assigned_technician_id = tech.id
             db.commit()
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -333,7 +335,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             db.refresh(tech)
             tech_id = str(tech.id)
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -378,7 +380,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             db.refresh(tech)
             tech_id = str(tech.id)
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -421,7 +423,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             tech_a_id = str(tech_a.id)
             tech_b_id = str(tech_b.id)
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -461,7 +463,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             db.refresh(tech)
             tech_id = str(tech.id)
 
-        admin_token_response = self.client.post("/auth/dev/admin-token")
+        admin_token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(admin_token_response.status_code, 200, admin_token_response.text)
         admin_header = {"Authorization": f"Bearer {admin_token_response.json()['access_token']}"}
 
@@ -511,7 +513,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             db.refresh(tech)
             tech_id = str(tech.id)
 
-        admin_token_response = self.client.post("/auth/dev/admin-token")
+        admin_token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(admin_token_response.status_code, 200, admin_token_response.text)
         admin_header = {"Authorization": f"Bearer {admin_token_response.json()['access_token']}"}
 
@@ -667,7 +669,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
         create_res = self.client.post("/integrations/make/jobs", json=self._make_payload())
         self.assertEqual(create_res.status_code, 201, create_res.text)
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -776,7 +778,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
         self.assertEqual(body["created"], 1)
         self.assertEqual(body["items"][0]["status"], "admin_review")
 
-        token_response = self.client.post("/auth/dev/admin-token")
+        token_response = self.client.post("/auth/dev/admin-token", json=self.ADMIN_TOKEN_PAYLOAD)
         self.assertEqual(token_response.status_code, 200, token_response.text)
         auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 

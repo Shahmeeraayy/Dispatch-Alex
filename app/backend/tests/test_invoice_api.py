@@ -20,6 +20,7 @@ from app.models.dealership import Dealership
 from app.models.invoice import Invoice, InvoiceLineItem
 from app.models.invoice_branding_settings import InvoiceBrandingSettings
 from app.models.job import Job
+from app.models.job_service import JobService
 from app.models.priority_rule import PriorityRule
 from app.models.technician import Technician
 
@@ -29,7 +30,10 @@ class InvoiceApiTests(unittest.TestCase):
     def setUpClass(cls):
         Base.metadata.create_all(bind=engine)
         cls.client = TestClient(app)
-        token_response = cls.client.post("/auth/dev/admin-token")
+        token_response = cls.client.post(
+            "/auth/dev/admin-token",
+            json={"email": "admin@sm2dispatch.com", "password": "admin123"},
+        )
         assert token_response.status_code == 200
         cls.auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
 
@@ -42,6 +46,7 @@ class InvoiceApiTests(unittest.TestCase):
     def setUp(self):
         with SessionLocal() as db:
             db.query(InvoiceLineItem).delete()
+            db.query(JobService).delete()
             db.query(Job).update({"invoice_id": None}, synchronize_session=False)
             db.query(Invoice).delete()
             db.query(InvoiceBrandingSettings).delete()
@@ -330,6 +335,9 @@ class InvoiceApiTests(unittest.TestCase):
         self.assertEqual(payload[0]["estimated_subtotal"], "200.00")
         self.assertEqual(payload[0]["estimated_sales_tax"], "0.00")
         self.assertEqual(payload[0]["estimated_total"], "200.00")
+        self.assertEqual(payload[0]["services"][0]["name"], "Diagnostics")
+        self.assertEqual(payload[0]["services"][0]["price"], "100.00")
+        self.assertEqual(payload[0]["services"][0]["quantity"], "2.00")
 
     def test_pending_approval_estimate_matches_created_invoice_totals(self):
         dealership = self._seed_dealership()
@@ -372,6 +380,7 @@ class InvoiceApiTests(unittest.TestCase):
                 "dispatch_job_ids": [job_id],
                 "terms": "NET_15",
                 "shipping": "0.00",
+                "approval_note": "Reviewed by QA",
                 "status": "sent",
             },
             headers=self.auth_header,
@@ -381,6 +390,84 @@ class InvoiceApiTests(unittest.TestCase):
         self.assertEqual(created["subtotal"], row["estimated_subtotal"])
         self.assertEqual(created["sales_tax"], row["estimated_sales_tax"])
         self.assertEqual(created["total"], row["estimated_total"])
+        self.assertEqual(created["approval_note"], "Reviewed by QA")
+
+    def test_pending_approvals_and_invoice_creation_use_job_services(self):
+        dealership = self._seed_dealership()
+        technician = self._seed_technician()
+
+        with SessionLocal() as db:
+            row = Job(
+                id=uuid4(),
+                job_code="SM2-2024-4100",
+                status="COMPLETED",
+                assigned_tech_id=technician.id,
+                dealership_id=dealership.id,
+                customer_name=dealership.name,
+                customer_address=dealership.address,
+                customer_city=dealership.city,
+                customer_state="QC",
+                customer_zip_code=dealership.postal_code,
+                service_type="Remote Starter Installation",
+                hours_worked=Decimal("2.00"),
+                rate=Decimal("125.00"),
+                tax_code="GST",
+                vehicle="2024 Audi Q7",
+            )
+            db.add(row)
+            db.flush()
+            db.add(
+                JobService(
+                    job_id=row.id,
+                    service_name_snapshot="Remote Starter Installation",
+                    source="dealership",
+                    quantity=Decimal("1.00"),
+                    unit_price=Decimal("250.00"),
+                    sort_order=0,
+                )
+            )
+            db.add(
+                JobService(
+                    job_id=row.id,
+                    service_name_snapshot="Window Tint",
+                    source="technician",
+                    quantity=Decimal("1.00"),
+                    unit_price=Decimal("120.00"),
+                    sort_order=1,
+                )
+            )
+            db.commit()
+            job_id = str(row.id)
+
+        pending_res = self.client.get("/invoices/pending-approvals", headers=self.auth_header)
+        self.assertEqual(pending_res.status_code, 200, pending_res.text)
+        pending_row = next((item for item in pending_res.json() if item["job_id"] == job_id), None)
+        self.assertIsNotNone(pending_row)
+        self.assertEqual(len(pending_row["services"]), 2)
+        self.assertEqual(pending_row["services"][0]["name"], "Remote Starter Installation")
+        self.assertEqual(pending_row["services"][1]["name"], "Window Tint")
+        self.assertEqual(pending_row["estimated_subtotal"], "370.00")
+        self.assertEqual(pending_row["estimated_sales_tax"], "18.50")
+        self.assertEqual(pending_row["estimated_total"], "388.50")
+
+        create_res = self.client.post(
+            "/invoices",
+            json={
+                "dispatch_job_ids": [job_id],
+                "terms": "NET_15",
+                "shipping": "0.00",
+                "status": "sent",
+            },
+            headers=self.auth_header,
+        )
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        created = create_res.json()
+        self.assertEqual(len(created["line_items"]), 2)
+        self.assertEqual(created["line_items"][0]["product_service"], "Remote Starter Installation")
+        self.assertEqual(created["line_items"][1]["product_service"], "Window Tint")
+        self.assertEqual(created["subtotal"], "370.00")
+        self.assertEqual(created["sales_tax"], "18.50")
+        self.assertEqual(created["total"], "388.50")
 
     def test_reports_pending_approvals_matches_invoice_pending_endpoint(self):
         dealership = self._seed_dealership()

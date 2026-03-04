@@ -36,6 +36,7 @@ MIGRATIONS: list[Migration] = [
     Migration("008_dispatch_job_invoice_fields.sql"),
     Migration("009_technician_profile_email_change_requests.sql"),
     Migration("010_job_services.sql"),
+    Migration("011_quickbooks_service_catalog.sql"),
 ]
 
 
@@ -159,6 +160,11 @@ def ensure_sqlite_technician_password_column(conn) -> None:
     ensure_column("job_services", "quantity", "NUMERIC(10,2) DEFAULT 1 NOT NULL")
     ensure_column("job_services", "unit_price", "NUMERIC(12,2) DEFAULT 0 NOT NULL")
     ensure_column("invoices", "approval_note", "TEXT")
+    ensure_column("invoice_line_items", "qb_item_id", "VARCHAR(64)")
+    ensure_column("service_catalog", "qb_item_id", "VARCHAR(64)")
+    ensure_column("service_catalog", "sku", "VARCHAR(128)")
+    ensure_column("service_catalog", "description", "TEXT")
+    ensure_column("service_catalog", "qb_type", "VARCHAR(64)")
 
 
 def backfill_job_services(engine) -> None:

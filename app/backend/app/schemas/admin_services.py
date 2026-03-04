@@ -8,8 +8,12 @@ from pydantic import BaseModel, Field
 
 class AdminServiceResponse(BaseModel):
     id: UUID
+    qb_item_id: Optional[str] = None
     code: str
     name: str
+    sku: Optional[str] = None
+    description: Optional[str] = None
+    qb_type: Optional[str] = None
     category: str
     default_price: Decimal
     approval_required: bool
@@ -40,3 +44,10 @@ class AdminServiceUpdateRequest(BaseModel):
 
 class AdminServiceStatusUpdateRequest(BaseModel):
     status: str = Field(..., pattern="^(active|archived)$")
+
+
+class AdminQuickBooksSyncResponse(BaseModel):
+    synced_count: int
+    created_count: int
+    updated_count: int
+    archived_count: int

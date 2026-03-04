@@ -27,9 +27,10 @@ class QuickBooksConnectionService:
 
     def _is_access_token_stale(self, row: QuickBooksConnection, *, now: datetime | None = None) -> bool:
         reference = now or datetime.now(UTC)
-        if row.expires_at is None:
+        expires_at = self._coerce_utc(row.expires_at)
+        if expires_at is None:
             return True
-        return row.expires_at <= (reference + ACCESS_TOKEN_REFRESH_BUFFER)
+        return expires_at <= (reference + ACCESS_TOKEN_REFRESH_BUFFER)
 
     def _refresh_access_token(self, row: QuickBooksConnection) -> QuickBooksConnection:
         if not QB_CLIENT_ID or not QB_CLIENT_SECRET:
@@ -44,7 +45,8 @@ class QuickBooksConnectionService:
             )
 
         now = datetime.now(UTC)
-        if row.refresh_expires_at is not None and row.refresh_expires_at <= now:
+        refresh_expires_at = self._coerce_utc(row.refresh_expires_at)
+        if refresh_expires_at is not None and refresh_expires_at <= now:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="QuickBooks refresh token has expired. Reconnect QuickBooks.",
@@ -134,7 +136,27 @@ class QuickBooksConnectionService:
         self.db.refresh(row)
         return row
 
+    @staticmethod
+    def _coerce_utc(value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+
+    def get_active_connection_or_raise(self, *, refresh_if_needed: bool = True) -> QuickBooksConnection:
+        row = self._get_active_connection()
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="QuickBooks is not connected.",
+            )
+        if refresh_if_needed and self._is_access_token_stale(row):
+            row = self._refresh_access_token(row)
+        return row
+
     def get_status(self) -> dict[str, str | bool | None]:
+        refresh_error: str | None = None
         row = self._get_active_connection()
         if row is None:
             return {
@@ -142,11 +164,9 @@ class QuickBooksConnectionService:
                 "provider": "quickbooks",
                 "environment": QB_ENV,
             }
-
-        refresh_error: str | None = None
         if self._is_access_token_stale(row):
             try:
-                row = self._refresh_access_token(row)
+                row = self.get_active_connection_or_raise(refresh_if_needed=True)
             except HTTPException as exc:
                 detail = exc.detail
                 refresh_error = detail if isinstance(detail, str) else str(detail)

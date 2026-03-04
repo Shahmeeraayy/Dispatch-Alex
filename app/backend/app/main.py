@@ -6,6 +6,7 @@ from sqlalchemy.exc import OperationalError
 
 from .api import deps
 from .api.endpoints import (
+    admin_quickbooks,
     admin_jobs,
     admin_dealerships,
     admin_email_change_requests,
@@ -49,11 +50,25 @@ def ensure_runtime_schema() -> None:
         if invoice_columns and "approval_note" not in invoice_columns:
             conn.exec_driver_sql("ALTER TABLE invoices ADD COLUMN approval_note TEXT")
 
+        invoice_line_item_columns = {column["name"] for column in inspect(conn).get_columns("invoice_line_items")}
+        if invoice_line_item_columns and "qb_item_id" not in invoice_line_item_columns:
+            conn.exec_driver_sql("ALTER TABLE invoice_line_items ADD COLUMN qb_item_id VARCHAR(64)")
+
         job_service_columns = {column["name"] for column in inspect(conn).get_columns("job_services")}
         if job_service_columns and "quantity" not in job_service_columns:
             conn.exec_driver_sql("ALTER TABLE job_services ADD COLUMN quantity NUMERIC(10,2) DEFAULT 1 NOT NULL")
         if job_service_columns and "unit_price" not in job_service_columns:
             conn.exec_driver_sql("ALTER TABLE job_services ADD COLUMN unit_price NUMERIC(12,2) DEFAULT 0 NOT NULL")
+
+        service_catalog_columns = {column["name"] for column in inspect(conn).get_columns("service_catalog")}
+        if service_catalog_columns and "qb_item_id" not in service_catalog_columns:
+            conn.exec_driver_sql("ALTER TABLE service_catalog ADD COLUMN qb_item_id VARCHAR(64)")
+        if service_catalog_columns and "sku" not in service_catalog_columns:
+            conn.exec_driver_sql("ALTER TABLE service_catalog ADD COLUMN sku VARCHAR(128)")
+        if service_catalog_columns and "description" not in service_catalog_columns:
+            conn.exec_driver_sql("ALTER TABLE service_catalog ADD COLUMN description TEXT")
+        if service_catalog_columns and "qb_type" not in service_catalog_columns:
+            conn.exec_driver_sql("ALTER TABLE service_catalog ADD COLUMN qb_type VARCHAR(64)")
     with deps.SessionLocal() as session:
         service = JobServicesService(session)
         changed = False
@@ -71,6 +86,7 @@ app.add_middleware(
 )
 
 app.include_router(admin_technicians.router)
+app.include_router(admin_quickbooks.router)
 app.include_router(admin_jobs.router)
 app.include_router(admin_dealerships.router)
 app.include_router(admin_email_change_requests.router)

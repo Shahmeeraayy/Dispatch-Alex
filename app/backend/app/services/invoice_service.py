@@ -16,6 +16,7 @@ from ..models.invoice import Invoice, InvoiceLineItem
 from ..models.invoice_branding_settings import InvoiceBrandingSettings
 from ..models.job import Job
 from ..models.job_service import JobService
+from ..models.service_catalog import ServiceCatalog
 from ..models.technician import Technician
 from ..repositories.invoice_repository import InvoiceRepository
 from ..schemas.invoice import (
@@ -145,6 +146,7 @@ class InvoiceService:
                 "id": item.id,
                 "job_id": item.job_id,
                 "product_service": item.product_service,
+                "qb_item_id": item.qb_item_id,
                 "description": item.description,
                 "quantity": item.quantity,
                 "qty": item.quantity,
@@ -313,6 +315,7 @@ class InvoiceService:
                 InvoiceLineItem(
                     job_id=item.job_id,
                     product_service=item.product_service,
+                    qb_item_id=item.qb_item_id,
                     description=item.description,
                     quantity=quantity,
                     rate=rate,
@@ -351,6 +354,7 @@ class InvoiceService:
         for service_row in service_rows:
             quantity = _to_money(service_row.quantity if service_row.quantity is not None else Decimal("1"))
             rate = _to_money(service_row.unit_price if service_row.unit_price is not None else ZERO)
+            service_catalog = self._resolve_service_catalog_for_row(service_row)
             if quantity <= ZERO:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -369,6 +373,7 @@ class InvoiceService:
             line_items.append(
                 InvoiceLineItemPayload(
                     product_service=service_row.service_name_snapshot or job.service_type or "Dispatch Service",
+                    qb_item_id=service_catalog.qb_item_id if service_catalog is not None else None,
                     description=" | ".join(description_parts) or None,
                     quantity=quantity,
                     qty=quantity,
@@ -698,6 +703,7 @@ class InvoiceService:
                 estimated_sales_tax += line_tax_amount
 
                 service_row = service_rows[index] if index < len(service_rows) else None
+                service_catalog = self._resolve_service_catalog_for_row(service_row) if service_row is not None else None
                 service_id = str(service_row.id) if service_row is not None and service_row.id is not None else f"{job.id}:{index}"
                 service_name = line.product_service or "Dispatch Service"
 
@@ -705,6 +711,7 @@ class InvoiceService:
                     InvoicePendingApprovalServiceResponse(
                         id=service_id,
                         name=service_name,
+                        qb_item_id=service_catalog.qb_item_id if service_catalog is not None else None,
                         quantity=quantity,
                         price=rate,
                         total=amount,
@@ -772,6 +779,25 @@ class InvoiceService:
             )
 
         return payload
+
+    def _resolve_service_catalog_for_row(self, service_row: JobService) -> ServiceCatalog | None:
+        if service_row.service_catalog_id is not None:
+            row = (
+                self.db.query(ServiceCatalog)
+                .filter(ServiceCatalog.id == service_row.service_catalog_id)
+                .first()
+            )
+            if row is not None:
+                return row
+
+        if not service_row.service_name_snapshot:
+            return None
+
+        return (
+            self.db.query(ServiceCatalog)
+            .filter(ServiceCatalog.name.ilike(service_row.service_name_snapshot.strip()))
+            .first()
+        )
 
     def list_pending_approval_issues(self) -> list[InvoicePendingApprovalIssueResponse]:
         rows = self.repo.list_pending_approval_jobs()

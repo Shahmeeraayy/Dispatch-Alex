@@ -92,6 +92,7 @@ class InvoiceLineItem(Base):
     job_id = Column(Uuid(as_uuid=True), ForeignKey("jobs.id"), nullable=True)
 
     product_service = Column(String(255), nullable=False)
+    qb_item_id = Column(String(64), nullable=True)
     description = Column(Text, nullable=True)
     quantity = Column(Numeric(10, 2), nullable=False)
     rate = Column(Numeric(12, 2), nullable=False)

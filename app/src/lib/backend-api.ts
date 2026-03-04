@@ -141,8 +141,12 @@ export type BackendDealership = {
 
 export type BackendServiceCatalogItem = {
   id: string;
+  qb_item_id?: string | null;
   code: string;
   name: string;
+  sku?: string | null;
+  description?: string | null;
+  qb_type?: string | null;
   category: string;
   default_price: string | number;
   approval_required: boolean;
@@ -343,6 +347,7 @@ export type BackendPendingInvoiceApproval = {
   services: Array<{
     id: string;
     name: string;
+    qb_item_id?: string | null;
     quantity: string | number;
     price: string | number;
     total: string | number;
@@ -370,6 +375,13 @@ export type BackendPendingInvoiceApproval = {
     state?: string | null;
     zip_code?: string | null;
   } | null;
+};
+
+export type BackendQuickBooksItemSyncResponse = {
+  synced_count: number;
+  created_count: number;
+  updated_count: number;
+  archived_count: number;
 };
 
 export type BackendPendingInvoiceApprovalIssue = {
@@ -1077,6 +1089,15 @@ export async function addTechnicianMyJobService(
     method: 'POST',
     token,
     body: payload,
+  });
+}
+
+export async function syncQuickBooksItems(
+  token: string,
+): Promise<BackendQuickBooksItemSyncResponse> {
+  return requestJson<BackendQuickBooksItemSyncResponse>('/admin/quickbooks/sync-items', {
+    method: 'POST',
+    token,
   });
 }
 

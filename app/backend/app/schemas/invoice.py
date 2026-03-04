@@ -93,6 +93,7 @@ class InvoiceBillingPayload(BaseModel):
 
 class InvoiceLineItemPayload(BaseModel):
     product_service: str = Field(..., min_length=1, max_length=255)
+    qb_item_id: Optional[str] = Field(default=None, max_length=64)
     description: Optional[str] = None
     quantity: Optional[Decimal] = Field(default=None, gt=0)
     qty: Optional[Decimal] = Field(default=None, gt=0)
@@ -101,7 +102,7 @@ class InvoiceLineItemPayload(BaseModel):
     tax_rate: Optional[Decimal] = Field(default=None, ge=0, le=1)
     job_id: Optional[UUID] = None
 
-    @field_validator("product_service", "description", "tax_code")
+    @field_validator("product_service", "qb_item_id", "description", "tax_code")
     @classmethod
     def _normalize_text(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
@@ -234,6 +235,7 @@ class InvoiceLineItemResponse(BaseModel):
     id: UUID
     job_id: Optional[UUID] = None
     product_service: str
+    qb_item_id: Optional[str] = None
     description: Optional[str] = None
     quantity: Decimal
     qty: Decimal
@@ -259,6 +261,7 @@ class InvoicePendingApprovalLineItemResponse(BaseModel):
 class InvoicePendingApprovalServiceResponse(BaseModel):
     id: str
     name: str
+    qb_item_id: Optional[str] = None
     quantity: Decimal
     price: Decimal
     total: Decimal

@@ -136,8 +136,12 @@ class ServiceCatalogService:
     def _to_response(self, row: ServiceCatalog) -> AdminServiceResponse:
         return AdminServiceResponse(
             id=row.id,
+            qb_item_id=row.qb_item_id,
             code=row.code,
             name=row.name,
+            sku=row.sku,
+            description=row.description,
+            qb_type=row.qb_type,
             category=row.category,
             default_price=Decimal(row.default_price or 0),
             approval_required=bool(row.approval_required),

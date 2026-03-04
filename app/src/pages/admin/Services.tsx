@@ -64,6 +64,7 @@ import {
     createAdminService,
     fetchAdminServices,
     getStoredAdminToken,
+    syncQuickBooksItems,
     updateAdminService,
     updateAdminServiceStatus,
     type BackendServiceCatalogItem,
@@ -73,8 +74,12 @@ import {
 
 interface ServiceItem {
     id: string;
+    qb_item_id?: string;
     code: string;
     name: string;
+    sku?: string;
+    description?: string;
+    qb_type?: string;
     category: string;
     default_price: number;
     approval_required: boolean;
@@ -93,8 +98,12 @@ const toNumber = (value: string | number): number => {
 
 const mapBackendServiceToUi = (row: BackendServiceCatalogItem): ServiceItem => ({
     id: row.id,
+    qb_item_id: row.qb_item_id ?? undefined,
     code: row.code,
     name: row.name,
+    sku: row.sku ?? undefined,
+    description: row.description ?? undefined,
+    qb_type: row.qb_type ?? undefined,
     category: row.category || 'General',
     default_price: toNumber(row.default_price),
     approval_required: Boolean(row.approval_required),
@@ -200,6 +209,8 @@ function StatusBadge({ status }: { status: 'active' | 'archived' }) {
 const SERVICE_EXPORT_COLUMNS = [
     'Code',
     'Name',
+    'QuickBooksItemId',
+    'SKU',
     'Category',
     'DefaultPrice',
     'Status',
@@ -221,6 +232,7 @@ export default function ServicesPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [isSyncingQuickBooks, setIsSyncingQuickBooks] = useState(false);
 
     // Forms
     const [formData, setFormData] = useState({
@@ -271,6 +283,8 @@ export default function ServicesPage() {
     const getServiceExportRows = () => services.map(s => ({
             Code: s.code,
             Name: s.name,
+            QuickBooksItemId: s.qb_item_id || '',
+            SKU: s.sku || '',
             Category: s.category,
             DefaultPrice: s.default_price,
             Status: s.status,
@@ -286,7 +300,9 @@ export default function ServicesPage() {
     const filteredServices = services.filter(s => {
         const matchesSearch =
             s.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            s.name.toLowerCase().includes(searchQuery.toLowerCase());
+            s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (s.sku || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (s.qb_item_id || '').toLowerCase().includes(searchQuery.toLowerCase());
         const normalizedCategory = s.category.trim().toLowerCase();
         const normalizedName = s.name.trim().toLowerCase();
         const normalizedCode = s.code.trim().toLowerCase();
@@ -460,6 +476,27 @@ export default function ServicesPage() {
         }
     };
 
+    const handleSyncQuickBooks = async () => {
+        const token = getStoredAdminToken();
+        if (!token) {
+            alert('Admin session is required to sync QuickBooks items.');
+            return;
+        }
+        setIsSyncingQuickBooks(true);
+        try {
+            const result = await syncQuickBooksItems(token);
+            await fetchServices();
+            alert(
+                `QuickBooks sync completed. Synced ${result.synced_count} items (${result.created_count} created, ${result.updated_count} updated, ${result.archived_count} archived).`,
+            );
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unable to sync QuickBooks items';
+            alert(detail);
+        } finally {
+            setIsSyncingQuickBooks(false);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full space-y-6">
             {/* 1. Header */}
@@ -471,6 +508,9 @@ export default function ServicesPage() {
                 <div className="flex flex-wrap items-center justify-end gap-3">
                     <Button variant="outline" size="sm" onClick={() => void fetchServices()} className="h-9 gap-2" disabled={loading}>
                         <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /> Refresh
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void handleSyncQuickBooks()} className="h-9 gap-2" disabled={isSyncingQuickBooks}>
+                        <RefreshCw className={cn('w-4 h-4', isSyncingQuickBooks && 'animate-spin')} /> Sync QuickBooks Services
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-9 gap-2">
                         <FileDown className="w-4 h-4" /> Export
@@ -574,6 +614,7 @@ export default function ServicesPage() {
                             <TableRow>
                                 <TableHead className="pl-6 w-[150px]">Service Code</TableHead>
                                 <TableHead className="min-w-[260px]">Service Name</TableHead>
+                                <TableHead className="w-[140px]">SKU</TableHead>
                                 <TableHead className="w-[120px]">Category</TableHead>
                                 <TableHead className="w-[120px] text-right pr-6">Default Price</TableHead>
                                 <TableHead className="w-[100px] text-center">Status</TableHead>
@@ -591,6 +632,7 @@ export default function ServicesPage() {
                                 >
                                     <TableCell className="pl-6 font-semibold text-gray-900">{service.code}</TableCell>
                                     <TableCell className="text-gray-700 font-medium">{service.name}</TableCell>
+                                    <TableCell className="font-mono text-xs text-gray-500">{service.sku || '-'}</TableCell>
                                     <TableCell className="text-gray-600">{service.category}</TableCell>
                                     <TableCell className="text-right pr-6 font-mono text-gray-600">
                                         ${service.default_price.toFixed(2)}
@@ -750,12 +792,24 @@ export default function ServicesPage() {
                                         </h3>
                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                             <div>
+                                                <span className="text-gray-500 block">QuickBooks Item ID</span>
+                                                <span className="font-mono text-gray-900">{selectedService.qb_item_id || 'Not mapped'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-500 block">SKU</span>
+                                                <span className="font-mono text-gray-900">{selectedService.sku || '-'}</span>
+                                            </div>
+                                            <div>
                                                 <span className="text-gray-500 block">Default Price</span>
                                                 <span className="font-mono font-medium text-gray-900">${selectedService.default_price.toFixed(2)}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-500 block">Status</span>
                                                 <StatusBadge status={selectedService.status} />
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-500 block">QuickBooks Type</span>
+                                                <span className="text-gray-900">{selectedService.qb_type || '-'}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-500 block">Approval Required</span>
@@ -767,12 +821,24 @@ export default function ServicesPage() {
                                             </div>
                                         </div>
 
-                                        {selectedService.notes && (
+                                        {(selectedService.description || selectedService.notes) && (
                                             <div className="pt-4 border-t border-gray-100">
-                                                <span className="text-gray-500 block text-xs mb-1">Notes</span>
-                                                <p className="text-sm text-gray-700 bg-amber-50 p-2 rounded border border-amber-100">
-                                                    {selectedService.notes}
-                                                </p>
+                                                {selectedService.description && (
+                                                    <>
+                                                        <span className="text-gray-500 block text-xs mb-1">QuickBooks Description</span>
+                                                        <p className="text-sm text-gray-700 bg-blue-50 p-2 rounded border border-blue-100">
+                                                            {selectedService.description}
+                                                        </p>
+                                                    </>
+                                                )}
+                                                {selectedService.notes && (
+                                                    <>
+                                                        <span className="mt-3 text-gray-500 block text-xs mb-1">Notes</span>
+                                                        <p className="text-sm text-gray-700 bg-amber-50 p-2 rounded border border-amber-100">
+                                                            {selectedService.notes}
+                                                        </p>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
                                     </Card>

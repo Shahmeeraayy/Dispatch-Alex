@@ -10,8 +10,12 @@ class ServiceCatalog(Base):
     __tablename__ = "service_catalog"
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    qb_item_id = Column(String(64), nullable=True, unique=True)
     code = Column(String(128), nullable=False, unique=True)
     name = Column(String(255), nullable=False)
+    sku = Column(String(128), nullable=True)
+    description = Column(Text, nullable=True)
+    qb_type = Column(String(64), nullable=True)
     category = Column(String(128), nullable=False, server_default=text("'General'"))
     default_price = Column(Numeric(12, 2), nullable=False, server_default=text("0"))
     approval_required = Column(Boolean, nullable=False, server_default=text("false"))

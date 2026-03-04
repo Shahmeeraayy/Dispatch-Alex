@@ -15,7 +15,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.config import DATABASE_URL
-from app.models import Skill, Technician, WorkingHours, Zone, technician_skills, technician_zones
+from app.models import Job, JobService, Skill, Technician, WorkingHours, Zone, technician_skills, technician_zones
 from app.models.base import Base
 
 
@@ -35,6 +35,7 @@ MIGRATIONS: list[Migration] = [
     Migration("007_invoices.sql"),
     Migration("008_dispatch_job_invoice_fields.sql"),
     Migration("009_technician_profile_email_change_requests.sql"),
+    Migration("010_job_services.sql"),
 ]
 
 
@@ -140,6 +141,41 @@ def ensure_sqlite_technician_password_column(conn) -> None:
     ensure_column("jobs", "source_metadata", "TEXT")
     ensure_column("jobs", "pre_assigned_technician_id", "CHAR(32)")
     ensure_column("jobs", "pre_assignment_reason", "VARCHAR(64)")
+
+
+def backfill_job_services(engine) -> None:
+    with Session(engine) as session:
+        rows = session.query(Job).all()
+        changed = False
+
+        for job in rows:
+            existing_services = [
+                row
+                for row in session.query(JobService).filter(JobService.job_id == job.id).order_by(JobService.sort_order.asc()).all()
+            ]
+            if existing_services:
+                primary = existing_services[0].service_name_snapshot.strip()
+                if primary and job.service_type != primary:
+                    job.service_type = primary
+                    changed = True
+                continue
+
+            service_name = (job.service_type or "").strip()
+            if not service_name:
+                continue
+
+            session.add(
+                JobService(
+                    job_id=job.id,
+                    service_name_snapshot=service_name,
+                    source="dealership",
+                    sort_order=0,
+                )
+            )
+            changed = True
+
+        if changed:
+            session.commit()
 
 
 def seed_development_data(engine) -> None:
@@ -329,6 +365,8 @@ def run() -> None:
 
     if args.with_seed and "003_technician.sql" in pending:
         seed_development_data(engine)
+
+    backfill_job_services(engine)
 
     with engine.begin() as conn:
         ensure_migration_table(conn)

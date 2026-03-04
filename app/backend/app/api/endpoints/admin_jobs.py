@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Dict, List
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,61 +19,10 @@ from ...schemas.admin_jobs import (
     AdminJobListItemResponse,
     AdminJobUpdateRequest,
 )
+from ...services.job_services_service import JobServicesService
 from ...services.pre_assignment_service import PreAssignmentService
 
 router = APIRouter(prefix="/admin/jobs", tags=["admin-jobs"])
-
-
-def _normalize_service_names(*, service_name: str | None, service_names: list[str] | None) -> list[str]:
-    normalized: list[str] = []
-    seen: set[str] = set()
-    for candidate in [service_name, *(service_names or [])]:
-        if candidate is None:
-            continue
-        trimmed = candidate.strip()
-        if not trimmed:
-            continue
-        key = trimmed.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        normalized.append(trimmed)
-    if not normalized:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="At least one service is required")
-    return normalized
-
-
-def _extract_service_names(job_row: Job) -> list[str]:
-    metadata = job_row.source_metadata if isinstance(job_row.source_metadata, dict) else {}
-    raw_values = metadata.get("service_names")
-    normalized: list[str] = []
-    seen: set[str] = set()
-    if isinstance(raw_values, list):
-        for item in raw_values:
-            if not isinstance(item, str):
-                continue
-            trimmed = item.strip()
-            if not trimmed:
-                continue
-            key = trimmed.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            normalized.append(trimmed)
-
-    primary_service = (job_row.service_type or "").strip()
-    if primary_service:
-        key = primary_service.lower()
-        if key not in seen:
-            normalized.insert(0, primary_service)
-
-    return normalized
-
-
-def _merge_job_source_metadata(job_row: Job, **updates: Any) -> dict[str, Any]:
-    metadata = dict(job_row.source_metadata) if isinstance(job_row.source_metadata, dict) else {}
-    metadata.update(updates)
-    return metadata
 
 
 def _generate_manual_job_code(db: Session) -> str:
@@ -98,7 +47,9 @@ def _serialize_admin_job_row(db: Session, job_row: Job) -> AdminJobListItemRespo
     if job_row.dealership_id is not None:
         dealership = db.query(Dealership).filter(Dealership.id == job_row.dealership_id).first()
 
-    service_names = _extract_service_names(job_row)
+    job_services_service = JobServicesService(db)
+    service_rows = job_services_service.list_service_rows(job_row)
+    service_names = job_services_service.list_service_names(job_row)
 
     return AdminJobListItemResponse(
         id=job_row.id,
@@ -113,6 +64,7 @@ def _serialize_admin_job_row(db: Session, job_row: Job) -> AdminJobListItemRespo
         pre_assignment_reason=job_row.pre_assignment_reason,
         service_type=service_names[0] if service_names else job_row.service_type,
         service_names=service_names,
+        service_entries=job_services_service.serialize_service_rows(service_rows),
         vehicle=job_row.vehicle,
         created_at=job_row.created_at,
         updated_at=job_row.updated_at,
@@ -129,10 +81,12 @@ def create_admin_job(
     db: Session = Depends(deps.get_db),
     current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
 ):
-    normalized_service_names = _normalize_service_names(
-        service_name=payload.service_name,
-        service_names=payload.service_names,
-    )
+    try:
+        normalized_service_names = JobServicesService(db)._normalize_service_names(
+            [candidate for candidate in [payload.service_name, *(payload.service_names or [])] if candidate is not None]
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     dealership = (
         db.query(Dealership)
         .filter(Dealership.name == payload.dealership_name)
@@ -182,10 +136,15 @@ def create_admin_job(
             "manual_entry": True,
             "dealership_name_input": payload.dealership_name,
             "created_by_role": "admin",
-            "service_names": normalized_service_names,
         },
     )
     db.add(job_row)
+    JobServicesService(db).replace_services(
+        job=job_row,
+        service_names=normalized_service_names,
+        source="admin",
+        created_by_user_id=current_user.user_id,
+    )
     db.commit()
     db.refresh(job_row)
 
@@ -209,30 +168,7 @@ def list_admin_jobs(
         .all()
     )
 
-    return [
-        AdminJobListItemResponse(
-            id=job.id,
-            job_code=job.job_code,
-            status=normalize_dispatch_job_status(job.status).value,
-            dealership_id=job.dealership_id,
-            dealership_name=dealership.name if dealership is not None else None,
-            assigned_technician_id=job.assigned_tech_id,
-            assigned_technician_name=technician.name if technician is not None else None,
-            pre_assigned_technician_id=job.pre_assigned_technician_id,
-            pre_assigned_technician_name=pre_assigned_technician.name if pre_assigned_technician is not None else None,
-            pre_assignment_reason=job.pre_assignment_reason,
-            service_type=_extract_service_names(job)[0] if _extract_service_names(job) else job.service_type,
-            service_names=_extract_service_names(job),
-            vehicle=job.vehicle,
-            created_at=job.created_at,
-            updated_at=job.updated_at,
-            requested_service_date=job.requested_service_date,
-            requested_service_time=job.requested_service_time,
-            source_system=job.source_system,
-            source_metadata=job.source_metadata,
-        )
-        for job, dealership, technician, pre_assigned_technician in rows
-]
+    return [_serialize_admin_job_row(db, job) for job, dealership, technician, pre_assigned_technician in rows]
 
 
 @router.patch("/{job_id}", response_model=AdminJobListItemResponse)
@@ -258,21 +194,22 @@ def update_admin_job(
         job_row.dealership_id = dealership.id if dealership is not None else None
         job_row.customer_name = dealership.name if dealership is not None else payload.dealership_name
         job_row.location = (dealership.city.strip() if dealership is not None and dealership.city else None)
-        job_row.source_metadata = _merge_job_source_metadata(
-            job_row,
-            dealership_name_input=payload.dealership_name,
-        )
+        metadata = dict(job_row.source_metadata) if isinstance(job_row.source_metadata, dict) else {}
+        metadata["dealership_name_input"] = payload.dealership_name
+        job_row.source_metadata = metadata
 
-    next_service_names = None
     if payload.service_name is not None or payload.service_names is not None:
-        next_service_names = _normalize_service_names(
-            service_name=payload.service_name,
-            service_names=payload.service_names,
-        )
-        job_row.service_type = next_service_names[0]
-        job_row.source_metadata = _merge_job_source_metadata(
-            job_row,
+        try:
+            next_service_names = JobServicesService(db)._normalize_service_names(
+                [candidate for candidate in [payload.service_name, *(payload.service_names or [])] if candidate is not None]
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        JobServicesService(db).replace_services(
+            job=job_row,
             service_names=next_service_names,
+            source="admin",
+            created_by_user_id=current_user.user_id,
         )
 
     if payload.vehicle_summary is not None:

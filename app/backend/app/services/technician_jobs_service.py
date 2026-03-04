@@ -11,6 +11,7 @@ from ..models.job import Job
 from ..models.job_event import JobEvent
 from ..models.zone import Zone
 from ..schemas.technician_profile import TechnicianJobFeedItem, TechnicianJobFeedResponse
+from .job_services_service import JobServicesService
 
 
 class TechnicianJobsService:
@@ -29,6 +30,7 @@ class TechnicianJobsService:
 
         available_jobs: List[TechnicianJobFeedItem] = []
         my_jobs: List[TechnicianJobFeedItem] = []
+        job_services_service = JobServicesService(self.db)
         for job, dealership, zone in rows:
             status = normalize_status(job.status)
             # Never expose pre-confirmation/admin-only stages to technician portal.
@@ -40,13 +42,16 @@ class TechnicianJobsService:
             }:
                 continue
 
+            service_rows = job_services_service.list_service_rows(job)
+            service_names = job_services_service.list_service_names(job)
             item = TechnicianJobFeedItem(
                 id=job.id,
                 job_code=job.job_code,
                 status=status.value,
                 dealership_name=dealership.name if dealership is not None else None,
-                service_name=self._extract_service_names(job)[0] if self._extract_service_names(job) else job.service_type,
-                service_names=self._extract_service_names(job),
+                service_name=service_names[0] if service_names else job.service_type,
+                service_names=service_names,
+                service_entries=job_services_service.serialize_service_rows(service_rows),
                 vehicle_summary=job.vehicle,
                 zone_name=self._resolve_zone_name(job=job, dealership=dealership, zone=zone),
                 requested_service_date=job.requested_service_date,
@@ -61,34 +66,6 @@ class TechnicianJobsService:
                 my_jobs.append(item)
 
         return TechnicianJobFeedResponse(available_jobs=available_jobs, my_jobs=my_jobs)
-
-    @staticmethod
-    def _extract_service_names(job: Job) -> list[str]:
-        metadata = job.source_metadata if isinstance(job.source_metadata, dict) else {}
-        raw_values = metadata.get("service_names")
-        normalized: list[str] = []
-        seen: set[str] = set()
-
-        if isinstance(raw_values, list):
-            for item in raw_values:
-                if not isinstance(item, str):
-                    continue
-                trimmed = item.strip()
-                if not trimmed:
-                    continue
-                key = trimmed.lower()
-                if key in seen:
-                    continue
-                seen.add(key)
-                normalized.append(trimmed)
-
-        primary = (job.service_type or "").strip()
-        if primary:
-            key = primary.lower()
-            if key not in seen:
-                normalized.insert(0, primary)
-
-        return normalized
 
     def start_my_job(self, technician_id: UUID, job_id: UUID) -> Job:
         return self._transition_my_job_status(
@@ -165,6 +142,31 @@ class TechnicianJobsService:
                         "comment": comment,
                     },
                 )
+            )
+
+        self.db.refresh(row)
+        return row
+
+    def add_service_to_my_job(self, technician_id: UUID, job_id: UUID, *, service_name: str, notes: str | None) -> Job:
+        with self.db.begin():
+            row = self._lock_assigned_job(job_id=job_id)
+            if row.assigned_tech_id != technician_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Job is not assigned to current technician")
+
+            current_status = normalize_status(row.status)
+            if current_status not in {DispatchJobStatus.SCHEDULED, DispatchJobStatus.IN_PROGRESS, DispatchJobStatus.DELAYED}:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Job in status {current_status.value} cannot be updated",
+                )
+
+            JobServicesService(self.db).add_service(
+                job=row,
+                service_name=service_name,
+                source="technician",
+                notes=notes,
+                created_by_user_id=technician_id,
+                audit_actor_type="TECHNICIAN",
             )
 
         self.db.refresh(row)

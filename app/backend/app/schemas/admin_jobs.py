@@ -5,6 +5,14 @@ from uuid import UUID
 from pydantic import BaseModel, validator
 
 
+class JobServiceResponse(BaseModel):
+    id: str
+    service_name: str
+    source: str
+    notes: Optional[str] = None
+    sort_order: int
+
+
 class AdminJobListItemResponse(BaseModel):
     id: UUID
     job_code: str
@@ -18,6 +26,7 @@ class AdminJobListItemResponse(BaseModel):
     pre_assignment_reason: Optional[str] = None
     service_type: Optional[str] = None
     service_names: List[str] = []
+    service_entries: List[JobServiceResponse] = []
     vehicle: Optional[str] = None
     created_at: datetime
     updated_at: datetime

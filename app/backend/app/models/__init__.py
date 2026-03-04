@@ -6,6 +6,7 @@ from .invoice_branding_settings import InvoiceBrandingSettings
 from .job import Job
 from .job_event import JobEvent
 from .job_rejection import JobRejection
+from .job_service import JobService
 from .password_reset_token import PasswordResetToken
 from .priority_rule import PriorityRule
 from .quickbooks_connection import QuickBooksConnection

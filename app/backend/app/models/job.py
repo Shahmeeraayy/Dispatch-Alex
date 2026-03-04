@@ -46,3 +46,9 @@ class Job(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     invoice = relationship("Invoice", back_populates="jobs")
+    job_services = relationship(
+        "JobService",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        order_by="JobService.sort_order.asc()",
+    )

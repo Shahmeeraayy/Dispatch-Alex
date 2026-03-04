@@ -23,7 +23,9 @@ from .api.endpoints import (
     technician_time_off,
 )
 from .core.config import CORS_ALLOW_ORIGINS
+from .models.job import Job
 from .models.base import Base
+from .services.job_services_service import JobServicesService
 
 app = FastAPI(
     title="SM2 Dispatch Technician API",
@@ -42,6 +44,13 @@ def ensure_runtime_schema() -> None:
         }
         if columns and "recovery_email" not in columns:
             conn.exec_driver_sql("ALTER TABLE admin_credential_settings ADD COLUMN recovery_email VARCHAR(255)")
+    with deps.SessionLocal() as session:
+        service = JobServicesService(session)
+        changed = False
+        for row in session.query(Job).all():
+            changed = service.backfill_job(row) or changed
+        if changed:
+            session.commit()
 
 app.add_middleware(
     CORSMiddleware,

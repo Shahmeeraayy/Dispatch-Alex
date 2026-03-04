@@ -165,6 +165,13 @@ export type BackendAdminJob = {
   pre_assignment_reason?: string | null;
   service_type?: string | null;
   service_names?: string[];
+  service_entries?: Array<{
+    id: string;
+    service_name: string;
+    source: string;
+    notes?: string | null;
+    sort_order: number;
+  }>;
   vehicle?: string | null;
   created_at: string;
   updated_at: string;
@@ -181,6 +188,13 @@ export type BackendTechnicianJobFeedItem = {
   dealership_name?: string | null;
   service_name?: string | null;
   service_names?: string[];
+  service_entries?: Array<{
+    id: string;
+    service_name: string;
+    source: string;
+    notes?: string | null;
+    sort_order: number;
+  }>;
   vehicle_summary?: string | null;
   zone_name?: string | null;
   requested_service_date?: string | null;
@@ -1018,6 +1032,18 @@ export async function delayTechnicianMyJob(
   payload: { minutes?: number; note?: string },
 ): Promise<BackendTechnicianJobActionResponse> {
   return requestJson<BackendTechnicianJobActionResponse>(`/technicians/me/jobs/${jobId}/delay`, {
+    method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export async function addTechnicianMyJobService(
+  token: string,
+  jobId: string,
+  payload: { service_name: string; notes?: string },
+): Promise<BackendTechnicianJobFeedItem> {
+  return requestJson<BackendTechnicianJobFeedItem>(`/technicians/me/jobs/${jobId}/services`, {
     method: 'POST',
     token,
     body: payload,

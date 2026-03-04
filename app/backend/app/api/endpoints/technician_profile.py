@@ -13,8 +13,10 @@ from ...schemas.technician_profile import (
     TechnicianPasswordChangeRequest,
     TechnicianPasswordChangeResponse,
     TechnicianJobActionResponse,
+    TechnicianJobAddServiceRequest,
     TechnicianJobDelayRequest,
     TechnicianAvailabilityUpdateRequest,
+    TechnicianJobFeedItem,
     TechnicianJobRefuseRequest,
     TechnicianProfileResponse,
     TechnicianProfileUpdateRequest,
@@ -146,3 +148,23 @@ def refuse_my_job(
         comment=payload.comment,
     )
     return TechnicianJobActionResponse(job_id=row.id, status=row.status)
+
+
+@router.post("/jobs/{job_id}/services", response_model=TechnicianJobFeedItem, status_code=201)
+def add_service_to_my_job(
+    job_id: UUID,
+    payload: TechnicianJobAddServiceRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.TECHNICIAN)),
+):
+    row = TechnicianJobsService(db).add_service_to_my_job(
+        current_user.user_id,
+        job_id,
+        service_name=payload.service_name,
+        notes=payload.notes,
+    )
+    feed = TechnicianJobsService(db).get_job_feed(current_user.user_id)
+    for item in [*feed.my_jobs, *feed.available_jobs]:
+        if item.id == row.id:
+            return item
+    raise RuntimeError("Updated job not found in technician feed")

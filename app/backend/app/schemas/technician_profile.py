@@ -402,6 +402,14 @@ class AssignmentReadinessResponse(BaseModel):
     can_assign: bool
 
 
+class TechnicianJobServiceResponse(BaseModel):
+    id: str
+    service_name: str
+    source: str
+    notes: Optional[str] = None
+    sort_order: int
+
+
 class TechnicianJobFeedItem(BaseModel):
     id: UUID
     job_code: str
@@ -409,6 +417,7 @@ class TechnicianJobFeedItem(BaseModel):
     dealership_name: Optional[str] = None
     service_name: Optional[str] = None
     service_names: List[str] = Field(default_factory=list)
+    service_entries: List[TechnicianJobServiceResponse] = Field(default_factory=list)
     vehicle_summary: Optional[str] = None
     zone_name: Optional[str] = None
     requested_service_date: Optional[date] = None
@@ -449,3 +458,22 @@ class TechnicianJobRefuseRequest(BaseModel):
 class TechnicianJobActionResponse(BaseModel):
     job_id: UUID
     status: str
+
+
+class TechnicianJobAddServiceRequest(BaseModel):
+    service_name: str = Field(..., min_length=1, max_length=255)
+    notes: Optional[str] = None
+
+    @validator("service_name")
+    def validate_service_name(cls, value: str):
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("service_name must not be empty")
+        return normalized
+
+    @validator("notes")
+    def validate_notes(cls, value: Optional[str]):
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None

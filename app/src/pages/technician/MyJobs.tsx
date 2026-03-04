@@ -12,11 +12,13 @@ import {
     Loader2,
     X,
     RefreshCw,
+    Plus,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+    addTechnicianMyJobService,
     completeTechnicianMyJob,
     delayTechnicianMyJob,
     fetchAdminServices,
@@ -65,12 +67,20 @@ interface MyJob {
     service_name: string;
     original_service_name: string;
     service_names: string[];
+    service_entries: AddedServiceEntry[];
     job_status: JobStatus;
     urgency?: Urgency;
     scheduled_time?: string;
     zone: string;
     allowed_actions: ('start' | 'done' | 'delay' | 'refuse')[];
 }
+
+type AddedServiceEntry = {
+    id?: string;
+    service_name: string;
+    notes?: string;
+    source?: string;
+};
 
 const mapBackendFeedItemToMyJob = (item: BackendTechnicianJobFeedItem): MyJob | null => {
     const status = normalizeDispatchJobStatus(item.status);
@@ -113,6 +123,12 @@ const mapBackendFeedItemToMyJob = (item: BackendTechnicianJobFeedItem): MyJob | 
         ),
     );
     const primaryServiceName = normalizedServiceNames[0] || item.service_name || 'Service Request';
+    const serviceEntries = (item.service_entries ?? []).map((entry) => ({
+        id: entry.id,
+        service_name: entry.service_name,
+        notes: entry.notes || undefined,
+        source: entry.source,
+    }));
 
     return {
         job_id: item.id,
@@ -121,6 +137,7 @@ const mapBackendFeedItemToMyJob = (item: BackendTechnicianJobFeedItem): MyJob | 
         service_name: primaryServiceName,
         original_service_name: primaryServiceName,
         service_names: normalizedServiceNames.length > 0 ? normalizedServiceNames : [primaryServiceName],
+        service_entries: serviceEntries,
         job_status: mappedStatus,
         urgency: 'normal',
         scheduled_time: scheduledTime,
@@ -188,7 +205,10 @@ function JobCard({
     job,
     serviceOptions,
     selectedServiceName,
+    selectedServices,
+    addedServices,
     onSelectService,
+    onOpenAddService,
     onStart,
     onDone,
     onDelay,
@@ -197,7 +217,10 @@ function JobCard({
     job: MyJob;
     serviceOptions: string[];
     selectedServiceName: string;
+    selectedServices: string[];
+    addedServices: AddedServiceEntry[];
     onSelectService: (jobId: string, serviceName: string) => void;
+    onOpenAddService: (jobId: string) => void;
     onStart: (jobId: string) => void;
     onDone: (jobId: string) => void;
     onDelay: (jobId: string) => void;
@@ -297,6 +320,38 @@ function JobCard({
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                         Dealership requested: <span className="font-medium text-gray-700 dark:text-gray-200">{job.original_service_name}</span>
                     </p>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenAddService(job.job_id)}
+                        className="mt-3 h-10 w-full justify-start rounded-xl border-dashed border-[#2F8E92]/40 text-[#2F8E92] hover:bg-[#2F8E92]/5 dark:border-teal-500/40 dark:text-teal-400 dark:hover:bg-teal-500/10"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Additional Service
+                    </Button>
+                    <div className="mt-3 rounded-xl bg-white/70 p-3 dark:bg-gray-800/60">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Selected Services
+                        </p>
+                        <div className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                            {selectedServices.map((serviceName) => (
+                                <div key={`${job.job_id}-selected-${serviceName}`} className="flex gap-2">
+                                    <span className="text-[#2F8E92] dark:text-teal-400">•</span>
+                                    <span>{serviceName}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    {addedServices.length > 0 && (
+                        <div className="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                            {addedServices.map((service) => (
+                                <p key={`${job.job_id}-added-${service.service_name}`}>
+                                    Technician added: <span className="font-medium text-gray-700 dark:text-gray-200">{service.service_name}</span>
+                                    {service.notes ? ` (${service.notes})` : ''}
+                                </p>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Action Buttons */}
@@ -456,6 +511,7 @@ export default function MyJobsPage({
     const [delayModalOpen, setDelayModalOpen] = useState(false);
     const [refuseModalOpen, setRefuseModalOpen] = useState(false);
     const [doneModalOpen, setDoneModalOpen] = useState(false);
+    const [addServiceModalOpen, setAddServiceModalOpen] = useState(false);
     const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
     // Delay Modal State
@@ -466,6 +522,8 @@ export default function MyJobsPage({
     // Refuse Modal State
     const [refuseReason, setRefuseReason] = useState('');
     const [refuseComment, setRefuseComment] = useState('');
+    const [addServiceName, setAddServiceName] = useState('');
+    const [addServiceNotes, setAddServiceNotes] = useState('');
 
     // Action Loading
     const [confirmLoading, setConfirmLoading] = useState(false);
@@ -625,6 +683,77 @@ export default function MyJobsPage({
             ...prev,
             [jobId]: serviceName,
         }));
+    };
+
+    const getSelectedServices = (job: MyJob): string[] => {
+        const selected = getJobSelectedService(job);
+        const added = job.service_entries.map((entry) => entry.service_name);
+        return Array.from(new Set([selected, ...added].filter(Boolean)));
+    };
+
+    const getAvailableAdditionalServices = (job: MyJob): string[] => {
+        const selected = new Set(getSelectedServices(job).map((value) => value.toLowerCase()));
+        return serviceOptions.filter((option) => !selected.has(option.toLowerCase()));
+    };
+
+    const handleOpenAddService = (jobId: string) => {
+        const targetJob = jobs.find((job) => job.job_id === jobId);
+        setSelectedJobId(jobId);
+        setAddServiceNotes('');
+        setAddServiceName(targetJob ? getAvailableAdditionalServices(targetJob)[0] ?? '' : '');
+        setAddServiceModalOpen(true);
+    };
+
+    const handleConfirmAddService = () => {
+        if (!selectedJobId || !addServiceName.trim()) {
+            return;
+        }
+
+        const finalize = () => {
+            setAddServiceModalOpen(false);
+            setSelectedJobId(null);
+            setAddServiceName('');
+            setAddServiceNotes('');
+        };
+
+        if (previewTechId) {
+            setJobs((prev) => prev.map((job) => (
+                job.job_id === selectedJobId
+                    ? {
+                        ...job,
+                        service_entries: [
+                            ...job.service_entries,
+                            {
+                                service_name: addServiceName.trim(),
+                                notes: addServiceNotes.trim() || undefined,
+                                source: 'technician',
+                            },
+                        ],
+                        service_names: Array.from(new Set([...job.service_names, addServiceName.trim()])),
+                    }
+                    : job
+            )));
+            finalize();
+            return;
+        }
+
+        const token = getStoredTechnicianToken();
+        if (!token || user?.role !== 'technician') {
+            return;
+        }
+
+        void addTechnicianMyJobService(token, selectedJobId, {
+            service_name: addServiceName.trim(),
+            notes: addServiceNotes.trim() || undefined,
+        })
+            .then(async () => {
+                await fetchJobs();
+                finalize();
+            })
+            .catch((error) => {
+                const message = error instanceof Error ? error.message : 'Failed to add service.';
+                toast.error(message);
+            });
     };
 
     const activeJobs = jobs.filter(j => ['scheduled', 'in_progress', 'delayed', 'unknown'].includes(j.job_status));
@@ -826,7 +955,10 @@ export default function MyJobsPage({
                                                     ...new Set([...job.service_names, ...serviceOptions]),
                                                 ]}
                                                 selectedServiceName={getJobSelectedService(job)}
+                                                selectedServices={getSelectedServices(job)}
+                                                addedServices={job.service_entries.filter((entry) => entry.source === 'technician')}
                                                 onSelectService={handleSelectService}
+                                                onOpenAddService={handleOpenAddService}
                                                 onStart={handleStart}
                                                 onDone={handleDone}
                                                 onDelay={handleDelay}
@@ -864,7 +996,10 @@ export default function MyJobsPage({
                                                     ...new Set([...job.service_names, ...serviceOptions]),
                                                 ]}
                                                 selectedServiceName={getJobSelectedService(job)}
+                                                selectedServices={getSelectedServices(job)}
+                                                addedServices={job.service_entries.filter((entry) => entry.source === 'technician')}
                                                 onSelectService={handleSelectService}
+                                                onOpenAddService={handleOpenAddService}
                                                 onStart={handleStart}
                                                 onDone={handleDone}
                                                 onDelay={handleDelay}
@@ -893,6 +1028,79 @@ export default function MyJobsPage({
                     </>
                 )}
             </div>
+
+            {/* Delay Modal */}
+            <Dialog open={addServiceModalOpen} onOpenChange={setAddServiceModalOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Add Service</DialogTitle>
+                        <DialogDescription>
+                            Add an additional service to this job.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="service-type">Service Type</Label>
+                            <Select value={addServiceName} onValueChange={setAddServiceName}>
+                                <SelectTrigger id="service-type">
+                                    <SelectValue placeholder="Select service" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {(selectedJobId ? getAvailableAdditionalServices(jobs.find((job) => job.job_id === selectedJobId) || {
+                                        job_id: '',
+                                        job_code: '',
+                                        dealership_name: '',
+                                        service_name: '',
+                                        original_service_name: '',
+                                        service_names: [],
+                                        service_entries: [],
+                                        job_status: 'unknown',
+                                        zone: '',
+                                        allowed_actions: [],
+                                    }) : []).map((service) => (
+                                        <SelectItem key={`add-service-${service}`} value={service}>
+                                            {service}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="service-notes">Notes (Optional)</Label>
+                            <Textarea
+                                id="service-notes"
+                                placeholder="Customer requested extra tint for rear window"
+                                value={addServiceNotes}
+                                onChange={(e) => setAddServiceNotes(e.target.value)}
+                                rows={3}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setAddServiceModalOpen(false);
+                                setSelectedJobId(null);
+                                setAddServiceName('');
+                                setAddServiceNotes('');
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleConfirmAddService}
+                            disabled={!addServiceName.trim()}
+                            className="bg-[#2F8E92] hover:bg-[#267276]"
+                        >
+                            Add Service
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Delay Modal */}
             <Dialog open={delayModalOpen} onOpenChange={setDelayModalOpen}>

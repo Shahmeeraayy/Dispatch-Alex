@@ -172,6 +172,80 @@ class TechnicianJobsService:
         self.db.refresh(row)
         return row
 
+    def update_service_on_my_job(
+        self,
+        technician_id: UUID,
+        job_id: UUID,
+        *,
+        service_id: UUID,
+        service_name: str,
+        notes: str | None,
+    ) -> Job:
+        with self.db.begin():
+            row = self._lock_assigned_job(job_id=job_id)
+            if row.assigned_tech_id != technician_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Job is not assigned to current technician")
+
+            current_status = normalize_status(row.status)
+            if current_status not in {DispatchJobStatus.SCHEDULED, DispatchJobStatus.IN_PROGRESS, DispatchJobStatus.DELAYED}:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Job in status {current_status.value} cannot be updated",
+                )
+
+            services = JobServicesService(self.db)
+            service_row = services.get_service_row(job=row, service_id=service_id)
+            if service_row is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job service not found")
+            if service_row.source != "technician":
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only technician-added services can be edited")
+
+            try:
+                services.update_service(
+                    job=row,
+                    service_id=service_id,
+                    service_name=service_name,
+                    notes=notes,
+                    created_by_user_id=technician_id,
+                    audit_actor_type="TECHNICIAN",
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+        self.db.refresh(row)
+        return row
+
+    def remove_service_from_my_job(self, technician_id: UUID, job_id: UUID, *, service_id: UUID) -> Job:
+        with self.db.begin():
+            row = self._lock_assigned_job(job_id=job_id)
+            if row.assigned_tech_id != technician_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Job is not assigned to current technician")
+
+            current_status = normalize_status(row.status)
+            if current_status not in {DispatchJobStatus.SCHEDULED, DispatchJobStatus.IN_PROGRESS, DispatchJobStatus.DELAYED}:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Job in status {current_status.value} cannot be updated",
+                )
+
+            services = JobServicesService(self.db)
+            service_row = services.get_service_row(job=row, service_id=service_id)
+            if service_row is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job service not found")
+            if service_row.source != "technician":
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only technician-added services can be removed")
+
+            if not services.remove_service(
+                job=row,
+                service_id=service_id,
+                created_by_user_id=technician_id,
+                audit_actor_type="TECHNICIAN",
+            ):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job service not found")
+
+        self.db.refresh(row)
+        return row
+
     def _transition_my_job_status(
         self,
         *,

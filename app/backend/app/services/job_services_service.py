@@ -111,6 +111,87 @@ class JobServicesService:
 
         return row
 
+    def get_service_row(self, *, job: Job, service_id: UUID) -> JobService | None:
+        return (
+            self.db.query(JobService)
+            .filter(JobService.job_id == job.id, JobService.id == service_id)
+            .first()
+        )
+
+    def update_service(
+        self,
+        *,
+        job: Job,
+        service_id: UUID,
+        service_name: str,
+        notes: str | None = None,
+        created_by_user_id: UUID | None = None,
+        audit_actor_type: str | None = None,
+    ) -> JobService:
+        row = self.get_service_row(job=job, service_id=service_id)
+        if row is None:
+            raise ValueError("Service not found")
+
+        normalized = self._normalize_service_names([service_name])[0]
+        for existing in self.list_service_rows(job):
+            if existing.id != row.id and existing.service_name_snapshot.strip().lower() == normalized.lower():
+                raise ValueError("Service already exists on this job")
+
+        row.service_name_snapshot = normalized
+        row.service_catalog_id = self._resolve_service_catalog_id(normalized)
+        row.notes = (notes or "").strip() or None
+
+        self._sync_primary_service(job)
+
+        if audit_actor_type:
+            self.db.add(
+                JobEvent(
+                    job_id=job.id,
+                    event_type="JOB_SERVICE_UPDATED",
+                    actor_type=audit_actor_type,
+                    payload_json={
+                        "service_id": str(row.id),
+                        "service_name": normalized,
+                        "notes": row.notes,
+                        "created_by_user_id": str(created_by_user_id) if created_by_user_id is not None else None,
+                    },
+                )
+            )
+
+        return row
+
+    def remove_service(
+        self,
+        *,
+        job: Job,
+        service_id: UUID,
+        created_by_user_id: UUID | None = None,
+        audit_actor_type: str | None = None,
+    ) -> bool:
+        row = self.get_service_row(job=job, service_id=service_id)
+        if row is None:
+            return False
+
+        self.db.delete(row)
+        self.db.flush()
+        self._reorder_services(job)
+        self._sync_primary_service(job)
+
+        if audit_actor_type:
+            self.db.add(
+                JobEvent(
+                    job_id=job.id,
+                    event_type="JOB_SERVICE_REMOVED",
+                    actor_type=audit_actor_type,
+                    payload_json={
+                        "service_id": str(service_id),
+                        "created_by_user_id": str(created_by_user_id) if created_by_user_id is not None else None,
+                    },
+                )
+            )
+
+        return True
+
     def backfill_job(self, job: Job) -> bool:
         rows = self.list_service_rows(job)
         if rows:
@@ -171,3 +252,11 @@ class JobServicesService:
             .first()
         )
         return row[0] if row is not None else None
+
+    def _reorder_services(self, job: Job) -> None:
+        for index, row in enumerate(self.list_service_rows(job)):
+            row.sort_order = index
+
+    def _sync_primary_service(self, job: Job) -> None:
+        names = self.list_service_names(job)
+        job.service_type = names[0] if names else None

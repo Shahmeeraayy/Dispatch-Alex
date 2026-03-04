@@ -13,6 +13,8 @@ import {
     X,
     RefreshCw,
     Plus,
+    Pencil,
+    Trash2,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -28,7 +30,9 @@ import {
     getStoredAdminToken,
     getStoredTechnicianToken,
     refuseTechnicianMyJob,
+    removeTechnicianMyJobService,
     startTechnicianMyJob,
+    updateTechnicianMyJobService,
     type BackendServiceCatalogItem,
     type BackendTechnicianJobFeedItem,
 } from '@/lib/backend-api';
@@ -209,6 +213,8 @@ function JobCard({
     addedServices,
     onSelectService,
     onOpenAddService,
+    onEditAddedService,
+    onRemoveAddedService,
     onStart,
     onDone,
     onDelay,
@@ -221,6 +227,8 @@ function JobCard({
     addedServices: AddedServiceEntry[];
     onSelectService: (jobId: string, serviceName: string) => void;
     onOpenAddService: (jobId: string) => void;
+    onEditAddedService: (jobId: string, service: AddedServiceEntry) => void;
+    onRemoveAddedService: (jobId: string, service: AddedServiceEntry) => void;
     onStart: (jobId: string) => void;
     onDone: (jobId: string) => void;
     onDelay: (jobId: string) => void;
@@ -343,12 +351,50 @@ function JobCard({
                         </div>
                     </div>
                     {addedServices.length > 0 && (
-                        <div className="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="mt-2 space-y-2">
                             {addedServices.map((service) => (
-                                <p key={`${job.job_id}-added-${service.service_name}`}>
-                                    Technician added: <span className="font-medium text-gray-700 dark:text-gray-200">{service.service_name}</span>
-                                    {service.notes ? ` (${service.notes})` : ''}
-                                </p>
+                                <div
+                                    key={service.id ?? `${job.job_id}-added-${service.service_name}`}
+                                    className="rounded-lg border border-dashed border-[#2F8E92]/30 bg-[#2F8E92]/5 px-3 py-2 dark:border-teal-500/30 dark:bg-teal-500/5"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                Technician added
+                                            </p>
+                                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                                                {service.service_name}
+                                            </p>
+                                            {service.notes && (
+                                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    {service.notes}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onEditAddedService(job.job_id, service)}
+                                                className="h-8 px-2 text-[#2F8E92] hover:bg-[#2F8E92]/10 hover:text-[#267276] dark:text-teal-400 dark:hover:bg-teal-500/10"
+                                            >
+                                                <Pencil className="mr-1 h-3.5 w-3.5" />
+                                                Edit
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onRemoveAddedService(job.job_id, service)}
+                                                className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
+                                            >
+                                                <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                                Remove
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     )}
@@ -513,6 +559,7 @@ export default function MyJobsPage({
     const [doneModalOpen, setDoneModalOpen] = useState(false);
     const [addServiceModalOpen, setAddServiceModalOpen] = useState(false);
     const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+    const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
     // Delay Modal State
     const [delayMinutes, setDelayMinutes] = useState<string>('15');
@@ -699,9 +746,26 @@ export default function MyJobsPage({
     const handleOpenAddService = (jobId: string) => {
         const targetJob = jobs.find((job) => job.job_id === jobId);
         setSelectedJobId(jobId);
+        setEditingServiceId(null);
         setAddServiceNotes('');
         setAddServiceName(targetJob ? getAvailableAdditionalServices(targetJob)[0] ?? '' : '');
         setAddServiceModalOpen(true);
+    };
+
+    const handleOpenEditService = (jobId: string, service: AddedServiceEntry) => {
+        setSelectedJobId(jobId);
+        setEditingServiceId(service.id ?? null);
+        setAddServiceName(service.service_name);
+        setAddServiceNotes(service.notes ?? '');
+        setAddServiceModalOpen(true);
+    };
+
+    const closeAddServiceModal = () => {
+        setAddServiceModalOpen(false);
+        setSelectedJobId(null);
+        setEditingServiceId(null);
+        setAddServiceName('');
+        setAddServiceNotes('');
     };
 
     const handleConfirmAddService = () => {
@@ -709,31 +773,51 @@ export default function MyJobsPage({
             return;
         }
 
-        const finalize = () => {
-            setAddServiceModalOpen(false);
-            setSelectedJobId(null);
-            setAddServiceName('');
-            setAddServiceNotes('');
-        };
+        const serviceName = addServiceName.trim();
+        const serviceNotes = addServiceNotes.trim() || undefined;
+        const isEditing = Boolean(editingServiceId);
 
         if (previewTechId) {
             setJobs((prev) => prev.map((job) => (
                 job.job_id === selectedJobId
                     ? {
                         ...job,
-                        service_entries: [
-                            ...job.service_entries,
-                            {
-                                service_name: addServiceName.trim(),
-                                notes: addServiceNotes.trim() || undefined,
-                                source: 'technician',
-                            },
-                        ],
-                        service_names: Array.from(new Set([...job.service_names, addServiceName.trim()])),
+                        service_entries: isEditing
+                            ? job.service_entries.map((entry) => (
+                                entry.id === editingServiceId
+                                    ? {
+                                        ...entry,
+                                        service_name: serviceName,
+                                        notes: serviceNotes,
+                                    }
+                                    : entry
+                            ))
+                            : [
+                                ...job.service_entries,
+                                {
+                                    id: `preview-${Date.now()}`,
+                                    service_name: serviceName,
+                                    notes: serviceNotes,
+                                    source: 'technician',
+                                },
+                            ],
+                        service_names: Array.from(
+                            new Set([
+                                ...job.service_entries
+                                    .filter((entry) => entry.source !== 'technician')
+                                    .map((entry) => entry.service_name),
+                                getJobSelectedService(job),
+                                ...(isEditing
+                                    ? job.service_entries.map((entry) => (
+                                        entry.id === editingServiceId ? serviceName : entry.service_name
+                                    ))
+                                    : [...job.service_entries.map((entry) => entry.service_name), serviceName]),
+                            ].filter(Boolean)),
+                        ),
                     }
                     : job
             )));
-            finalize();
+            closeAddServiceModal();
             return;
         }
 
@@ -742,16 +826,64 @@ export default function MyJobsPage({
             return;
         }
 
-        void addTechnicianMyJobService(token, selectedJobId, {
-            service_name: addServiceName.trim(),
-            notes: addServiceNotes.trim() || undefined,
-        })
+        const request = isEditing && editingServiceId
+            ? updateTechnicianMyJobService(token, selectedJobId, editingServiceId, {
+                service_name: serviceName,
+                notes: serviceNotes,
+            })
+            : addTechnicianMyJobService(token, selectedJobId, {
+                service_name: serviceName,
+                notes: serviceNotes,
+            });
+
+        void request
             .then(async () => {
                 await fetchJobs();
-                finalize();
+                closeAddServiceModal();
             })
             .catch((error) => {
-                const message = error instanceof Error ? error.message : 'Failed to add service.';
+                const fallback = isEditing ? 'Failed to update service.' : 'Failed to add service.';
+                const message = error instanceof Error ? error.message : fallback;
+                toast.error(message);
+            });
+    };
+
+    const handleRemoveAddedService = (jobId: string, service: AddedServiceEntry) => {
+        if (!service.id) {
+            return;
+        }
+
+        if (previewTechId) {
+            setJobs((prev) => prev.map((job) => {
+                if (job.job_id !== jobId) {
+                    return job;
+                }
+                const nextEntries = job.service_entries.filter((entry) => entry.id !== service.id);
+                return {
+                    ...job,
+                    service_entries: nextEntries,
+                    service_names: Array.from(
+                        new Set([
+                            getJobSelectedService(job),
+                            ...nextEntries.map((entry) => entry.service_name),
+                        ].filter(Boolean)),
+                    ),
+                };
+            }));
+            return;
+        }
+
+        const token = getStoredTechnicianToken();
+        if (!token || user?.role !== 'technician') {
+            return;
+        }
+
+        void removeTechnicianMyJobService(token, jobId, service.id)
+            .then(async () => {
+                await fetchJobs();
+            })
+            .catch((error) => {
+                const message = error instanceof Error ? error.message : 'Failed to remove service.';
                 toast.error(message);
             });
     };
@@ -959,6 +1091,8 @@ export default function MyJobsPage({
                                                 addedServices={job.service_entries.filter((entry) => entry.source === 'technician')}
                                                 onSelectService={handleSelectService}
                                                 onOpenAddService={handleOpenAddService}
+                                                onEditAddedService={handleOpenEditService}
+                                                onRemoveAddedService={handleRemoveAddedService}
                                                 onStart={handleStart}
                                                 onDone={handleDone}
                                                 onDelay={handleDelay}
@@ -1000,6 +1134,8 @@ export default function MyJobsPage({
                                                 addedServices={job.service_entries.filter((entry) => entry.source === 'technician')}
                                                 onSelectService={handleSelectService}
                                                 onOpenAddService={handleOpenAddService}
+                                                onEditAddedService={handleOpenEditService}
+                                                onRemoveAddedService={handleRemoveAddedService}
                                                 onStart={handleStart}
                                                 onDone={handleDone}
                                                 onDelay={handleDelay}
@@ -1033,9 +1169,9 @@ export default function MyJobsPage({
             <Dialog open={addServiceModalOpen} onOpenChange={setAddServiceModalOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Add Service</DialogTitle>
+                        <DialogTitle>{editingServiceId ? 'Edit Service' : 'Add Service'}</DialogTitle>
                         <DialogDescription>
-                            Add an additional service to this job.
+                            {editingServiceId ? 'Update this technician-added service.' : 'Add an additional service to this job.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1047,7 +1183,24 @@ export default function MyJobsPage({
                                     <SelectValue placeholder="Select service" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {(selectedJobId ? getAvailableAdditionalServices(jobs.find((job) => job.job_id === selectedJobId) || {
+                                    {(selectedJobId ? (
+                                        editingServiceId
+                                            ? Array.from(new Set([
+                                                addServiceName,
+                                                ...getAvailableAdditionalServices(jobs.find((job) => job.job_id === selectedJobId) || {
+                                                    job_id: '',
+                                                    job_code: '',
+                                                    dealership_name: '',
+                                                    service_name: '',
+                                                    original_service_name: '',
+                                                    service_names: [],
+                                                    service_entries: [],
+                                                    job_status: 'unknown',
+                                                    zone: '',
+                                                    allowed_actions: [],
+                                                }),
+                                            ].filter(Boolean)))
+                                            : getAvailableAdditionalServices(jobs.find((job) => job.job_id === selectedJobId) || {
                                         job_id: '',
                                         job_code: '',
                                         dealership_name: '',
@@ -1058,7 +1211,8 @@ export default function MyJobsPage({
                                         job_status: 'unknown',
                                         zone: '',
                                         allowed_actions: [],
-                                    }) : []).map((service) => (
+                                    })
+                                    ) : []).map((service) => (
                                         <SelectItem key={`add-service-${service}`} value={service}>
                                             {service}
                                         </SelectItem>
@@ -1082,12 +1236,7 @@ export default function MyJobsPage({
                     <DialogFooter className="flex-col sm:flex-row gap-2">
                         <Button
                             variant="outline"
-                            onClick={() => {
-                                setAddServiceModalOpen(false);
-                                setSelectedJobId(null);
-                                setAddServiceName('');
-                                setAddServiceNotes('');
-                            }}
+                            onClick={closeAddServiceModal}
                         >
                             Cancel
                         </Button>
@@ -1096,7 +1245,7 @@ export default function MyJobsPage({
                             disabled={!addServiceName.trim()}
                             className="bg-[#2F8E92] hover:bg-[#267276]"
                         >
-                            Add Service
+                            {editingServiceId ? 'Save Service' : 'Add Service'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

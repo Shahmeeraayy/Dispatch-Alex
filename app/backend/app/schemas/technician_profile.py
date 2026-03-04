@@ -477,3 +477,22 @@ class TechnicianJobAddServiceRequest(BaseModel):
             return None
         normalized = value.strip()
         return normalized or None
+
+
+class TechnicianJobUpdateServiceRequest(BaseModel):
+    service_name: str = Field(..., min_length=1, max_length=255)
+    notes: Optional[str] = None
+
+    @validator("service_name")
+    def validate_service_name(cls, value: str):
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("service_name must not be empty")
+        return normalized
+
+    @validator("notes")
+    def validate_notes(cls, value: Optional[str]):
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None

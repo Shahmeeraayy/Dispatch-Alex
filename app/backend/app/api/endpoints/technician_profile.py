@@ -18,6 +18,7 @@ from ...schemas.technician_profile import (
     TechnicianAvailabilityUpdateRequest,
     TechnicianJobFeedItem,
     TechnicianJobRefuseRequest,
+    TechnicianJobUpdateServiceRequest,
     TechnicianProfileResponse,
     TechnicianProfileUpdateRequest,
     TechnicianJobFeedResponse,
@@ -162,6 +163,47 @@ def add_service_to_my_job(
         job_id,
         service_name=payload.service_name,
         notes=payload.notes,
+    )
+    feed = TechnicianJobsService(db).get_job_feed(current_user.user_id)
+    for item in [*feed.my_jobs, *feed.available_jobs]:
+        if item.id == row.id:
+            return item
+    raise RuntimeError("Updated job not found in technician feed")
+
+
+@router.patch("/jobs/{job_id}/services/{service_id}", response_model=TechnicianJobFeedItem)
+def update_service_on_my_job(
+    job_id: UUID,
+    service_id: UUID,
+    payload: TechnicianJobUpdateServiceRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.TECHNICIAN)),
+):
+    row = TechnicianJobsService(db).update_service_on_my_job(
+        current_user.user_id,
+        job_id,
+        service_id=service_id,
+        service_name=payload.service_name,
+        notes=payload.notes,
+    )
+    feed = TechnicianJobsService(db).get_job_feed(current_user.user_id)
+    for item in [*feed.my_jobs, *feed.available_jobs]:
+        if item.id == row.id:
+            return item
+    raise RuntimeError("Updated job not found in technician feed")
+
+
+@router.delete("/jobs/{job_id}/services/{service_id}", response_model=TechnicianJobFeedItem)
+def remove_service_from_my_job(
+    job_id: UUID,
+    service_id: UUID,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.TECHNICIAN)),
+):
+    row = TechnicianJobsService(db).remove_service_from_my_job(
+        current_user.user_id,
+        job_id,
+        service_id=service_id,
     )
     feed = TechnicianJobsService(db).get_job_feed(current_user.user_id)
     for item in [*feed.my_jobs, *feed.available_jobs]:

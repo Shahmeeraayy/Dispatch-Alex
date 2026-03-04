@@ -1050,6 +1050,30 @@ export async function addTechnicianMyJobService(
   });
 }
 
+export async function updateTechnicianMyJobService(
+  token: string,
+  jobId: string,
+  serviceId: string,
+  payload: { service_name: string; notes?: string },
+): Promise<BackendTechnicianJobFeedItem> {
+  return requestJson<BackendTechnicianJobFeedItem>(`/technicians/me/jobs/${jobId}/services/${serviceId}`, {
+    method: 'PATCH',
+    token,
+    body: payload,
+  });
+}
+
+export async function removeTechnicianMyJobService(
+  token: string,
+  jobId: string,
+  serviceId: string,
+): Promise<BackendTechnicianJobFeedItem> {
+  return requestJson<BackendTechnicianJobFeedItem>(`/technicians/me/jobs/${jobId}/services/${serviceId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
 export async function refuseTechnicianMyJob(
   token: string,
   jobId: string,

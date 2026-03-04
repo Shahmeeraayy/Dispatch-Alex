@@ -469,6 +469,48 @@ class InvoiceApiTests(unittest.TestCase):
         self.assertEqual(created["sales_tax"], "18.50")
         self.assertEqual(created["total"], "388.50")
 
+    def test_pending_approval_issues_route_returns_blocking_reasons(self):
+        dealership = self._seed_dealership()
+        technician = self._seed_technician()
+
+        with SessionLocal() as db:
+            row = Job(
+                id=uuid4(),
+                job_code="SM2-2024-4200",
+                status="COMPLETED",
+                assigned_tech_id=technician.id,
+                dealership_id=None,
+                customer_name="",
+                customer_address=None,
+                customer_city=dealership.city,
+                customer_state="QC",
+                customer_zip_code=dealership.postal_code,
+                service_type="Diagnostics",
+                vehicle="2024 Audi A5",
+                tax_code="GST",
+            )
+            db.add(row)
+            db.flush()
+            db.add(
+                JobService(
+                    job_id=row.id,
+                    service_name_snapshot="Diagnostics",
+                    source="dealership",
+                    quantity=Decimal("1.00"),
+                    unit_price=Decimal("0.00"),
+                    sort_order=0,
+                )
+            )
+            db.commit()
+
+        issues_res = self.client.get("/invoices/pending-approval-issues", headers=self.auth_header)
+        self.assertEqual(issues_res.status_code, 200, issues_res.text)
+        issues = issues_res.json()
+        issue = next((item for item in issues if item["job_code"] == "SM2-2024-4200"), None)
+        self.assertIsNotNone(issue)
+        self.assertTrue(any("address" in reason.lower() for reason in issue["blocking_reasons"]))
+        self.assertTrue(any("missing price" in reason.lower() for reason in issue["blocking_reasons"]))
+
     def test_reports_pending_approvals_matches_invoice_pending_endpoint(self):
         dealership = self._seed_dealership()
         technician = self._seed_technician()

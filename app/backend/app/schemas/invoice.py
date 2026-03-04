@@ -285,6 +285,17 @@ class InvoicePendingApprovalResponse(BaseModel):
     ship_to: Optional[InvoicePartyPayload] = None
 
 
+class InvoicePendingApprovalIssueResponse(BaseModel):
+    job_id: UUID
+    job_code: str
+    dealership_name: str
+    technician_name: Optional[str] = None
+    service_summary: str
+    vehicle_summary: str
+    completed_at: Optional[datetime] = None
+    blocking_reasons: List[str] = Field(default_factory=list)
+
+
 class InvoiceResponse(BaseModel):
     id: UUID
     invoice_number: str

@@ -22,6 +22,7 @@ from ..schemas.invoice import (
     InvoiceBillingPayload,
     InvoiceCompanyPayload,
     InvoiceCreateRequest,
+    InvoicePendingApprovalIssueResponse,
     InvoicePendingApprovalLineItemResponse,
     InvoicePendingApprovalResponse,
     InvoicePendingApprovalServiceResponse,
@@ -380,6 +381,48 @@ class InvoiceService:
 
         return line_items
 
+    def _collect_pending_approval_blockers(
+        self,
+        *,
+        job: Job,
+        dealership: Dealership | None,
+    ) -> tuple[list[str], list[InvoiceLineItemPayload]]:
+        blockers: list[str] = []
+
+        try:
+            self._resolve_tax_rate(
+                tax_code=(job.tax_code or "EXEMPT"),
+                payload_tax_rate=job.tax_rate,
+            )
+        except HTTPException:
+            blockers.append("Invalid tax configuration")
+
+        bill_to_name = (job.customer_name or (dealership.name if dealership else None) or "").strip()
+        bill_to_street = (job.customer_address or (dealership.address if dealership else None) or "").strip()
+        if not bill_to_name:
+            blockers.append("Missing customer/dealership bill-to name")
+        if not bill_to_street:
+            blockers.append("Missing customer/dealership bill-to address")
+
+        try:
+            dispatch_line_inputs = self._resolve_job_dispatch_line_inputs(job)
+        except HTTPException as exc:
+            blockers.append(exc.detail if isinstance(exc.detail, str) else "Invalid dispatch service lines")
+            dispatch_line_inputs = []
+
+        if not dispatch_line_inputs:
+            blockers.append("No billable services found")
+        else:
+            for line in dispatch_line_inputs:
+                quantity = _to_money(line.quantity if line.quantity is not None else Decimal("1"))
+                rate = _to_money(line.rate)
+                if quantity <= ZERO:
+                    blockers.append(f"Service '{line.product_service}' has invalid quantity")
+                if rate <= ZERO:
+                    blockers.append(f"Service '{line.product_service}' is missing price")
+
+        return list(dict.fromkeys(blockers)), dispatch_line_inputs
+
     def _build_dispatch_line_items(
         self,
         dispatch_job_ids: list[UUID],
@@ -450,7 +493,21 @@ class InvoiceService:
                     detail="All merged dispatch jobs must belong to the same bill-to customer",
                 )
 
-            line_items.extend(self._resolve_job_dispatch_line_inputs(job))
+            resolved_lines = self._resolve_job_dispatch_line_inputs(job)
+            for line in resolved_lines:
+                quantity = _to_money(line.quantity if line.quantity is not None else Decimal("1"))
+                rate = _to_money(line.rate)
+                if quantity <= ZERO:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=f"Job {job.job_code} has invalid service quantity for invoicing",
+                    )
+                if rate <= ZERO:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=f"Job {job.job_code} has missing service pricing for invoicing",
+                    )
+            line_items.extend(resolved_lines)
             linked_job_ids.append(job.id)
 
         return line_items, billing_payload or InvoiceBillingPayload(), linked_job_ids
@@ -631,6 +688,10 @@ class InvoiceService:
             for index, line in enumerate(dispatch_line_inputs):
                 quantity = _to_money(line.quantity if line.quantity is not None else Decimal("1"))
                 rate = _to_money(line.rate)
+                if quantity <= ZERO or rate <= ZERO:
+                    services = []
+                    items = []
+                    break
                 amount = compute_line_item_amount(quantity, rate)
                 line_tax_amount = _to_money(amount * tax_rate)
                 estimated_subtotal += amount
@@ -660,6 +721,9 @@ class InvoiceService:
                         total=amount,
                     )
                 )
+
+            if not services or not items:
+                continue
 
             estimated_subtotal = _to_money(estimated_subtotal)
             estimated_sales_tax = _to_money(estimated_sales_tax)
@@ -704,6 +768,30 @@ class InvoiceService:
                     items=items,
                     bill_to=bill_to,
                     ship_to=ship_to,
+                )
+            )
+
+        return payload
+
+    def list_pending_approval_issues(self) -> list[InvoicePendingApprovalIssueResponse]:
+        rows = self.repo.list_pending_approval_jobs()
+        payload: list[InvoicePendingApprovalIssueResponse] = []
+
+        for job, dealership, technician in rows:
+            blockers, _ = self._collect_pending_approval_blockers(job=job, dealership=dealership)
+            if not blockers:
+                continue
+
+            payload.append(
+                InvoicePendingApprovalIssueResponse(
+                    job_id=job.id,
+                    job_code=job.job_code,
+                    dealership_name=(dealership.name if dealership else (job.customer_name or "").strip()) or "Unknown Dealership",
+                    technician_name=technician.name if technician else None,
+                    service_summary=job.service_type or "Dispatch Service",
+                    vehicle_summary=job.vehicle or "-",
+                    completed_at=job.completed_at,
+                    blocking_reasons=blockers,
                 )
             )
 

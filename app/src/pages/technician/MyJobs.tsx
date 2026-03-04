@@ -211,6 +211,7 @@ function JobCard({
     selectedServiceName,
     selectedServices,
     addedServices,
+    canManageServices,
     onSelectService,
     onOpenAddService,
     onEditAddedService,
@@ -225,6 +226,7 @@ function JobCard({
     selectedServiceName: string;
     selectedServices: string[];
     addedServices: AddedServiceEntry[];
+    canManageServices: boolean;
     onSelectService: (jobId: string, serviceName: string) => void;
     onOpenAddService: (jobId: string) => void;
     onEditAddedService: (jobId: string, service: AddedServiceEntry) => void;
@@ -304,39 +306,47 @@ function JobCard({
                         <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             Service Selection
                         </span>
-                        {selectedServiceName !== job.original_service_name && (
+                        {canManageServices && selectedServiceName !== job.original_service_name && (
                             <span className="text-[11px] font-medium text-[#2F8E92] dark:text-teal-400">
                                 Updated by technician
                             </span>
                         )}
                     </div>
-                    <Select
-                        value={selectedServiceName}
-                        onValueChange={(value) => onSelectService(job.job_id, value)}
-                    >
-                        <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white text-left dark:border-gray-700 dark:bg-gray-800">
-                            <SelectValue placeholder="Select service" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {serviceOptions.map((serviceName) => (
-                                <SelectItem key={`${job.job_id}-${serviceName}`} value={serviceName}>
-                                    {serviceName}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {canManageServices ? (
+                        <Select
+                            value={selectedServiceName}
+                            onValueChange={(value) => onSelectService(job.job_id, value)}
+                        >
+                            <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white text-left dark:border-gray-700 dark:bg-gray-800">
+                                <SelectValue placeholder="Select service" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {serviceOptions.map((serviceName) => (
+                                    <SelectItem key={`${job.job_id}-${serviceName}`} value={serviceName}>
+                                        {serviceName}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                            {selectedServiceName}
+                        </div>
+                    )}
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                         Dealership requested: <span className="font-medium text-gray-700 dark:text-gray-200">{job.original_service_name}</span>
                     </p>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onOpenAddService(job.job_id)}
-                        className="mt-3 h-10 w-full justify-start rounded-xl border-dashed border-[#2F8E92]/40 text-[#2F8E92] hover:bg-[#2F8E92]/5 dark:border-teal-500/40 dark:text-teal-400 dark:hover:bg-teal-500/10"
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Additional Service
-                    </Button>
+                    {canManageServices && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenAddService(job.job_id)}
+                            className="mt-3 h-10 w-full justify-start rounded-xl border-dashed border-[#2F8E92]/40 text-[#2F8E92] hover:bg-[#2F8E92]/5 dark:border-teal-500/40 dark:text-teal-400 dark:hover:bg-teal-500/10"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Additional Service
+                        </Button>
+                    )}
                     <div className="mt-3 rounded-xl bg-white/70 p-3 dark:bg-gray-800/60">
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             Selected Services
@@ -371,28 +381,30 @@ function JobCard({
                                                 </p>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => onEditAddedService(job.job_id, service)}
-                                                className="h-8 px-2 text-[#2F8E92] hover:bg-[#2F8E92]/10 hover:text-[#267276] dark:text-teal-400 dark:hover:bg-teal-500/10"
-                                            >
-                                                <Pencil className="mr-1 h-3.5 w-3.5" />
-                                                Edit
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => onRemoveAddedService(job.job_id, service)}
-                                                className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
-                                            >
-                                                <Trash2 className="mr-1 h-3.5 w-3.5" />
-                                                Remove
-                                            </Button>
-                                        </div>
+                                        {canManageServices && (
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => onEditAddedService(job.job_id, service)}
+                                                    className="h-8 px-2 text-[#2F8E92] hover:bg-[#2F8E92]/10 hover:text-[#267276] dark:text-teal-400 dark:hover:bg-teal-500/10"
+                                                >
+                                                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => onRemoveAddedService(job.job_id, service)}
+                                                    className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
+                                                >
+                                                    <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                                    Remove
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -1089,6 +1101,7 @@ export default function MyJobsPage({
                                                 selectedServiceName={getJobSelectedService(job)}
                                                 selectedServices={getSelectedServices(job)}
                                                 addedServices={job.service_entries.filter((entry) => entry.source === 'technician')}
+                                                canManageServices={false}
                                                 onSelectService={handleSelectService}
                                                 onOpenAddService={handleOpenAddService}
                                                 onEditAddedService={handleOpenEditService}
@@ -1132,6 +1145,7 @@ export default function MyJobsPage({
                                                 selectedServiceName={getJobSelectedService(job)}
                                                 selectedServices={getSelectedServices(job)}
                                                 addedServices={job.service_entries.filter((entry) => entry.source === 'technician')}
+                                                canManageServices={true}
                                                 onSelectService={handleSelectService}
                                                 onOpenAddService={handleOpenAddService}
                                                 onEditAddedService={handleOpenEditService}

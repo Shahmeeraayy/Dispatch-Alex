@@ -9,6 +9,7 @@ import {
     User,
     ChevronRight,
     DollarSign,
+    AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { exportArrayData, selectColumnsForExport, type ExportFormat } from '@/lib/export';
@@ -48,8 +49,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
 import {
     createInvoice,
+    fetchPendingInvoiceApprovalIssues,
     fetchPendingInvoiceApprovals,
     getStoredAdminToken,
+    type BackendPendingInvoiceApprovalIssue,
     type BackendPendingInvoiceApproval,
 } from '@/lib/backend-api';
 
@@ -65,6 +68,7 @@ const INVOICE_APPROVAL_EXPORT_COLUMNS = [
 ];
 
 type PendingInvoice = BackendPendingInvoiceApproval;
+type BlockedInvoice = BackendPendingInvoiceApprovalIssue;
 
 const toNumber = (value: string | number | null | undefined): number => {
     if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -93,6 +97,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function InvoiceApprovalsPage() {
     const [invoices, setInvoices] = useState<PendingInvoice[]>([]);
     const [loading, setLoading] = useState(true);
+    const [blockedInvoices, setBlockedInvoices] = useState<BlockedInvoice[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterDealership, setFilterDealership] = useState<string>('all');
     const [filterTechnician, setFilterTechnician] = useState<string>('all');
@@ -109,13 +114,19 @@ export default function InvoiceApprovalsPage() {
             const adminToken = getStoredAdminToken();
             if (!adminToken) {
                 setInvoices([]);
+                setBlockedInvoices([]);
                 return;
             }
-            const rows = await fetchPendingInvoiceApprovals(adminToken);
+            const [rows, blockedRows] = await Promise.all([
+                fetchPendingInvoiceApprovals(adminToken),
+                fetchPendingInvoiceApprovalIssues(adminToken),
+            ]);
             setInvoices(rows);
+            setBlockedInvoices(blockedRows);
         } catch (error) {
             console.error(error);
             setInvoices([]);
+            setBlockedInvoices([]);
         } finally {
             setLoading(false);
         }
@@ -196,6 +207,7 @@ export default function InvoiceApprovalsPage() {
             });
 
             setInvoices((prev) => prev.filter((inv) => inv.job_id !== selectedInvoice.job_id));
+            setBlockedInvoices((prev) => prev.filter((inv) => inv.job_id !== selectedInvoice.job_id));
             setDrawerOpen(false);
             setSelectedInvoice(null);
         } catch (error) {
@@ -318,7 +330,11 @@ export default function InvoiceApprovalsPage() {
                             <CheckCircle2 className="w-8 h-8 text-gray-400" />
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900">No invoices found</h3>
-                        <p className="text-sm mt-1 max-w-sm text-center">Try adjusting your search or filters.</p>
+                        <p className="text-sm mt-1 max-w-sm text-center">
+                            {blockedInvoices.length > 0
+                                ? 'Completed jobs exist, but they are blocked from invoice approval until required data is fixed.'
+                                : 'Try adjusting your search or filters.'}
+                        </p>
                         <Button
                             variant="outline"
                             className="mt-4"
@@ -377,6 +393,47 @@ export default function InvoiceApprovalsPage() {
                     </Table>
                 )}
             </div>
+
+            {blockedInvoices.length > 0 && (
+                <Card className="border-orange-200 bg-orange-50/60 p-4 space-y-4">
+                    <div className="flex items-start gap-3">
+                        <div className="mt-0.5 rounded-full bg-orange-100 p-2">
+                            <AlertTriangle className="w-4 h-4 text-orange-700" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-semibold text-gray-900">Blocked Invoice Jobs</h2>
+                            <p className="text-sm text-gray-600">
+                                These completed jobs are not shown in the approval queue because required invoice data is missing.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        {blockedInvoices.map((invoice) => (
+                            <div key={invoice.job_id} className="rounded-lg border border-orange-200 bg-white p-4">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p className="font-semibold text-gray-900">{invoice.job_code}</p>
+                                        <p className="text-sm text-gray-600">
+                                            {invoice.dealership_name} {invoice.technician_name ? `• ${invoice.technician_name}` : ''}
+                                        </p>
+                                        <p className="text-sm text-gray-500">{invoice.service_summary}</p>
+                                    </div>
+                                    <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
+                                        Blocked
+                                    </Badge>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {invoice.blocking_reasons.map((reason) => (
+                                        <Badge key={`${invoice.job_id}-${reason}`} variant="outline" className="border-red-200 bg-red-50 text-red-700">
+                                            {reason}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
 
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
                 <SheetContent className="sm:max-w-xl w-full flex flex-col gap-0 p-0 shadow-2xl">

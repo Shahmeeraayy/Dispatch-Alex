@@ -372,6 +372,17 @@ export type BackendPendingInvoiceApproval = {
   } | null;
 };
 
+export type BackendPendingInvoiceApprovalIssue = {
+  job_id: string;
+  job_code: string;
+  dealership_name: string;
+  technician_name?: string | null;
+  service_summary: string;
+  vehicle_summary: string;
+  completed_at?: string | null;
+  blocking_reasons: string[];
+};
+
 export type BackendReportsKpis = {
   jobs_created: number;
   jobs_completed: number;
@@ -1001,6 +1012,10 @@ export async function createInvoice(
 
 export async function fetchPendingInvoiceApprovals(token: string): Promise<BackendPendingInvoiceApproval[]> {
   return requestJson<BackendPendingInvoiceApproval[]>('/invoices/pending-approvals', { token });
+}
+
+export async function fetchPendingInvoiceApprovalIssues(token: string): Promise<BackendPendingInvoiceApprovalIssue[]> {
+  return requestJson<BackendPendingInvoiceApprovalIssue[]>('/invoices/pending-approval-issues', { token });
 }
 
 export async function fetchTechnicianMeProfile(token: string): Promise<BackendTechnicianProfile> {

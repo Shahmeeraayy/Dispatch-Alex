@@ -10,6 +10,7 @@ from ...core.security import AuthenticatedUser
 from ...schemas.invoice import (
     InvoiceCreateRequest,
     InvoiceMarkPaidRequest,
+    InvoicePendingApprovalIssueResponse,
     InvoicePendingApprovalResponse,
     InvoiceResponse,
     InvoiceUpdateRequest,
@@ -33,6 +34,14 @@ def list_pending_invoice_approvals(
     current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
 ):
     return InvoiceService(db, current_user).list_pending_approvals()
+
+
+@router.get("/pending-approval-issues", response_model=List[InvoicePendingApprovalIssueResponse])
+def list_pending_invoice_approval_issues(
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    return InvoiceService(db, current_user).list_pending_approval_issues()
 
 
 @router.post("", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)

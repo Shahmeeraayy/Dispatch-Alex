@@ -408,6 +408,7 @@ class TechnicianJobFeedItem(BaseModel):
     status: str
     dealership_name: Optional[str] = None
     service_name: Optional[str] = None
+    service_names: List[str] = Field(default_factory=list)
     vehicle_summary: Optional[str] = None
     zone_name: Optional[str] = None
     requested_service_date: Optional[date] = None

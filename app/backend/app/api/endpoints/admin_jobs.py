@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Any, Dict, List
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,10 +13,67 @@ from ...models.dealership import Dealership
 from ...models.invoice import InvoiceLineItem
 from ...models.job import Job
 from ...models.technician import Technician
-from ...schemas.admin_jobs import AdminJobAssignmentUpdateRequest, AdminJobCreateRequest, AdminJobListItemResponse
+from ...schemas.admin_jobs import (
+    AdminJobAssignmentUpdateRequest,
+    AdminJobCreateRequest,
+    AdminJobListItemResponse,
+    AdminJobUpdateRequest,
+)
 from ...services.pre_assignment_service import PreAssignmentService
 
 router = APIRouter(prefix="/admin/jobs", tags=["admin-jobs"])
+
+
+def _normalize_service_names(*, service_name: str | None, service_names: list[str] | None) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for candidate in [service_name, *(service_names or [])]:
+        if candidate is None:
+            continue
+        trimmed = candidate.strip()
+        if not trimmed:
+            continue
+        key = trimmed.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(trimmed)
+    if not normalized:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="At least one service is required")
+    return normalized
+
+
+def _extract_service_names(job_row: Job) -> list[str]:
+    metadata = job_row.source_metadata if isinstance(job_row.source_metadata, dict) else {}
+    raw_values = metadata.get("service_names")
+    normalized: list[str] = []
+    seen: set[str] = set()
+    if isinstance(raw_values, list):
+        for item in raw_values:
+            if not isinstance(item, str):
+                continue
+            trimmed = item.strip()
+            if not trimmed:
+                continue
+            key = trimmed.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(trimmed)
+
+    primary_service = (job_row.service_type or "").strip()
+    if primary_service:
+        key = primary_service.lower()
+        if key not in seen:
+            normalized.insert(0, primary_service)
+
+    return normalized
+
+
+def _merge_job_source_metadata(job_row: Job, **updates: Any) -> dict[str, Any]:
+    metadata = dict(job_row.source_metadata) if isinstance(job_row.source_metadata, dict) else {}
+    metadata.update(updates)
+    return metadata
 
 
 def _generate_manual_job_code(db: Session) -> str:
@@ -41,6 +98,8 @@ def _serialize_admin_job_row(db: Session, job_row: Job) -> AdminJobListItemRespo
     if job_row.dealership_id is not None:
         dealership = db.query(Dealership).filter(Dealership.id == job_row.dealership_id).first()
 
+    service_names = _extract_service_names(job_row)
+
     return AdminJobListItemResponse(
         id=job_row.id,
         job_code=job_row.job_code,
@@ -52,7 +111,8 @@ def _serialize_admin_job_row(db: Session, job_row: Job) -> AdminJobListItemRespo
         pre_assigned_technician_id=job_row.pre_assigned_technician_id,
         pre_assigned_technician_name=pre_assigned_technician.name if pre_assigned_technician is not None else None,
         pre_assignment_reason=job_row.pre_assignment_reason,
-        service_type=job_row.service_type,
+        service_type=service_names[0] if service_names else job_row.service_type,
+        service_names=service_names,
         vehicle=job_row.vehicle,
         created_at=job_row.created_at,
         updated_at=job_row.updated_at,
@@ -69,6 +129,10 @@ def create_admin_job(
     db: Session = Depends(deps.get_db),
     current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
 ):
+    normalized_service_names = _normalize_service_names(
+        service_name=payload.service_name,
+        service_names=payload.service_names,
+    )
     dealership = (
         db.query(Dealership)
         .filter(Dealership.name == payload.dealership_name)
@@ -105,7 +169,7 @@ def create_admin_job(
         status=db_status_from_dispatch_status(DispatchJobStatus.ADMIN_PREVIEW),
         dealership_id=dealership.id if dealership is not None else None,
         customer_name=dealership.name if dealership is not None else None,
-        service_type=payload.service_name,
+        service_type=normalized_service_names[0],
         vehicle=payload.vehicle_summary,
         pre_assigned_technician_id=payload.pre_assigned_technician_id,
         pre_assignment_reason="manual_admin_assignment" if pre_assigned_technician is not None else None,
@@ -118,6 +182,7 @@ def create_admin_job(
             "manual_entry": True,
             "dealership_name_input": payload.dealership_name,
             "created_by_role": "admin",
+            "service_names": normalized_service_names,
         },
     )
     db.add(job_row)
@@ -156,7 +221,8 @@ def list_admin_jobs(
             pre_assigned_technician_id=job.pre_assigned_technician_id,
             pre_assigned_technician_name=pre_assigned_technician.name if pre_assigned_technician is not None else None,
             pre_assignment_reason=job.pre_assignment_reason,
-            service_type=job.service_type,
+            service_type=_extract_service_names(job)[0] if _extract_service_names(job) else job.service_type,
+            service_names=_extract_service_names(job),
             vehicle=job.vehicle,
             created_at=job.created_at,
             updated_at=job.updated_at,
@@ -166,7 +232,60 @@ def list_admin_jobs(
             source_metadata=job.source_metadata,
         )
         for job, dealership, technician, pre_assigned_technician in rows
-    ]
+]
+
+
+@router.patch("/{job_id}", response_model=AdminJobListItemResponse)
+def update_admin_job(
+    job_id: UUID,
+    payload: AdminJobUpdateRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    job_row = db.query(Job).filter(Job.id == job_id).first()
+    if job_row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    normalized_status = normalize_dispatch_job_status(job_row.status)
+    if normalized_status in {DispatchJobStatus.CANCELLED, DispatchJobStatus.COMPLETED}:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Completed/cancelled jobs cannot be edited")
+
+    if payload.dealership_name is not None:
+        dealership = (
+            db.query(Dealership).filter(Dealership.name == payload.dealership_name).first()
+            or db.query(Dealership).filter(Dealership.code == payload.dealership_name).first()
+        )
+        job_row.dealership_id = dealership.id if dealership is not None else None
+        job_row.customer_name = dealership.name if dealership is not None else payload.dealership_name
+        job_row.location = (dealership.city.strip() if dealership is not None and dealership.city else None)
+        job_row.source_metadata = _merge_job_source_metadata(
+            job_row,
+            dealership_name_input=payload.dealership_name,
+        )
+
+    next_service_names = None
+    if payload.service_name is not None or payload.service_names is not None:
+        next_service_names = _normalize_service_names(
+            service_name=payload.service_name,
+            service_names=payload.service_names,
+        )
+        job_row.service_type = next_service_names[0]
+        job_row.source_metadata = _merge_job_source_metadata(
+            job_row,
+            service_names=next_service_names,
+        )
+
+    if payload.vehicle_summary is not None:
+        job_row.vehicle = payload.vehicle_summary
+    if payload.requested_service_date is not None:
+        job_row.requested_service_date = payload.requested_service_date
+    if payload.requested_service_time is not None:
+        job_row.requested_service_time = payload.requested_service_time
+
+    db.commit()
+    db.refresh(job_row)
+
+    return _serialize_admin_job_row(db, job_row)
 
 
 @router.delete("/{job_id}", response_model=Dict[str, str])

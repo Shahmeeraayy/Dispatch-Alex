@@ -64,6 +64,7 @@ interface MyJob {
     dealership_name: string;
     service_name: string;
     original_service_name: string;
+    service_names: string[];
     job_status: JobStatus;
     urgency?: Urgency;
     scheduled_time?: string;
@@ -104,13 +105,22 @@ const mapBackendFeedItemToMyJob = (item: BackendTechnicianJobFeedItem): MyJob | 
     const scheduledTime = item.requested_service_date
         ? `${item.requested_service_date}T${(item.requested_service_time || '09:00:00').slice(0, 8)}`
         : undefined;
+    const normalizedServiceNames = Array.from(
+        new Set(
+            (item.service_names ?? [])
+                .map((value) => value.trim())
+                .filter(Boolean),
+        ),
+    );
+    const primaryServiceName = normalizedServiceNames[0] || item.service_name || 'Service Request';
 
     return {
         job_id: item.id,
         job_code: item.job_code,
         dealership_name: item.dealership_name || 'Unknown Dealership',
-        service_name: item.service_name || 'Service Request',
-        original_service_name: item.service_name || 'Service Request',
+        service_name: primaryServiceName,
+        original_service_name: primaryServiceName,
+        service_names: normalizedServiceNames.length > 0 ? normalizedServiceNames : [primaryServiceName],
         job_status: mappedStatus,
         urgency: 'normal',
         scheduled_time: scheduledTime,
@@ -813,7 +823,7 @@ export default function MyJobsPage({
                                                 key={job.job_id}
                                                 job={job}
                                                 serviceOptions={[
-                                                    ...new Set([job.original_service_name, ...serviceOptions]),
+                                                    ...new Set([...job.service_names, ...serviceOptions]),
                                                 ]}
                                                 selectedServiceName={getJobSelectedService(job)}
                                                 onSelectService={handleSelectService}
@@ -851,7 +861,7 @@ export default function MyJobsPage({
                                                 key={job.job_id}
                                                 job={job}
                                                 serviceOptions={[
-                                                    ...new Set([job.original_service_name, ...serviceOptions]),
+                                                    ...new Set([...job.service_names, ...serviceOptions]),
                                                 ]}
                                                 selectedServiceName={getJobSelectedService(job)}
                                                 onSelectService={handleSelectService}

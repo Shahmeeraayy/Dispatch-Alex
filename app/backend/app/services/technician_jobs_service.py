@@ -45,7 +45,8 @@ class TechnicianJobsService:
                 job_code=job.job_code,
                 status=status.value,
                 dealership_name=dealership.name if dealership is not None else None,
-                service_name=job.service_type,
+                service_name=self._extract_service_names(job)[0] if self._extract_service_names(job) else job.service_type,
+                service_names=self._extract_service_names(job),
                 vehicle_summary=job.vehicle,
                 zone_name=self._resolve_zone_name(job=job, dealership=dealership, zone=zone),
                 requested_service_date=job.requested_service_date,
@@ -60,6 +61,34 @@ class TechnicianJobsService:
                 my_jobs.append(item)
 
         return TechnicianJobFeedResponse(available_jobs=available_jobs, my_jobs=my_jobs)
+
+    @staticmethod
+    def _extract_service_names(job: Job) -> list[str]:
+        metadata = job.source_metadata if isinstance(job.source_metadata, dict) else {}
+        raw_values = metadata.get("service_names")
+        normalized: list[str] = []
+        seen: set[str] = set()
+
+        if isinstance(raw_values, list):
+            for item in raw_values:
+                if not isinstance(item, str):
+                    continue
+                trimmed = item.strip()
+                if not trimmed:
+                    continue
+                key = trimmed.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                normalized.append(trimmed)
+
+        primary = (job.service_type or "").strip()
+        if primary:
+            key = primary.lower()
+            if key not in seen:
+                normalized.insert(0, primary)
+
+        return normalized
 
     def start_my_job(self, technician_id: UUID, job_id: UUID) -> Job:
         return self._transition_my_job_status(

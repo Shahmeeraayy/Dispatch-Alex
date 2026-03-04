@@ -57,7 +57,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { formatPhoneForDisplay, formatUsPhoneInput, phoneExampleFormat, toUsPhoneFormat } from '@/lib/phone';
-import { fetchAdminJobs, getStoredAdminToken, type BackendAdminJob } from '@/lib/backend-api';
+import { fetchAdminJobs, getStoredAdminToken, updateAdminJob, type BackendAdminJob } from '@/lib/backend-api';
 
 // --- Types ---
 
@@ -97,6 +97,7 @@ interface JobDetail {
         name: string;
         contact_phone: string;
         service_type: string;
+        service_names: string[];
     };
 
     vehicle: {
@@ -145,6 +146,7 @@ const MOCK_JOB: JobDetail = {
         name: 'Audi de Quebec',
         contact_phone: '(555) 123-4567',
         service_type: 'Key Programming',
+        service_names: ['Key Programming'],
     },
 
     vehicle: {
@@ -283,6 +285,14 @@ function buildTimeline(source: BackendAdminJob): TimelineEvent[] {
 }
 
 function mapBackendJobToDetail(source: BackendAdminJob): JobDetail {
+    const serviceNames = Array.from(
+        new Set(
+            (source.service_names ?? [])
+                .map((value) => value.trim())
+                .filter(Boolean),
+        ),
+    );
+    const primaryService = serviceNames[0] || source.service_type || 'Unspecified Service';
     const vehicleSummary = (source.vehicle || '').trim();
     const [vehicleYear = '', vehicleMake = '', ...vehicleModelParts] = vehicleSummary.split(/\s+/).filter(Boolean);
     const vehicleModel = vehicleModelParts.join(' ');
@@ -298,7 +308,8 @@ function mapBackendJobToDetail(source: BackendAdminJob): JobDetail {
         dealership: {
             name: source.dealership_name || 'Unknown Dealership',
             contact_phone: formatPhoneForDisplay(''),
-            service_type: source.service_type || 'Unspecified Service',
+            service_type: primaryService,
+            service_names: serviceNames.length > 0 ? serviceNames : [primaryService],
         },
         vehicle: {
             make: vehicleMake,
@@ -554,7 +565,7 @@ export default function JobDetailPage() {
         }) : null);
     };
 
-    const handleSaveDetails = () => {
+    const handleSaveDetails = async () => {
         if (!job) return;
 
         const formattedDealershipPhone = toUsPhoneFormat(editForm.dealershipPhone);
@@ -563,28 +574,59 @@ export default function JobDetailPage() {
             return;
         }
 
-        setJob({
-            ...job,
-            dealership: {
-                ...job.dealership,
-                name: editForm.dealershipName,
-                contact_phone: formattedDealershipPhone,
-                service_type: editForm.serviceType
-            },
-            vehicle: {
-                ...job.vehicle,
-                year: editForm.vehicleYear,
-                make: editForm.vehicleMake,
-                model: editForm.vehicleModel,
-                vin: editForm.vehicleVin,
-                stock: editForm.vehicleStock
-            },
-            timeline: [
-                { id: Date.now().toString(), type: 'DETAILS_UPDATED', title: 'Job Details Updated', actor: 'ADMIN', timestamp: 'Just now', description: 'Admin manually updated job details.' },
-                ...job.timeline
-            ]
-        });
-        setIsEditing(false);
+        const token = getStoredAdminToken();
+        if (!token) {
+            alert('Admin session missing. Please login again.');
+            return;
+        }
+
+        const serviceNames = Array.from(
+            new Set(
+                editForm.serviceType
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+            ),
+        );
+        if (serviceNames.length === 0) {
+            alert('At least one service is required.');
+            return;
+        }
+
+        const vehicleParts = [
+            editForm.vehicleYear.trim(),
+            editForm.vehicleMake.trim(),
+            editForm.vehicleModel.trim(),
+        ].filter(Boolean);
+
+        try {
+            const updated = await updateAdminJob(token, job.job_id, {
+                dealership_name: editForm.dealershipName.trim(),
+                service_name: serviceNames[0],
+                service_names: serviceNames,
+                vehicle_summary: vehicleParts.join(' '),
+            });
+            setJob((prev) => prev ? ({
+                ...mapBackendJobToDetail(updated),
+                dealership: {
+                    ...mapBackendJobToDetail(updated).dealership,
+                    contact_phone: formattedDealershipPhone,
+                },
+                vehicle: {
+                    ...mapBackendJobToDetail(updated).vehicle,
+                    vin: editForm.vehicleVin,
+                    stock: editForm.vehicleStock,
+                },
+                timeline: [
+                    { id: Date.now().toString(), type: 'DETAILS_UPDATED', title: 'Job Details Updated', actor: 'ADMIN', timestamp: 'Just now', description: 'Admin manually updated job details.' },
+                    ...prev.timeline,
+                ],
+            }) : null);
+            setIsEditing(false);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to update job details.';
+            alert(message);
+        }
     };
 
     const handleCancelEdit = () => {
@@ -781,7 +823,7 @@ export default function JobDetailPage() {
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service Type</label>
+                                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Services</label>
                                                 <Input className="bg-background" value={editForm.serviceType} onChange={e => setEditForm({ ...editForm, serviceType: e.target.value })} />
                                             </div>
                                         </>
@@ -793,8 +835,8 @@ export default function JobDetailPage() {
                                                 <div className="text-sm text-muted-foreground">{formatPhoneForDisplay(job.dealership.contact_phone)}</div>
                                             </div>
                                             <div>
-                                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Service Type</h4>
-                                                <div className="text-sm font-medium text-foreground">{job.dealership.service_type}</div>
+                                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Services</h4>
+                                                <div className="text-sm font-medium text-foreground">{job.dealership.service_names.join(', ')}</div>
                                             </div>
                                         </>
                                     )}

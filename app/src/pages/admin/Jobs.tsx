@@ -119,6 +119,7 @@ interface Job {
     job_code: string;
     dealership_name: string;
     service_name: string;
+    service_names: string[];
     vehicle_summary: string;
     urgency: Urgency;
     assigned_technician_name: string | null;
@@ -217,6 +218,16 @@ const textTokens = (value: string) =>
     normalizeText(value)
         .split(' ')
         .filter((token) => token.length >= 3);
+
+const parseServiceNames = (value: string) =>
+    Array.from(
+        new Set(
+            value
+                .split(',')
+                .map((item) => item.trim())
+                .filter(Boolean),
+        ),
+    );
 
 const JOB_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -322,6 +333,15 @@ const getBackendDisplayDateTimeIso = (row: BackendAdminJob): string => {
 };
 
 const mapBackendJobToUiJob = (row: BackendAdminJob): Job => {
+    const normalizedServiceNames = Array.from(
+        new Set(
+            (row.service_names ?? [])
+                .map((value) => value.trim())
+                .filter(Boolean),
+        ),
+    );
+    const primaryServiceName = normalizedServiceNames[0] || row.service_type?.trim() || 'Service Request';
+
     const uiStatus = mapBackendStatusToUiJobStatus(row.status);
     const backendTechName = row.assigned_technician_name?.trim() || null;
     const pendingTaggedTechName =
@@ -342,7 +362,8 @@ const mapBackendJobToUiJob = (row: BackendAdminJob): Job => {
         job_id: row.id,
         job_code: row.job_code,
         dealership_name: row.dealership_name?.trim() || 'Unknown Dealership',
-        service_name: row.service_type?.trim() || 'Service Request',
+        service_name: primaryServiceName,
+        service_names: normalizedServiceNames.length > 0 ? normalizedServiceNames : [primaryServiceName],
         vehicle_summary: row.vehicle?.trim() || 'Vehicle not provided',
         urgency: deriveUrgencyFromBackendJob(row),
         assigned_technician_name: assignedTechName,
@@ -801,6 +822,7 @@ export default function JobsPage() {
                     job_code: localJob.job_code,
                     dealership_name: localJob.dealership_name,
                     service_name: localJob.service_name,
+                    service_names: localJob.service_names,
                     vehicle_summary: localJob.vehicle_summary,
                     pre_assigned_technician_id: assignedTech.id,
                 });
@@ -990,7 +1012,8 @@ export default function JobsPage() {
 
     const handleCreateJob = async () => {
         const dealershipName = newJobForm.dealership_name.trim();
-        const serviceName = newJobForm.service_name.trim();
+        const serviceNamesInput = parseServiceNames(newJobForm.service_name);
+        const serviceName = serviceNamesInput[0] ?? '';
         const vehicleSummary = newJobForm.vehicle_summary.trim();
 
         if (!dealershipName || !serviceName || !vehicleSummary) {
@@ -1043,6 +1066,7 @@ export default function JobsPage() {
                 createdBackendJob = await createAdminJob(token, {
                     dealership_name: dealershipName,
                     service_name: serviceName,
+                    service_names: serviceNamesInput,
                     vehicle_summary: vehicleSummary,
                     pre_assigned_technician_id: selectedTechnician?.id ?? null,
                 });
@@ -1061,6 +1085,7 @@ export default function JobsPage() {
                 job_code: `SM2-NEW-${String(Date.now()).slice(-6)}`,
                 dealership_name: dealershipName,
                 service_name: serviceName,
+                service_names: serviceNamesInput.length > 0 ? serviceNamesInput : [serviceName],
                 vehicle_summary: vehicleSummary,
                 urgency: reverseUrgencyMap[priorityResult.finalUrgency] || newJobForm.urgency,
                 assigned_technician_name: null,
@@ -1171,6 +1196,7 @@ export default function JobsPage() {
                         job_code: job.job_code,
                         dealership_name: job.dealership_name,
                         service_name: job.service_name,
+                        service_names: job.service_names,
                         vehicle_summary: job.vehicle_summary,
                         pre_assigned_technician_id: selectedTechnician?.id ?? null,
                     });
@@ -1690,19 +1716,14 @@ export default function JobsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Service</Label>
-                                <Select
+                                <Input
                                     value={newJobForm.service_name}
-                                    onValueChange={(value) => setNewJobForm((prev) => ({ ...prev, service_name: value }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select service" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {serviceNames.map((service) => (
-                                            <SelectItem key={service} value={service}>{service}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    onChange={(event) => setNewJobForm((prev) => ({ ...prev, service_name: event.target.value }))}
+                                    placeholder={serviceNames.length > 0 ? `${serviceNames[0]}, ${serviceNames[1] || 'Second service'}` : 'Enter one or more services, comma separated'}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Enter one or more services separated by commas.
+                                </p>
                             </div>
                         </div>
                         <div className="space-y-2">

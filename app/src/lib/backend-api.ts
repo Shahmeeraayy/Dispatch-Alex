@@ -164,6 +164,7 @@ export type BackendAdminJob = {
   pre_assigned_technician_name?: string | null;
   pre_assignment_reason?: string | null;
   service_type?: string | null;
+  service_names?: string[];
   vehicle?: string | null;
   created_at: string;
   updated_at: string;
@@ -179,6 +180,7 @@ export type BackendTechnicianJobFeedItem = {
   status: string;
   dealership_name?: string | null;
   service_name?: string | null;
+  service_names?: string[];
   vehicle_summary?: string | null;
   zone_name?: string | null;
   requested_service_date?: string | null;
@@ -564,7 +566,8 @@ export async function createAdminJob(
   payload: {
     job_code?: string | null;
     dealership_name: string;
-    service_name: string;
+    service_name?: string;
+    service_names?: string[];
     vehicle_summary: string;
     pre_assigned_technician_id?: string | null;
     requested_service_date?: string | null;
@@ -573,6 +576,25 @@ export async function createAdminJob(
 ): Promise<BackendAdminJob> {
   return requestJson<BackendAdminJob>('/admin/jobs', {
     method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminJob(
+  token: string,
+  jobId: string,
+  payload: {
+    dealership_name?: string;
+    service_name?: string;
+    service_names?: string[];
+    vehicle_summary?: string;
+    requested_service_date?: string | null;
+    requested_service_time?: string | null;
+  },
+): Promise<BackendAdminJob> {
+  return requestJson<BackendAdminJob>(`/admin/jobs/${jobId}`, {
+    method: 'PATCH',
     token,
     body: payload,
   });

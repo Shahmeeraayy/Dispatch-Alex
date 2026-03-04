@@ -74,11 +74,7 @@ def normalize_database_url(value: str) -> str:
 
 APP_ENV = get_env("APP_ENV", "development").strip().lower()
 
-DATABASE_URL = (
-    normalize_database_url(get_env("DATABASE_URL", "sqlite:///./project_local.db"))
-    if APP_ENV == "development"
-    else normalize_database_url(get_required_env("DATABASE_URL"))
-)
+DATABASE_URL = normalize_database_url(get_required_env("DATABASE_URL"))
 
 JWT_SECRET_KEY = (
     get_env("JWT_SECRET_KEY", "change-me-dev-only")
@@ -100,6 +96,15 @@ COMPANY_ZIP_CODE = get_env("COMPANY_ZIP_CODE", "G1A 1A1")
 COMPANY_PHONE = get_env("COMPANY_PHONE", "+1-418-555-0100")
 COMPANY_EMAIL = get_env("COMPANY_EMAIL", "billing@sm2dispatch.com")
 COMPANY_WEBSITE = get_env("COMPANY_WEBSITE", "https://www.sm2dispatch.com")
+SMTP_EMAIL = get_env("SMTP_EMAIL", "").strip()
+SMTP_APP_PASSWORD = get_env("SMTP_APP_PASSWORD", "").strip()
+SMTP_HOST = get_env("SMTP_HOST", "smtp.gmail.com").strip()
+SMTP_PORT = int(get_env("SMTP_PORT", "587"))
+SMTP_FROM_NAME = get_env("SMTP_FROM_NAME", "SM2 Dispatch").strip()
+PASSWORD_RESET_OTP_TTL_MINUTES = int(get_env("PASSWORD_RESET_OTP_TTL_MINUTES", "5"))
+PASSWORD_RESET_TOKEN_TTL_MINUTES = int(get_env("PASSWORD_RESET_TOKEN_TTL_MINUTES", "10"))
+PASSWORD_RESET_MAX_ATTEMPTS = int(get_env("PASSWORD_RESET_MAX_ATTEMPTS", "3"))
+PASSWORD_RESET_MAX_REQUESTS_PER_HOUR = int(get_env("PASSWORD_RESET_MAX_REQUESTS_PER_HOUR", "3"))
 QB_CLIENT_ID = get_env("QB_CLIENT_ID", "")
 QB_CLIENT_SECRET = get_env("QB_CLIENT_SECRET", "")
 QB_REDIRECT_URI = get_env("QB_REDIRECT_URI", "")
@@ -114,6 +119,7 @@ QUICKBOOKS_WEBHOOK_PRODUCTION_VERIFIER_TOKEN = get_env(
     QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN,
 )
 ADMIN_EMAIL = get_env("ADMIN_EMAIL", "admin@sm2dispatch.com").strip().lower()
+ADMIN_RECOVERY_EMAIL = get_env("ADMIN_RECOVERY_EMAIL", ADMIN_EMAIL).strip().lower()
 ADMIN_DEFAULT_PASSWORD = get_env("ADMIN_DEFAULT_PASSWORD", "admin123")
 
 if APP_ENV != "development" and JWT_SECRET_KEY.startswith("change-me"):

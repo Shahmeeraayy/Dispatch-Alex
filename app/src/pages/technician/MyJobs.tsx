@@ -19,12 +19,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
     completeTechnicianMyJob,
     delayTechnicianMyJob,
+    fetchAdminServices,
     fetchAdminTechnicianJobsFeed,
+    fetchServicesCatalog,
     fetchTechnicianJobsFeed,
     getStoredAdminToken,
     getStoredTechnicianToken,
     refuseTechnicianMyJob,
     startTechnicianMyJob,
+    type BackendServiceCatalogItem,
     type BackendTechnicianJobFeedItem,
 } from '@/lib/backend-api';
 import { DISPATCH_JOB_STATUS, normalizeDispatchJobStatus } from '@/lib/job-status';
@@ -60,6 +63,7 @@ interface MyJob {
     job_code: string;
     dealership_name: string;
     service_name: string;
+    original_service_name: string;
     job_status: JobStatus;
     urgency?: Urgency;
     scheduled_time?: string;
@@ -106,6 +110,7 @@ const mapBackendFeedItemToMyJob = (item: BackendTechnicianJobFeedItem): MyJob | 
         job_code: item.job_code,
         dealership_name: item.dealership_name || 'Unknown Dealership',
         service_name: item.service_name || 'Service Request',
+        original_service_name: item.service_name || 'Service Request',
         job_status: mappedStatus,
         urgency: 'normal',
         scheduled_time: scheduledTime,
@@ -171,12 +176,18 @@ function UrgencyBadge({ urgency }: { urgency: Urgency }) {
 
 function JobCard({
     job,
+    serviceOptions,
+    selectedServiceName,
+    onSelectService,
     onStart,
     onDone,
     onDelay,
     onRefuse,
 }: {
     job: MyJob;
+    serviceOptions: string[];
+    selectedServiceName: string;
+    onSelectService: (jobId: string, serviceName: string) => void;
     onStart: (jobId: string) => void;
     onDone: (jobId: string) => void;
     onDelay: (jobId: string) => void;
@@ -245,6 +256,37 @@ function JobCard({
                             <span className="font-medium">{formatScheduledDateTime(job.scheduled_time)}</span>
                         </div>
                     )}
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-900/40">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Service Selection
+                        </span>
+                        {selectedServiceName !== job.original_service_name && (
+                            <span className="text-[11px] font-medium text-[#2F8E92] dark:text-teal-400">
+                                Updated by technician
+                            </span>
+                        )}
+                    </div>
+                    <Select
+                        value={selectedServiceName}
+                        onValueChange={(value) => onSelectService(job.job_id, value)}
+                    >
+                        <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white text-left dark:border-gray-700 dark:bg-gray-800">
+                            <SelectValue placeholder="Select service" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {serviceOptions.map((serviceName) => (
+                                <SelectItem key={`${job.job_id}-${serviceName}`} value={serviceName}>
+                                    {serviceName}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Dealership requested: <span className="font-medium text-gray-700 dark:text-gray-200">{job.original_service_name}</span>
+                    </p>
                 </div>
 
                 {/* Action Buttons */}
@@ -395,6 +437,8 @@ export default function MyJobsPage({
     const routeBase = previewTechId ? `/admin/tech-preview/${previewTechId}` : '/tech';
     const { user } = useAuth();
     const [jobs, setJobs] = useState<MyJob[]>([]);
+    const [serviceOptions, setServiceOptions] = useState<string[]>([]);
+    const [selectedServicesByJob, setSelectedServicesByJob] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
     const isHistoryMode = viewMode === 'history';
 
@@ -417,7 +461,37 @@ export default function MyJobsPage({
     const [confirmLoading, setConfirmLoading] = useState(false);
 
     useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        try {
+            const raw = window.localStorage.getItem('sm_dispatch_job_service_overrides');
+            if (!raw) {
+                return;
+            }
+            const parsed = JSON.parse(raw) as Record<string, string>;
+            if (parsed && typeof parsed === 'object') {
+                setSelectedServicesByJob(parsed);
+            }
+        } catch {
+            // Ignore invalid local state.
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        window.localStorage.setItem('sm_dispatch_job_service_overrides', JSON.stringify(selectedServicesByJob));
+    }, [selectedServicesByJob]);
+
+    useEffect(() => {
         void fetchJobs();
+    }, [previewTechId, user?.id, user?.role]);
+
+    useEffect(() => {
+        void fetchServiceOptions();
     }, [previewTechId, user?.id, user?.role]);
 
     useEffect(() => {
@@ -448,6 +522,15 @@ export default function MyJobsPage({
                     .map(mapBackendFeedItemToMyJob)
                     .filter((job): job is MyJob => job !== null);
                 setJobs(mapped);
+                setSelectedServicesByJob((prev) => {
+                    const next = { ...prev };
+                    for (const job of mapped) {
+                        if (!next[job.job_id]) {
+                            next[job.job_id] = job.service_name;
+                        }
+                    }
+                    return next;
+                });
             } catch {
                 setJobs([]);
             }
@@ -468,10 +551,70 @@ export default function MyJobsPage({
                 .map(mapBackendFeedItemToMyJob)
                 .filter((job): job is MyJob => job !== null);
             setJobs(mapped);
+            setSelectedServicesByJob((prev) => {
+                const next = { ...prev };
+                for (const job of mapped) {
+                    if (!next[job.job_id]) {
+                        next[job.job_id] = job.service_name;
+                    }
+                }
+                return next;
+            });
         } catch {
             setJobs([]);
         }
         setLoading(false);
+    };
+
+    const fetchServiceOptions = async () => {
+        if (previewTechId) {
+            const adminToken = getStoredAdminToken();
+            if (!adminToken) {
+                setServiceOptions([]);
+                return;
+            }
+            try {
+                const rows = await fetchAdminServices(adminToken, true);
+                const next = rows
+                    .filter((row: BackendServiceCatalogItem) => row.status === 'active')
+                    .map((row: BackendServiceCatalogItem) => row.name?.trim() || '')
+                    .filter((name, index, list) => name.length > 0 && list.indexOf(name) === index)
+                    .sort((a, b) => a.localeCompare(b));
+                setServiceOptions(next);
+            } catch {
+                setServiceOptions([]);
+            }
+            return;
+        }
+
+        const token = getStoredTechnicianToken();
+        if (!token) {
+            setServiceOptions([]);
+            return;
+        }
+
+        try {
+            const rows = await fetchServicesCatalog(token);
+            const next = rows
+                .filter((row: BackendServiceCatalogItem) => row.status === 'active')
+                .map((row: BackendServiceCatalogItem) => row.name?.trim() || '')
+                .filter((name, index, list) => name.length > 0 && list.indexOf(name) === index)
+                .sort((a, b) => a.localeCompare(b));
+            setServiceOptions(next);
+        } catch {
+            setServiceOptions([]);
+        }
+    };
+
+    const getJobSelectedService = (job: MyJob): string => {
+        return selectedServicesByJob[job.job_id] || job.service_name;
+    };
+
+    const handleSelectService = (jobId: string, serviceName: string) => {
+        setSelectedServicesByJob((prev) => ({
+            ...prev,
+            [jobId]: serviceName,
+        }));
     };
 
     const activeJobs = jobs.filter(j => ['scheduled', 'in_progress', 'delayed', 'unknown'].includes(j.job_status));
@@ -669,6 +812,11 @@ export default function MyJobsPage({
                                             <JobCard
                                                 key={job.job_id}
                                                 job={job}
+                                                serviceOptions={[
+                                                    ...new Set([job.original_service_name, ...serviceOptions]),
+                                                ]}
+                                                selectedServiceName={getJobSelectedService(job)}
+                                                onSelectService={handleSelectService}
                                                 onStart={handleStart}
                                                 onDone={handleDone}
                                                 onDelay={handleDelay}
@@ -702,6 +850,11 @@ export default function MyJobsPage({
                                             <JobCard
                                                 key={job.job_id}
                                                 job={job}
+                                                serviceOptions={[
+                                                    ...new Set([job.original_service_name, ...serviceOptions]),
+                                                ]}
+                                                selectedServiceName={getJobSelectedService(job)}
+                                                onSelectService={handleSelectService}
                                                 onStart={handleStart}
                                                 onDone={handleDone}
                                                 onDelay={handleDelay}

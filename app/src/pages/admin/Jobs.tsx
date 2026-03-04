@@ -1827,10 +1827,6 @@ export default function JobsPage() {
                             <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                                 No technicians available.
                             </div>
-                        ) : eligibleTechnicianIds.size === 0 ? (
-                            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                                No exact zone + skill match found. You can still assign any technician manually.
-                            </div>
                         ) : null}
 
                         {technicianOptions

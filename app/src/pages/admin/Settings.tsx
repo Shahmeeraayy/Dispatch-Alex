@@ -59,14 +59,16 @@ import {
 import {
     createAdminPriorityRule,
     deleteAdminPriorityRule,
+    fetchAdminCredentialSettings,
     fetchAdminDealerships,
     fetchAdminPriorityRules,
     fetchAdminServices,
     fetchAdminInvoiceBrandingSettings,
     getStoredAdminToken,
-    updateAdminPassword,
+    updateAdminCredentialSettings,
     updateAdminPriorityRule,
     updateAdminInvoiceBrandingSettings,
+    type BackendAdminCredentialSettings,
     type BackendDealership,
     type BackendPriorityRule,
     type BackendServiceCatalogItem,
@@ -122,11 +124,17 @@ const getDefaultNewRule = (): Partial<PriorityRule> => ({
 });
 
 const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
+const DEFAULT_ADMIN_EMAIL = 'admin@sm2dispatch.com';
+
+const getDefaultAdminCredentialValues = () => ({
+    adminEmail: DEFAULT_ADMIN_EMAIL,
+    recoveryEmail: DEFAULT_ADMIN_EMAIL,
+});
 
 
 
 export default function SettingsPage() {
-    const { hasBackendAdminToken, user } = useAuth();
+    const { hasBackendAdminToken } = useAuth();
     const [refreshSeed, setRefreshSeed] = useState(0);
     const [loading, setLoading] = useState(false);
     const [savedInvoiceCompany, setSavedInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
@@ -138,13 +146,15 @@ export default function SettingsPage() {
     const [newRule, setNewRule] = useState<Partial<PriorityRule>>(getDefaultNewRule());
     const [isEditingRule, setIsEditingRule] = useState(false);
     const [editRule, setEditRule] = useState<Partial<PriorityRule> & { id?: string }>(getDefaultNewRule());
-    const [passwordForm, setPasswordForm] = useState({
+    const [savedAdminCredentials, setSavedAdminCredentials] = useState(getDefaultAdminCredentialValues());
+    const [adminCredentialForm, setAdminCredentialForm] = useState({
+        ...getDefaultAdminCredentialValues(),
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
     });
-    const [passwordError, setPasswordError] = useState<string | null>(null);
-    const [isSavingPassword, setIsSavingPassword] = useState(false);
+    const [adminCredentialError, setAdminCredentialError] = useState<string | null>(null);
+    const [isSavingAdminCredentials, setIsSavingAdminCredentials] = useState(false);
     const MOCK_DEALERSHIPS = dealershipOptions.length > 0 ? dealershipOptions : FALLBACK_DEALERSHIPS;
 
     const { theme, setTheme } = useTheme();
@@ -200,6 +210,52 @@ export default function SettingsPage() {
 
         void loadInvoiceBrandingSettings();
 
+        return () => {
+            cancelled = true;
+        };
+    }, [hasBackendAdminToken, refreshSeed]);
+
+    useEffect(() => {
+        const adminToken = getStoredAdminToken();
+        if (!hasBackendAdminToken || !adminToken) {
+            setSavedAdminCredentials(getDefaultAdminCredentialValues());
+            setAdminCredentialForm((prev) => ({
+                ...prev,
+                ...getDefaultAdminCredentialValues(),
+            }));
+            return;
+        }
+
+        let cancelled = false;
+        const loadAdminCredentials = async () => {
+            try {
+                const settings: BackendAdminCredentialSettings = await fetchAdminCredentialSettings(adminToken);
+                if (cancelled) {
+                    return;
+                }
+
+                const nextValues = {
+                    adminEmail: settings.admin_email,
+                    recoveryEmail: settings.recovery_email,
+                };
+                setSavedAdminCredentials(nextValues);
+                setAdminCredentialForm((prev) => ({
+                    ...prev,
+                    ...nextValues,
+                }));
+            } catch {
+                if (!cancelled) {
+                    const fallbackValues = getDefaultAdminCredentialValues();
+                    setSavedAdminCredentials(fallbackValues);
+                    setAdminCredentialForm((prev) => ({
+                        ...prev,
+                        ...fallbackValues,
+                    }));
+                }
+            }
+        };
+
+        void loadAdminCredentials();
         return () => {
             cancelled = true;
         };
@@ -346,47 +402,61 @@ export default function SettingsPage() {
         setInvoiceCompany({ ...savedInvoiceCompany });
     };
 
-    const handleSaveAdminPassword = async () => {
+    const handleSaveAdminCredentials = async () => {
         const adminToken = getStoredAdminToken();
         if (!hasBackendAdminToken || !adminToken) {
-            setPasswordError('Admin session is required to change password.');
+            setAdminCredentialError('Admin session is required to update access settings.');
             return;
         }
 
-        setPasswordError(null);
-        const currentPassword = passwordForm.currentPassword.trim();
-        const newPassword = passwordForm.newPassword.trim();
-        const confirmPassword = passwordForm.confirmPassword.trim();
+        setAdminCredentialError(null);
+        const adminEmail = adminCredentialForm.adminEmail.trim().toLowerCase();
+        const recoveryEmail = adminCredentialForm.recoveryEmail.trim().toLowerCase();
+        const currentPassword = adminCredentialForm.currentPassword.trim();
+        const newPassword = adminCredentialForm.newPassword.trim();
+        const confirmPassword = adminCredentialForm.confirmPassword.trim();
 
-        if (!currentPassword || !newPassword || !confirmPassword) {
-            setPasswordError('All password fields are required.');
+        if (!adminEmail || !recoveryEmail || !currentPassword) {
+            setAdminCredentialError('Admin email, super email, and current password are required.');
             return;
         }
-        if (newPassword.length < 6) {
-            setPasswordError('New password must be at least 6 characters.');
+        if ((newPassword && !confirmPassword) || (!newPassword && confirmPassword)) {
+            setAdminCredentialError('Enter and confirm the new password, or leave both fields empty.');
             return;
         }
-        if (newPassword !== confirmPassword) {
-            setPasswordError('New password and confirmation do not match.');
+        if (newPassword && newPassword.length < 6) {
+            setAdminCredentialError('New password must be at least 6 characters.');
+            return;
+        }
+        if (newPassword && newPassword !== confirmPassword) {
+            setAdminCredentialError('New password and confirmation do not match.');
             return;
         }
 
-        setIsSavingPassword(true);
+        setIsSavingAdminCredentials(true);
         try {
-            await updateAdminPassword(adminToken, {
+            const updated = await updateAdminCredentialSettings(adminToken, {
+                admin_email: adminEmail,
+                recovery_email: recoveryEmail,
                 current_password: currentPassword,
-                new_password: newPassword,
+                new_password: newPassword || undefined,
             });
-            setPasswordForm({
+            const nextValues = {
+                adminEmail: updated.admin_email,
+                recoveryEmail: updated.recovery_email,
+            };
+            setSavedAdminCredentials(nextValues);
+            setAdminCredentialForm({
+                ...nextValues,
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: '',
             });
-            alert('Admin password updated successfully.');
+            alert(newPassword ? 'Admin access settings updated successfully.' : 'Admin email and super email updated successfully.');
         } catch (error) {
-            setPasswordError(error instanceof Error ? error.message : 'Unable to update admin password.');
+            setAdminCredentialError(error instanceof Error ? error.message : 'Unable to update admin access settings.');
         } finally {
-            setIsSavingPassword(false);
+            setIsSavingAdminCredentials(false);
         }
     };
 
@@ -877,20 +947,32 @@ export default function SettingsPage() {
                 <Card className="border-border shadow-sm bg-card">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                            <KeyRound className="w-4 h-4 text-[#2F8E92]" /> Admin Password
+                            <KeyRound className="w-4 h-4 text-[#2F8E92]" /> Admin Access & Recovery
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            Change the admin sign-in password whenever needed.
+                            Update the admin sign-in email, the super email used for OTP recovery, and the password from one place.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="grid sm:grid-cols-2 gap-6">
-                            <div className="space-y-2 sm:col-span-2">
+                            <div className="space-y-2">
                                 <Label htmlFor="admin_account_email" className="text-foreground">Admin Email</Label>
                                 <Input
                                     id="admin_account_email"
-                                    value={user?.email ?? 'admin@sm2dispatch.com'}
-                                    disabled
+                                    type="email"
+                                    value={adminCredentialForm.adminEmail}
+                                    onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, adminEmail: e.target.value }))}
+                                    autoComplete="email"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="admin_recovery_email" className="text-foreground">Super Email For OTP</Label>
+                                <Input
+                                    id="admin_recovery_email"
+                                    type="email"
+                                    value={adminCredentialForm.recoveryEmail}
+                                    onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, recoveryEmail: e.target.value }))}
+                                    autoComplete="email"
                                 />
                             </div>
                             <div className="space-y-2 sm:col-span-2">
@@ -898,18 +980,18 @@ export default function SettingsPage() {
                                 <Input
                                     id="admin_current_password"
                                     type="password"
-                                    value={passwordForm.currentPassword}
-                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                                    value={adminCredentialForm.currentPassword}
+                                    onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
                                     autoComplete="current-password"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="admin_new_password" className="text-foreground">New Password</Label>
+                                <Label htmlFor="admin_new_password" className="text-foreground">New Password (Optional)</Label>
                                 <Input
                                     id="admin_new_password"
                                     type="password"
-                                    value={passwordForm.newPassword}
-                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                                    value={adminCredentialForm.newPassword}
+                                    onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, newPassword: e.target.value }))}
                                     autoComplete="new-password"
                                 />
                             </div>
@@ -918,14 +1000,17 @@ export default function SettingsPage() {
                                 <Input
                                     id="admin_confirm_password"
                                     type="password"
-                                    value={passwordForm.confirmPassword}
-                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                                    value={adminCredentialForm.confirmPassword}
+                                    onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                                     autoComplete="new-password"
                                 />
                             </div>
                         </div>
-                        {passwordError && (
-                            <p className="mt-4 text-sm text-red-600">{passwordError}</p>
+                        <p className="mt-4 text-xs text-muted-foreground">
+                            The super email is the recovery destination for future forgot-password OTP delivery.
+                        </p>
+                        {adminCredentialError && (
+                            <p className="mt-3 text-sm text-red-600">{adminCredentialError}</p>
                         )}
                     </CardContent>
                     <CardFooter className="bg-muted/30 border-t border-border py-3">
@@ -934,16 +1019,21 @@ export default function SettingsPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => {
-                                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                                    setPasswordError(null);
+                                    setAdminCredentialForm({
+                                        ...savedAdminCredentials,
+                                        currentPassword: '',
+                                        newPassword: '',
+                                        confirmPassword: '',
+                                    });
+                                    setAdminCredentialError(null);
                                 }}
-                                disabled={isSavingPassword}
+                                disabled={isSavingAdminCredentials}
                             >
                                 Cancel
                             </Button>
-                            <Button size="sm" onClick={handleSaveAdminPassword} disabled={isSavingPassword}>
-                                {isSavingPassword && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
-                                {isSavingPassword ? 'Saving...' : 'Update Password'}
+                            <Button size="sm" onClick={handleSaveAdminCredentials} disabled={isSavingAdminCredentials}>
+                                {isSavingAdminCredentials && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
+                                {isSavingAdminCredentials ? 'Saving...' : 'Update Access Settings'}
                             </Button>
                         </div>
                     </CardFooter>

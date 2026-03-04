@@ -461,7 +461,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser({
         ...currentUser,
-        email: ADMIN_EMAIL,
+        email: normalizedEmail,
         updatedAt: new Date().toISOString(),
       });
       return;

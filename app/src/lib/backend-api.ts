@@ -215,6 +215,25 @@ export type BackendAdminPasswordChangeResponse = {
   password_changed_at: string;
 };
 
+export type BackendAdminCredentialSettings = {
+  admin_email: string;
+  recovery_email: string;
+  password_changed_at: string;
+  updated_at: string;
+};
+
+export type BackendForgotPasswordResponse = {
+  message: string;
+};
+
+export type BackendVerifyOtpResponse = {
+  reset_token: string;
+};
+
+export type BackendResetPasswordResponse = {
+  status: string;
+};
+
 export type BackendTechnicianPasswordChangeResponse = {
   status: string;
   technician_email: string;
@@ -796,6 +815,57 @@ export async function updateAdminPassword(
 ): Promise<BackendAdminPasswordChangeResponse> {
   return requestJson<BackendAdminPasswordChangeResponse>('/admin/settings/admin-password', {
     method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export async function requestForgotPasswordOtp(
+  payload: { email: string },
+): Promise<BackendForgotPasswordResponse> {
+  return requestJson<BackendForgotPasswordResponse>('/auth/forgot-password', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function verifyForgotPasswordOtp(
+  payload: { email: string; otp: string },
+): Promise<BackendVerifyOtpResponse> {
+  return requestJson<BackendVerifyOtpResponse>('/auth/verify-otp', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function resetPasswordWithOtp(
+  payload: { reset_token: string; new_password: string },
+): Promise<BackendResetPasswordResponse> {
+  return requestJson<BackendResetPasswordResponse>('/auth/reset-password', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function fetchAdminCredentialSettings(
+  token: string,
+): Promise<BackendAdminCredentialSettings> {
+  return requestJson<BackendAdminCredentialSettings>('/admin/settings/admin-credentials', {
+    token,
+  });
+}
+
+export async function updateAdminCredentialSettings(
+  token: string,
+  payload: {
+    admin_email: string;
+    recovery_email: string;
+    current_password: string;
+    new_password?: string;
+  },
+): Promise<BackendAdminCredentialSettings> {
+  return requestJson<BackendAdminCredentialSettings>('/admin/settings/admin-credentials', {
+    method: 'PUT',
     token,
     body: payload,
   });

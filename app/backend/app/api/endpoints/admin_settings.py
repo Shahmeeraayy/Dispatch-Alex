@@ -7,6 +7,8 @@ from ...api import deps
 from ...core.enums import UserRole
 from ...core.security import AuthenticatedUser
 from ...schemas.settings import (
+    AdminCredentialSettingsResponse,
+    AdminCredentialSettingsUpdatePayload,
     AdminPasswordChangePayload,
     AdminPasswordChangeResponse,
     InvoiceBrandingSettingsPayload,
@@ -20,6 +22,15 @@ from ...services.invoice_branding_settings_service import InvoiceBrandingSetting
 from ...services.priority_rules_service import PriorityRulesService
 
 router = APIRouter(prefix="/admin/settings", tags=["admin-settings"])
+
+
+@router.get("/admin-credentials", response_model=AdminCredentialSettingsResponse)
+def get_admin_credentials_settings(
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    _ = current_user
+    return AdminCredentialSettingsService(db).get_settings()
 
 
 @router.get("/invoice-branding", response_model=InvoiceBrandingSettingsResponse)
@@ -50,6 +61,21 @@ def change_admin_password(
     _ = current_user
     return AdminCredentialSettingsService(db).change_password(
         current_password=payload.current_password,
+        new_password=payload.new_password,
+    )
+
+
+@router.put("/admin-credentials", response_model=AdminCredentialSettingsResponse)
+def update_admin_credentials_settings(
+    payload: AdminCredentialSettingsUpdatePayload,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    _ = current_user
+    return AdminCredentialSettingsService(db).update_credentials(
+        current_password=payload.current_password,
+        admin_email=payload.admin_email,
+        recovery_email=payload.recovery_email,
         new_password=payload.new_password,
     )
 

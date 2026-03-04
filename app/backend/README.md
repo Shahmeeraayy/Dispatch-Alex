@@ -2,7 +2,7 @@
 
 ## Stack
 - **Framework**: FastAPI
-- **Database**: SQLite (local development)
+- **Database**: Neon/PostgreSQL
 - **ORM**: SQLAlchemy
 - **Validation**: Pydantic
 - **Architecture**: Clean Service-Repository Layer

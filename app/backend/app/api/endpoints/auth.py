@@ -9,8 +9,17 @@ from ...api import deps
 from ...core.config import APP_ENV
 from ...core.enums import UserRole
 from ...core.security import create_access_token
+from ...schemas.auth_password_reset import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+    VerifyOtpRequest,
+    VerifyOtpResponse,
+)
 from ...repositories.technician_repository import TechnicianRepository
 from ...services.admin_credential_settings_service import AdminCredentialSettingsService
+from ...services.password_reset_service import PasswordResetService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -97,3 +106,27 @@ def create_dev_technician_token(
         expires_at=expires_at,
         role=UserRole.TECHNICIAN,
     )
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(deps.get_db),
+):
+    return PasswordResetService(db).request_password_reset(payload.email)
+
+
+@router.post("/verify-otp", response_model=VerifyOtpResponse)
+def verify_otp(
+    payload: VerifyOtpRequest,
+    db: Session = Depends(deps.get_db),
+):
+    return PasswordResetService(db).verify_otp(payload.email, payload.otp)
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(deps.get_db),
+):
+    return PasswordResetService(db).reset_password(payload.reset_token, payload.new_password)

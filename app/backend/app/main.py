@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import inspect
 from sqlalchemy.exc import OperationalError
 
 from .api import deps
@@ -35,6 +36,12 @@ app = FastAPI(
 def ensure_runtime_schema() -> None:
     with deps.engine.begin() as conn:
         Base.metadata.create_all(bind=conn)
+        columns = {
+            column["name"]
+            for column in inspect(conn).get_columns("admin_credential_settings")
+        }
+        if columns and "recovery_email" not in columns:
+            conn.exec_driver_sql("ALTER TABLE admin_credential_settings ADD COLUMN recovery_email VARCHAR(255)")
 
 app.add_middleware(
     CORSMiddleware,

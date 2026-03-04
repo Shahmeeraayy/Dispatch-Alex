@@ -56,6 +56,44 @@ class AdminPasswordChangeResponse(BaseModel):
     password_changed_at: datetime
 
 
+class AdminCredentialSettingsResponse(BaseModel):
+    admin_email: str
+    recovery_email: str
+    password_changed_at: datetime
+    updated_at: datetime
+
+
+class AdminCredentialSettingsUpdatePayload(BaseModel):
+    admin_email: str = Field(..., min_length=3, max_length=255)
+    recovery_email: str = Field(..., min_length=3, max_length=255)
+    current_password: str = Field(..., min_length=1, max_length=255)
+    new_password: Optional[str] = Field(default=None, min_length=6, max_length=255)
+
+    @field_validator("admin_email", "recovery_email")
+    @classmethod
+    def _normalize_email_fields(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not normalized:
+            raise ValueError("value cannot be blank")
+        return normalized
+
+    @field_validator("current_password")
+    @classmethod
+    def _normalize_current_password(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("value cannot be blank")
+        return normalized
+
+    @field_validator("new_password")
+    @classmethod
+    def _normalize_optional_password(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
 class PriorityRuleCreatePayload(BaseModel):
     description: str = Field(..., min_length=1, max_length=255)
     dealership_id: str = Field(..., min_length=1, max_length=64)

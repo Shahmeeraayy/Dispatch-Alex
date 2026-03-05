@@ -20,6 +20,8 @@ from ..schemas.admin_services import (
     AdminServiceStatusUpdateRequest,
     AdminServiceUpdateRequest,
 )
+from .quickbooks_connection_service import QuickBooksConnectionService
+from .quickbooks_item_sync_service import QuickBooksItemSyncService
 
 
 class ServiceCatalogService:
@@ -29,9 +31,16 @@ class ServiceCatalogService:
         self.db = db
         self.current_user = current_user
 
-    def list_admin_services(self, include_archived: bool = True) -> list[AdminServiceResponse]:
+    def list_admin_services(
+        self,
+        include_archived: bool = True,
+        *,
+        sync_from_quickbooks: bool = False,
+    ) -> list[AdminServiceResponse]:
         self._ensure_seed_data()
         self._ensure_compatibility_aliases()
+        if sync_from_quickbooks:
+            self._sync_catalog_from_quickbooks()
         query = self.db.query(ServiceCatalog)
         if not include_archived:
             query = query.filter(ServiceCatalog.status == "active")
@@ -265,3 +274,13 @@ class ServiceCatalogService:
                 self.db.commit()
             except IntegrityError:
                 self.db.rollback()
+
+    def _sync_catalog_from_quickbooks(self) -> None:
+        """
+        Refresh service catalog from QuickBooks when an active connection exists.
+        Falls back silently when QuickBooks is not connected.
+        """
+        status = QuickBooksConnectionService(self.db).get_status()
+        if not bool(status.get("connected")):
+            return
+        QuickBooksItemSyncService(self.db).sync_items()

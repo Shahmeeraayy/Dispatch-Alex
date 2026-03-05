@@ -252,7 +252,7 @@ export default function ServicesPage() {
             return;
         }
         try {
-            const rows = await fetchAdminServices(token, true);
+            const rows = await fetchAdminServices(token, true, true);
             setServices(rows.map(mapBackendServiceToUi));
         } catch (error) {
             const detail = error instanceof Error ? error.message : 'Unable to load services';

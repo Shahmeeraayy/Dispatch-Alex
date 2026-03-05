@@ -22,10 +22,14 @@ catalog_router = APIRouter(prefix="/services", tags=["services"])
 @router.get("", response_model=List[AdminServiceResponse])
 def list_admin_services(
     include_archived: bool = True,
+    sync_from_quickbooks: bool = False,
     db: Session = Depends(deps.get_db),
     current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
 ):
-    return ServiceCatalogService(db, current_user).list_admin_services(include_archived=include_archived)
+    return ServiceCatalogService(db, current_user).list_admin_services(
+        include_archived=include_archived,
+        sync_from_quickbooks=sync_from_quickbooks,
+    )
 
 
 @router.post("", response_model=AdminServiceResponse, status_code=201)

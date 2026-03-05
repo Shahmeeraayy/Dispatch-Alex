@@ -760,8 +760,9 @@ export async function fetchAdminDealerships(token: string): Promise<BackendDeale
 export async function fetchAdminServices(
   token: string,
   includeArchived = true,
+  syncFromQuickBooks = false,
 ): Promise<BackendServiceCatalogItem[]> {
-  const suffix = includeArchived ? '?include_archived=true' : '?include_archived=false';
+  const suffix = `?include_archived=${includeArchived ? 'true' : 'false'}&sync_from_quickbooks=${syncFromQuickBooks ? 'true' : 'false'}`;
   return requestJson<BackendServiceCatalogItem[]>(`/admin/services${suffix}`, { token });
 }
 

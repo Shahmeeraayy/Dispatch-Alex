@@ -223,6 +223,7 @@ export default function ServicesPage() {
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [minPrice, setMinPrice] = useState<string>('');
     const [maxPrice, setMaxPrice] = useState<string>('');
+    const [quickBooksOnly, setQuickBooksOnly] = useState(true);
 
     // Drawers & Modals
     const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
@@ -243,7 +244,7 @@ export default function ServicesPage() {
     });
 
     // Initial Fetch
-    const fetchServices = useCallback(async () => {
+    const fetchServices = useCallback(async (syncFromQuickBooks = false) => {
         setLoading(true);
         const token = getStoredAdminToken();
         if (!hasBackendAdminToken || !token) {
@@ -252,7 +253,7 @@ export default function ServicesPage() {
             return;
         }
         try {
-            const rows = await fetchAdminServices(token, true, true);
+            const rows = await fetchAdminServices(token, true, syncFromQuickBooks);
             setServices(rows.map(mapBackendServiceToUi));
         } catch (error) {
             const detail = error instanceof Error ? error.message : 'Unable to load services';
@@ -264,7 +265,7 @@ export default function ServicesPage() {
     }, [hasBackendAdminToken]);
 
     useEffect(() => {
-        void fetchServices();
+        void fetchServices(true);
     }, [fetchServices]);
 
     useEffect(() => {
@@ -275,6 +276,15 @@ export default function ServicesPage() {
         window.addEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
         return () => {
             window.removeEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
+        };
+    }, [fetchServices]);
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            void fetchServices(false);
+        }, 15000);
+        return () => {
+            window.clearInterval(intervalId);
         };
     }, [fetchServices]);
 
@@ -295,6 +305,9 @@ export default function ServicesPage() {
 
     // Filter Logic
     const filteredServices = services.filter(s => {
+        if (quickBooksOnly && !s.qb_item_id) {
+            return false;
+        }
         const matchesSearch =
             s.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -552,6 +565,14 @@ export default function ServicesPage() {
                                 <SelectItem value="windshield_replacement">Windshield replacement</SelectItem>
                             </SelectContent>
                         </Select>
+
+                        <Button
+                            variant={quickBooksOnly ? 'default' : 'outline'}
+                            className="w-[180px] justify-start"
+                            onClick={() => setQuickBooksOnly((prev) => !prev)}
+                        >
+                            {quickBooksOnly ? 'QuickBooks Only: On' : 'QuickBooks Only: Off'}
+                        </Button>
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

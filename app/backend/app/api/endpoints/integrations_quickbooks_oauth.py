@@ -20,7 +20,10 @@ STATE_COOKIE_NAME = "qb_oauth_state"
 
 
 @router.get("/connect")
-def qb_connect(scope: str = Query(DEFAULT_SCOPE)) -> RedirectResponse:
+def qb_connect(
+    scope: str = Query(DEFAULT_SCOPE),
+    prompt: str = Query("consent"),
+) -> RedirectResponse:
     if not QB_CLIENT_ID or not QB_REDIRECT_URI:
         raise HTTPException(
             status_code=500,
@@ -28,15 +31,18 @@ def qb_connect(scope: str = Query(DEFAULT_SCOPE)) -> RedirectResponse:
         )
 
     state = secrets.token_urlsafe(24)
-    query = urlencode(
-        {
-            "client_id": QB_CLIENT_ID,
-            "redirect_uri": QB_REDIRECT_URI,
-            "response_type": "code",
-            "scope": scope.strip() or DEFAULT_SCOPE,
-            "state": state,
-        }
-    )
+    query_params = {
+        "client_id": QB_CLIENT_ID,
+        "redirect_uri": QB_REDIRECT_URI,
+        "response_type": "code",
+        "scope": scope.strip() or DEFAULT_SCOPE,
+        "state": state,
+    }
+    prompt_value = prompt.strip()
+    if prompt_value:
+        query_params["prompt"] = prompt_value
+
+    query = urlencode(query_params)
     response = RedirectResponse(url=f"{AUTHORIZE_URL}?{query}", status_code=307)
     response.set_cookie(
         key=STATE_COOKIE_NAME,

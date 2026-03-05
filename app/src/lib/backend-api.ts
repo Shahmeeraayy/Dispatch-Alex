@@ -10,6 +10,10 @@ type RequestOptions = {
   body?: unknown;
 };
 
+type ErrorPayload = {
+  detail?: unknown;
+};
+
 type DevAdminTokenResponse = {
   access_token: string;
   token_type: string;
@@ -523,6 +527,23 @@ async function tryRefreshAdminToken(expiredToken: string): Promise<string | null
   return null;
 }
 
+function extractErrorDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail;
+  }
+  if (detail && typeof detail === 'object') {
+    try {
+      const text = JSON.stringify(detail);
+      if (text && text !== '{}') {
+        return text;
+      }
+    } catch {
+      // ignore and keep fallback
+    }
+  }
+  return fallback;
+}
+
 async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -556,9 +577,9 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
       // Continue with regular error handling below using retry response.
       let detail = `Request failed (${retryResponse.status})`;
       try {
-        const payload = await retryResponse.json() as { detail?: string };
+        const payload = await retryResponse.json() as ErrorPayload;
         if (payload?.detail) {
-          detail = payload.detail;
+          detail = extractErrorDetail(payload.detail, detail);
         }
       } catch {
         // Keep generic error if backend didn't return JSON.
@@ -570,9 +591,9 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   if (!response.ok) {
     let detail = `Request failed (${response.status})`;
     try {
-      const payload = await response.json() as { detail?: string };
+      const payload = await response.json() as ErrorPayload;
       if (payload?.detail) {
-        detail = payload.detail;
+        detail = extractErrorDetail(payload.detail, detail);
       }
     } catch {
       // Keep generic error if backend didn't return JSON.

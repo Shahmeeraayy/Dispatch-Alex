@@ -4,7 +4,6 @@ import {
     RefreshCw,
     Plus,
     MoreVertical,
-    AlertCircle,
     CheckCircle2,
     DollarSign,
     FileText,
@@ -214,7 +213,6 @@ const SERVICE_EXPORT_COLUMNS = [
     'Category',
     'DefaultPrice',
     'Status',
-    'Notes',
 ];
 
 export default function ServicesPage() {
@@ -288,7 +286,6 @@ export default function ServicesPage() {
             Category: s.category,
             DefaultPrice: s.default_price,
             Status: s.status,
-            Notes: s.notes || ''
         }));
 
     const handleExport = (selectedColumns: string[], format: ExportFormat = 'csv') => {
@@ -618,7 +615,6 @@ export default function ServicesPage() {
                                 <TableHead className="w-[120px]">Category</TableHead>
                                 <TableHead className="w-[120px] text-right pr-6">Default Price</TableHead>
                                 <TableHead className="w-[100px] text-center">Status</TableHead>
-                                <TableHead className="w-[80px] text-center">Notes</TableHead>
                                 <TableHead className="w-[180px] text-right">Last Updated</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
@@ -639,9 +635,6 @@ export default function ServicesPage() {
                                     </TableCell>
                                     <TableCell className="text-center">
                                         <StatusBadge status={service.status} />
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        {service.notes && <AlertCircle className="w-4 h-4 text-blue-500 mx-auto" />}
                                     </TableCell>
                                     <TableCell className="text-right text-xs text-gray-400 font-mono">
                                         {new Date(service.updated_at).toLocaleDateString()}
@@ -821,21 +814,13 @@ export default function ServicesPage() {
                                             </div>
                                         </div>
 
-                                        {(selectedService.description || selectedService.notes) && (
+                                        {selectedService.description && (
                                             <div className="pt-4 border-t border-gray-100">
                                                 {selectedService.description && (
                                                     <>
                                                         <span className="text-gray-500 block text-xs mb-1">QuickBooks Description</span>
                                                         <p className="text-sm text-gray-700 bg-blue-50 p-2 rounded border border-blue-100">
                                                             {selectedService.description}
-                                                        </p>
-                                                    </>
-                                                )}
-                                                {selectedService.notes && (
-                                                    <>
-                                                        <span className="mt-3 text-gray-500 block text-xs mb-1">Notes</span>
-                                                        <p className="text-sm text-gray-700 bg-amber-50 p-2 rounded border border-amber-100">
-                                                            {selectedService.notes}
                                                         </p>
                                                     </>
                                                 )}

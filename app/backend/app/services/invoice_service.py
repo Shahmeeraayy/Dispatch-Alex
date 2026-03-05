@@ -20,6 +20,7 @@ from ..models.service_catalog import ServiceCatalog
 from ..models.technician import Technician
 from ..repositories.invoice_repository import InvoiceRepository
 from ..schemas.invoice import (
+    InvoiceApprovalDraftSaveRequest,
     InvoiceBillingPayload,
     InvoiceCompanyPayload,
     InvoiceCreateRequest,
@@ -88,6 +89,125 @@ class InvoiceService:
         self.db = db
         self.current_user = current_user
         self.repo = InvoiceRepository(db)
+
+    def save_pending_approval_draft(self, job_id: UUID, payload: InvoiceApprovalDraftSaveRequest) -> InvoicePendingApprovalResponse:
+        rows = self.repo.list_pending_approval_jobs()
+        target = next((row for row in rows if row[0].id == job_id), None)
+        if target is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pending approval job not found")
+
+        job, dealership, technician = target
+        tax_rate = self._resolve_tax_rate(
+            tax_code=(job.tax_code or "EXEMPT"),
+            payload_tax_rate=job.tax_rate,
+        )
+        bill_to_name = (job.customer_name or (dealership.name if dealership else None) or "").strip()
+        bill_to_street = (job.customer_address or (dealership.address if dealership else None) or "").strip()
+        bill_to_city = job.customer_city or (dealership.city if dealership else None)
+        bill_to_state = job.customer_state or None
+        bill_to_zip = job.customer_zip_code or (dealership.postal_code if dealership else None)
+        if not bill_to_name or not bill_to_street:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Job is missing bill-to data")
+
+        line_items_payload: list[dict] = []
+        services: list[InvoicePendingApprovalServiceResponse] = []
+        items: list[InvoicePendingApprovalLineItemResponse] = []
+        estimated_subtotal = ZERO
+        estimated_sales_tax = ZERO
+
+        for index, line in enumerate(payload.line_items):
+            quantity = _to_money(line.quantity if line.quantity is not None else Decimal("1"))
+            rate = _to_money(line.rate)
+            if quantity <= ZERO or rate <= ZERO:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Draft line quantities and prices must be greater than 0",
+                )
+            amount = compute_line_item_amount(quantity, rate)
+            line_tax_amount = _to_money(amount * tax_rate)
+            estimated_subtotal += amount
+            estimated_sales_tax += line_tax_amount
+            line_id = f"{job.id}:draft:{index}"
+            service_name = line.product_service or "Dispatch Service"
+            services.append(
+                InvoicePendingApprovalServiceResponse(
+                    id=line_id,
+                    name=service_name,
+                    qb_item_id=line.qb_item_id,
+                    quantity=quantity,
+                    price=rate,
+                    total=amount,
+                    source="admin_draft",
+                    notes=None,
+                )
+            )
+            items.append(
+                InvoicePendingApprovalLineItemResponse(
+                    id=line_id,
+                    description=service_name,
+                    quantity=quantity,
+                    unit_price=rate,
+                    total=amount,
+                )
+            )
+            line_items_payload.append(
+                {
+                    "product_service": service_name,
+                    "qb_item_id": line.qb_item_id,
+                    "quantity": str(quantity),
+                    "rate": str(rate),
+                }
+            )
+
+        if not services:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Draft must contain at least 1 line")
+
+        self.repo.upsert_pending_approval_draft(job_id, line_items_payload)
+        self.db.commit()
+
+        estimated_subtotal = _to_money(estimated_subtotal)
+        estimated_sales_tax = _to_money(estimated_sales_tax)
+        estimated_total = compute_total(estimated_subtotal, estimated_sales_tax, ZERO)
+
+        bill_to = (
+            InvoicePartyPayload(
+                name=bill_to_name or None,
+                street=bill_to_street or None,
+                city=bill_to_city,
+                state=bill_to_state,
+                zip_code=bill_to_zip,
+            )
+            if any([bill_to_name, bill_to_street, bill_to_city, bill_to_state, bill_to_zip])
+            else None
+        )
+        ship_to = (
+            InvoicePartyPayload(
+                name=job.ship_to_name,
+                street=job.ship_to_address,
+                city=job.ship_to_city,
+                state=job.ship_to_state,
+                zip_code=job.ship_to_zip_code,
+            )
+            if any([job.ship_to_name, job.ship_to_address, job.ship_to_city, job.ship_to_state, job.ship_to_zip_code])
+            else None
+        )
+
+        return InvoicePendingApprovalResponse(
+            job_id=job.id,
+            job_code=job.job_code,
+            dealership_name=(dealership.name if dealership else bill_to_name) or "Unknown Dealership",
+            technician_name=technician.name if technician else None,
+            service_summary=", ".join([service.name for service in services]) or (job.service_type or "Dispatch Service"),
+            vehicle_summary=job.vehicle or "-",
+            completed_at=job.completed_at,
+            estimated_subtotal=estimated_subtotal,
+            estimated_sales_tax=estimated_sales_tax,
+            estimated_total=estimated_total,
+            services=services,
+            items=items,
+            bill_to=bill_to,
+            ship_to=ship_to,
+        )
 
     def _require_invoice(self, invoice_id: UUID) -> Invoice:
         row = self.repo.get_by_id(invoice_id)
@@ -656,6 +776,8 @@ class InvoiceService:
 
     def list_pending_approvals(self) -> list[InvoicePendingApprovalResponse]:
         rows = self.repo.list_pending_approval_jobs()
+        draft_rows = self.repo.list_pending_approval_drafts([job.id for job, _, _ in rows])
+        drafts_by_job_id = {row.job_id: row for row in draft_rows}
         payload: list[InvoicePendingApprovalResponse] = []
 
         for job, dealership, technician in rows:
@@ -676,10 +798,32 @@ class InvoiceService:
             if not bill_to_name or not bill_to_street:
                 continue
 
-            try:
-                dispatch_line_inputs = self._resolve_job_dispatch_line_inputs(job)
-            except HTTPException:
-                continue
+            draft = drafts_by_job_id.get(job.id)
+            if draft is not None and isinstance(draft.line_items, list) and len(draft.line_items) > 0:
+                dispatch_line_inputs: list[InvoiceLineItemPayload] = []
+                for line in draft.line_items:
+                    if not isinstance(line, dict):
+                        continue
+                    try:
+                        dispatch_line_inputs.append(
+                            InvoiceLineItemPayload(
+                                product_service=str(line.get("product_service") or "Dispatch Service"),
+                                qb_item_id=(str(line.get("qb_item_id")) if line.get("qb_item_id") else None),
+                                quantity=Decimal(str(line.get("quantity") or "0")),
+                                qty=Decimal(str(line.get("quantity") or "0")),
+                                rate=Decimal(str(line.get("rate") or "0")),
+                                tax_code=(job.tax_code or "EXEMPT"),
+                                tax_rate=job.tax_rate,
+                                job_id=job.id,
+                            )
+                        )
+                    except Exception:
+                        continue
+            else:
+                try:
+                    dispatch_line_inputs = self._resolve_job_dispatch_line_inputs(job)
+                except HTTPException:
+                    continue
 
             if not dispatch_line_inputs:
                 continue
@@ -702,9 +846,13 @@ class InvoiceService:
                 estimated_subtotal += amount
                 estimated_sales_tax += line_tax_amount
 
-                service_row = service_rows[index] if index < len(service_rows) else None
+                service_row = service_rows[index] if draft is None and index < len(service_rows) else None
                 service_catalog = self._resolve_service_catalog_for_row(service_row) if service_row is not None else None
-                service_id = str(service_row.id) if service_row is not None and service_row.id is not None else f"{job.id}:{index}"
+                service_id = (
+                    str(service_row.id)
+                    if service_row is not None and service_row.id is not None
+                    else f"{job.id}:{'draft:' if draft is not None else ''}{index}"
+                )
                 service_name = line.product_service or "Dispatch Service"
 
                 services.append(
@@ -715,8 +863,8 @@ class InvoiceService:
                         quantity=quantity,
                         price=rate,
                         total=amount,
-                        source=service_row.source if service_row is not None else None,
-                        notes=service_row.notes if service_row is not None else None,
+                        source=("admin_draft" if draft is not None else (service_row.source if service_row is not None else None)),
+                        notes=None if draft is not None else (service_row.notes if service_row is not None else None),
                     )
                 )
                 items.append(
@@ -901,6 +1049,8 @@ class InvoiceService:
         created = self._create_with_unique_invoice_number(invoice, explicit_invoice_number)
         if dispatch_job_ids:
             self.repo.set_jobs_invoice(dispatch_job_ids, created.id)
+            for job_id in dispatch_job_ids:
+                self.repo.delete_pending_approval_draft(job_id)
 
         AuditService.log_event(
             self.db,
@@ -1050,6 +1200,8 @@ class InvoiceService:
                 )
             if dispatch_job_ids:
                 self.repo.set_jobs_invoice(dispatch_job_ids, invoice.id)
+                for job_id in dispatch_job_ids:
+                    self.repo.delete_pending_approval_draft(job_id)
         else:
             subtotal = _to_money(sum((Decimal(str(item.amount)) for item in invoice.line_items), ZERO))
             sales_tax = _to_money(sum((Decimal(str(item.tax_amount)) for item in invoice.line_items), ZERO))

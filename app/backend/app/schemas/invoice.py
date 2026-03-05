@@ -137,6 +137,52 @@ class InvoiceLineItemPayload(BaseModel):
         return self
 
 
+class InvoiceApprovalDraftLinePayload(BaseModel):
+    product_service: str = Field(..., min_length=1, max_length=255)
+    qb_item_id: Optional[str] = Field(default=None, max_length=64)
+    quantity: Optional[Decimal] = Field(default=None, gt=0)
+    qty: Optional[Decimal] = Field(default=None, gt=0)
+    rate: Decimal = Field(..., ge=0)
+
+    @field_validator("product_service", "qb_item_id")
+    @classmethod
+    def _normalize_text(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_quantity_fields(cls, value: Any):
+        if not isinstance(value, dict):
+            return value
+        payload = dict(value)
+        quantity = payload.get("quantity")
+        qty = payload.get("qty")
+        if quantity is None and qty is not None:
+            payload["quantity"] = qty
+        if qty is None and quantity is not None:
+            payload["qty"] = quantity
+        return payload
+
+    @model_validator(mode="after")
+    def _validate_quantity(self):
+        if self.quantity is None and self.qty is None:
+            raise ValueError("quantity (or qty) is required")
+        if self.quantity is not None and self.qty is not None and Decimal(self.quantity) != Decimal(self.qty):
+            raise ValueError("quantity and qty must match when both are provided")
+        if self.quantity is None and self.qty is not None:
+            self.quantity = self.qty
+        if self.qty is None and self.quantity is not None:
+            self.qty = self.quantity
+        return self
+
+
+class InvoiceApprovalDraftSaveRequest(BaseModel):
+    line_items: List[InvoiceApprovalDraftLinePayload] = Field(default_factory=list, min_length=1)
+
+
 class InvoiceCreateRequest(BaseModel):
     company_info: Optional[InvoiceCompanyPayload] = None
     bill_to: Optional[InvoicePartyPayload] = None

@@ -2,6 +2,7 @@ from .admin_credential_settings import AdminCredentialSettings
 from .audit_log import AuditLog
 from .dealership import Dealership
 from .invoice import Invoice, InvoiceLineItem
+from .invoice_approval_draft import InvoiceApprovalDraft
 from .invoice_branding_settings import InvoiceBrandingSettings
 from .job import Job
 from .job_event import JobEvent

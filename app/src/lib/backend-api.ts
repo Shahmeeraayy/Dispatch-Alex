@@ -1044,6 +1044,20 @@ export async function fetchPendingInvoiceApprovalIssues(token: string): Promise<
   return requestJson<BackendPendingInvoiceApprovalIssue[]>('/invoices/pending-approval-issues', { token });
 }
 
+export async function savePendingInvoiceApprovalDraft(
+  token: string,
+  jobId: string,
+  payload: {
+    line_items: BackendInvoiceLineItemPayload[];
+  },
+): Promise<BackendPendingInvoiceApproval> {
+  return requestJson<BackendPendingInvoiceApproval>(`/invoices/pending-approvals/${jobId}/draft`, {
+    method: 'PUT',
+    token,
+    body: payload,
+  });
+}
+
 export async function fetchTechnicianMeProfile(token: string): Promise<BackendTechnicianProfile> {
   return requestJson<BackendTechnicianProfile>('/technicians/me', { token });
 }

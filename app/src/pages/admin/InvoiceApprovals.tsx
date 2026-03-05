@@ -55,6 +55,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import {
     createInvoice,
     fetchServicesCatalog,
+    savePendingInvoiceApprovalDraft,
     fetchPendingInvoiceApprovalIssues,
     fetchPendingInvoiceApprovals,
     getStoredAdminToken,
@@ -128,6 +129,7 @@ export default function InvoiceApprovalsPage() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
     const [isApproving, setIsApproving] = useState(false);
+    const [isSavingDraft, setIsSavingDraft] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [isEditingInvoice, setIsEditingInvoice] = useState(false);
     const [editableServices, setEditableServices] = useState<EditableServiceLine[]>([]);
@@ -223,13 +225,14 @@ export default function InvoiceApprovalsPage() {
     }, [editableServices, serviceSuggestions]);
 
     const handleOpenDrawer = (invoice: PendingInvoice) => {
-        const nextEditableServices = invoice.services.map((service) => ({
+        const defaultEditableServices = invoice.services.map((service) => ({
             id: service.id,
             name: service.name,
             qb_item_id: service.qb_item_id,
             quantity: toNumber(service.quantity),
             price: toNumber(service.price),
         }));
+        const nextEditableServices = defaultEditableServices;
         setSelectedInvoice(invoice);
         setEditableServices(nextEditableServices);
         setIsEditingInvoice(false);
@@ -309,6 +312,64 @@ export default function InvoiceApprovalsPage() {
 
     const handleDeleteService = (serviceId: string) => {
         setEditableServices((prev) => prev.filter((service) => service.id !== serviceId));
+    };
+
+    const handleSaveDraftEdits = () => {
+        const run = async () => {
+            if (!selectedInvoice) return;
+            const adminToken = getStoredAdminToken();
+            if (!adminToken) {
+                alert('Admin session missing. Please login again.');
+                return;
+            }
+            if (editableServices.length === 0) {
+                alert('Invoice must include at least one service line.');
+                return;
+            }
+            const hasMissingNames = editableServices.some((service) => service.name.trim().length === 0);
+            if (hasMissingNames) {
+                alert('All service lines must have a service name.');
+                return;
+            }
+            const hasInvalidLines = editableServices.some((service) => service.quantity <= 0 || service.price <= 0);
+            if (hasInvalidLines) {
+                alert('All service quantities and prices must be greater than 0.');
+                return;
+            }
+
+            setIsSavingDraft(true);
+            try {
+                const updated = await savePendingInvoiceApprovalDraft(adminToken, selectedInvoice.job_id, {
+                    line_items: editableServices.map((service) => ({
+                        product_service: service.name,
+                        qb_item_id: service.qb_item_id,
+                        quantity: service.quantity,
+                        qty: service.quantity,
+                        rate: service.price,
+                        tax_code: 'GST_QST',
+                    })),
+                });
+
+                setInvoices((prev) => prev.map((invoice) => (
+                    invoice.job_id === updated.job_id ? updated : invoice
+                )));
+                setSelectedInvoice(updated);
+                setEditableServices(updated.services.map((service) => ({
+                    id: service.id,
+                    name: service.name,
+                    qb_item_id: service.qb_item_id,
+                    quantity: toNumber(service.quantity),
+                    price: toNumber(service.price),
+                })));
+                setIsEditingInvoice(false);
+            } catch (error) {
+                const detail = error instanceof Error ? error.message : 'Unable to save invoice draft.';
+                alert(`Save failed: ${detail}`);
+            } finally {
+                setIsSavingDraft(false);
+            }
+        };
+        void run();
     };
 
     const handleApprove = async () => {
@@ -659,10 +720,11 @@ export default function InvoiceApprovalsPage() {
                                                         <Button
                                                             size="sm"
                                                             className="h-8 gap-2 bg-[#2F8E92] text-white hover:bg-[#267276]"
-                                                            onClick={() => setIsEditingInvoice(false)}
+                                                            onClick={handleSaveDraftEdits}
+                                                            disabled={isSavingDraft}
                                                         >
                                                             <Save className="h-3.5 w-3.5" />
-                                                            Save
+                                                            {isSavingDraft ? 'Saving...' : 'Save'}
                                                         </Button>
                                                     </>
                                                 )}

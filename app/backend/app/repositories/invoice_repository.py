@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..models.dealership import Dealership
 from ..models.invoice import Invoice
+from ..models.invoice_approval_draft import InvoiceApprovalDraft
 from ..models.job import Job
 from ..models.technician import Technician
 
@@ -100,3 +101,26 @@ class InvoiceRepository:
             .order_by(Job.completed_at.desc(), Job.created_at.desc())
             .all()
         )
+
+    def get_pending_approval_draft(self, job_id: UUID) -> Optional[InvoiceApprovalDraft]:
+        return self.db.query(InvoiceApprovalDraft).filter(InvoiceApprovalDraft.job_id == job_id).first()
+
+    def list_pending_approval_drafts(self, job_ids: Iterable[UUID]) -> List[InvoiceApprovalDraft]:
+        ids = list(job_ids)
+        if not ids:
+            return []
+        return self.db.query(InvoiceApprovalDraft).filter(InvoiceApprovalDraft.job_id.in_(ids)).all()
+
+    def upsert_pending_approval_draft(self, job_id: UUID, line_items: list[dict]) -> InvoiceApprovalDraft:
+        row = self.get_pending_approval_draft(job_id)
+        if row is None:
+            row = InvoiceApprovalDraft(job_id=job_id, line_items=line_items)
+            self.db.add(row)
+        else:
+            row.line_items = line_items
+        self.db.flush()
+        self.db.refresh(row)
+        return row
+
+    def delete_pending_approval_draft(self, job_id: UUID) -> None:
+        self.db.query(InvoiceApprovalDraft).filter(InvoiceApprovalDraft.job_id == job_id).delete(synchronize_session=False)

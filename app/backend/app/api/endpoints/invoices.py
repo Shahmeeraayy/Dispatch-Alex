@@ -8,6 +8,7 @@ from ...api import deps
 from ...core.enums import UserRole
 from ...core.security import AuthenticatedUser
 from ...schemas.invoice import (
+    InvoiceApprovalDraftSaveRequest,
     InvoiceCreateRequest,
     InvoiceMarkPaidRequest,
     InvoicePendingApprovalIssueResponse,
@@ -42,6 +43,16 @@ def list_pending_invoice_approval_issues(
     current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
 ):
     return InvoiceService(db, current_user).list_pending_approval_issues()
+
+
+@router.put("/pending-approvals/{job_id}/draft", response_model=InvoicePendingApprovalResponse)
+def save_pending_invoice_approval_draft(
+    job_id: UUID,
+    payload: InvoiceApprovalDraftSaveRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    return InvoiceService(db, current_user).save_pending_approval_draft(job_id, payload)
 
 
 @router.post("", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)

@@ -1,8 +1,10 @@
 import base64
 import hashlib
 import hmac
+import json
 import os
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -67,15 +69,20 @@ class QuickBooksWebhookApiTests(unittest.TestCase):
         payload = b'[{"type":"qbo.bill.created.v1","intuitaccountid":"123"}]'
         signature = _signature(payload, "qb-webhook-test-token")
 
-        res = self.client.post(
-            "/integrations/quickbooks/webhook",
-            content=payload,
-            headers={"intuit-signature": signature, "content-type": "application/json"},
-        )
+        with patch("app.api.endpoints.integrations_quickbooks_webhooks.QuickBooksItemSyncService.sync_items") as sync_items:
+            res = self.client.post(
+                "/integrations/quickbooks/webhook",
+                content=payload,
+                headers={"intuit-signature": signature, "content-type": "application/json"},
+            )
+            sync_items.assert_not_called()
+
         self.assertEqual(res.status_code, 200, res.text)
         body = res.json()
         self.assertEqual(body["status"], "accepted")
         self.assertEqual(body["event_count"], 1)
+        self.assertEqual(body["item_event_count"], 0)
+        self.assertFalse(body["synced"])
 
     def test_webhook_rejects_invalid_signature(self):
         payload = b'[{"type":"qbo.bill.created.v1","intuitaccountid":"123"}]'
@@ -87,6 +94,45 @@ class QuickBooksWebhookApiTests(unittest.TestCase):
         )
         self.assertEqual(res.status_code, 401, res.text)
         self.assertEqual(res.json()["detail"], "Invalid QuickBooks webhook signature.")
+
+    def test_webhook_syncs_on_item_data_change_event(self):
+        payload_obj = {
+            "eventNotifications": [
+                {
+                    "realmId": "12345",
+                    "dataChangeEvent": {
+                        "entities": [
+                            {"name": "Item", "id": "10", "operation": "Create"},
+                        ]
+                    },
+                }
+            ]
+        }
+        payload = json.dumps(payload_obj).encode("utf-8")
+        signature = _signature(payload, "qb-webhook-test-token")
+
+        with patch(
+            "app.api.endpoints.integrations_quickbooks_webhooks.QuickBooksItemSyncService.sync_items"
+        ) as sync_items:
+            sync_items.return_value = SimpleNamespace(
+                synced_count=3,
+                created_count=1,
+                updated_count=2,
+                archived_count=0,
+            )
+            res = self.client.post(
+                "/integrations/quickbooks/webhook",
+                content=payload,
+                headers={"intuit-signature": signature, "content-type": "application/json"},
+            )
+
+        self.assertEqual(res.status_code, 200, res.text)
+        body = res.json()
+        self.assertEqual(body["status"], "accepted")
+        self.assertEqual(body["item_event_count"], 1)
+        self.assertTrue(body["synced"])
+        self.assertEqual(body["sync_result"]["created_count"], 1)
+        sync_items.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import inspect
 from sqlalchemy.exc import OperationalError
+import logging
+from threading import Event, Thread
 
 from .api import deps
 from .api.endpoints import (
@@ -23,10 +25,17 @@ from .api.endpoints import (
     technician_profile,
     technician_time_off,
 )
-from .core.config import CORS_ALLOW_ORIGINS
+from .core.config import CORS_ALLOW_ORIGINS, QUICKBOOKS_ITEMS_SYNC_INTERVAL_SECONDS
 from .models.job import Job
 from .models.base import Base
 from .services.job_services_service import JobServicesService
+from .services.quickbooks_connection_service import QuickBooksConnectionService
+from .services.quickbooks_item_sync_service import QuickBooksItemSyncService
+
+
+logger = logging.getLogger(__name__)
+_quickbooks_sync_stop_event: Event | None = None
+_quickbooks_sync_thread: Thread | None = None
 
 app = FastAPI(
     title="SM2 Dispatch Technician API",
@@ -76,6 +85,61 @@ def ensure_runtime_schema() -> None:
             changed = service.backfill_job(row) or changed
         if changed:
             session.commit()
+
+    _sync_quickbooks_items_once()
+    _start_quickbooks_sync_worker()
+
+
+@app.on_event("shutdown")
+def stop_quickbooks_sync_worker() -> None:
+    global _quickbooks_sync_stop_event, _quickbooks_sync_thread
+    if _quickbooks_sync_stop_event is not None:
+        _quickbooks_sync_stop_event.set()
+    if _quickbooks_sync_thread is not None and _quickbooks_sync_thread.is_alive():
+        _quickbooks_sync_thread.join(timeout=2)
+    _quickbooks_sync_stop_event = None
+    _quickbooks_sync_thread = None
+
+
+def _sync_quickbooks_items_once() -> None:
+    try:
+        with deps.SessionLocal() as db:
+            connection_status = QuickBooksConnectionService(db).get_status()
+            if not bool(connection_status.get("connected")):
+                return
+            result = QuickBooksItemSyncService(db).sync_items()
+            logger.info(
+                "QuickBooks item auto-sync completed: synced=%s created=%s updated=%s archived=%s",
+                result.synced_count,
+                result.created_count,
+                result.updated_count,
+                result.archived_count,
+            )
+    except Exception:
+        logger.exception("QuickBooks item auto-sync failed.")
+
+
+def _quickbooks_sync_worker(stop_event: Event, interval_seconds: int) -> None:
+    while not stop_event.wait(interval_seconds):
+        _sync_quickbooks_items_once()
+
+
+def _start_quickbooks_sync_worker() -> None:
+    global _quickbooks_sync_stop_event, _quickbooks_sync_thread
+
+    if QUICKBOOKS_ITEMS_SYNC_INTERVAL_SECONDS <= 0:
+        return
+    if _quickbooks_sync_thread is not None and _quickbooks_sync_thread.is_alive():
+        return
+
+    _quickbooks_sync_stop_event = Event()
+    _quickbooks_sync_thread = Thread(
+        target=_quickbooks_sync_worker,
+        args=(_quickbooks_sync_stop_event, QUICKBOOKS_ITEMS_SYNC_INTERVAL_SECONDS),
+        daemon=True,
+        name="quickbooks-item-sync-worker",
+    )
+    _quickbooks_sync_thread.start()
 
 app.add_middleware(
     CORSMiddleware,

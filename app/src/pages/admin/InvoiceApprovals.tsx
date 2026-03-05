@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
     CheckCircle2,
     Save,
+    Plus,
+    Trash2,
     Download,
     Filter,
     RefreshCw,
@@ -239,6 +241,29 @@ export default function InvoiceApprovalsPage() {
         )));
     };
 
+    const handleUpdateServiceText = (serviceId: string, field: 'name' | 'notes', rawValue: string) => {
+        setEditableServices((prev) => prev.map((service) => (
+            service.id === serviceId
+                ? { ...service, [field]: field === 'name' ? rawValue : (rawValue || null) }
+                : service
+        )));
+    };
+
+    const handleAddService = () => {
+        const nextLine: EditableServiceLine = {
+            id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            name: 'New Service',
+            quantity: 1,
+            price: 0,
+            notes: null,
+        };
+        setEditableServices((prev) => [...prev, nextLine]);
+    };
+
+    const handleDeleteService = (serviceId: string) => {
+        setEditableServices((prev) => prev.filter((service) => service.id !== serviceId));
+    };
+
     const handleApprove = async () => {
         if (!selectedInvoice) return;
         const adminToken = getStoredAdminToken();
@@ -248,6 +273,11 @@ export default function InvoiceApprovalsPage() {
         }
         if (editableServices.length === 0) {
             alert('Invoice must include at least one service line.');
+            return;
+        }
+        const hasMissingNames = editableServices.some((service) => service.name.trim().length === 0);
+        if (hasMissingNames) {
+            alert('All service lines must have a service name.');
             return;
         }
         const hasInvalidLines = editableServices.some((service) => service.quantity <= 0 || service.price <= 0);
@@ -601,15 +631,35 @@ export default function InvoiceApprovalsPage() {
                                                         <TableHead className="h-10 w-[60px] text-center text-xs font-semibold text-slate-300">Qty</TableHead>
                                                         <TableHead className="h-10 w-[100px] text-right text-xs font-semibold text-slate-300">Price</TableHead>
                                                         <TableHead className="h-10 w-[100px] text-right text-xs font-semibold text-slate-300">Total</TableHead>
+                                                        {isEditingInvoice && <TableHead className="h-10 w-[64px] text-right text-xs font-semibold text-slate-300">Del</TableHead>}
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {editableServices.map((item) => (
                                                         <TableRow key={item.id} className="border-border/50">
                                                             <TableCell className="py-3 text-sm text-slate-100">
-                                                                <div>{item.name}</div>
-                                                                {item.notes && (
-                                                                    <div className="mt-1 text-xs text-slate-400">{item.notes}</div>
+                                                                {isEditingInvoice ? (
+                                                                    <div className="space-y-2">
+                                                                        <Input
+                                                                            className="h-8 border-border/60 bg-slate-900 text-slate-100"
+                                                                            value={item.name}
+                                                                            onChange={(e) => handleUpdateServiceText(item.id, 'name', e.target.value)}
+                                                                            placeholder="Service name"
+                                                                        />
+                                                                        <Input
+                                                                            className="h-8 border-border/60 bg-slate-900 text-slate-100"
+                                                                            value={item.notes || ''}
+                                                                            onChange={(e) => handleUpdateServiceText(item.id, 'notes', e.target.value)}
+                                                                            placeholder="Optional note"
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <>
+                                                                        <div>{item.name}</div>
+                                                                        {item.notes && (
+                                                                            <div className="mt-1 text-xs text-slate-400">{item.notes}</div>
+                                                                        )}
+                                                                    </>
                                                                 )}
                                                             </TableCell>
                                                             <TableCell className="py-3 text-center text-sm text-slate-200">
@@ -643,10 +693,35 @@ export default function InvoiceApprovalsPage() {
                                                             <TableCell className="py-3 text-right font-mono text-sm text-cyan-200">
                                                                 ${(item.quantity * item.price).toFixed(2)}
                                                             </TableCell>
+                                                            {isEditingInvoice && (
+                                                                <TableCell className="py-3 text-right">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-8 w-8 p-0 text-red-300 hover:bg-red-500/10 hover:text-red-200"
+                                                                        onClick={() => handleDeleteService(item.id)}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                            )}
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
                                             </Table>
+                                            {isEditingInvoice && (
+                                                <div className="border-t border-border/60 bg-slate-900/80 px-4 py-3">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 gap-2 border-cyan-500/40 bg-transparent text-cyan-200 hover:bg-cyan-500/10"
+                                                        onClick={handleAddService}
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                        Add Service
+                                                    </Button>
+                                                </div>
+                                            )}
                                             <div className="space-y-2 border-t border-border/60 bg-slate-900/90 p-4">
                                                 <div className="flex justify-between text-sm text-slate-300">
                                                     <span>Subtotal</span>

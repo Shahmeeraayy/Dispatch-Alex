@@ -68,7 +68,13 @@ class QuickBooksItemSyncService:
         items: list[dict[str, Any]] = []
         start_position = 1
         while True:
-            query = f"SELECT * FROM Item STARTPOSITION {start_position} MAXRESULTS {QUERY_PAGE_SIZE}"
+            # QuickBooks list queries can default to active-only records unless Active is explicit.
+            # Include both states so the backend mirrors the full Products and Services catalog.
+            query = (
+                "SELECT * FROM Item "
+                "WHERE Active IN (true,false) "
+                f"STARTPOSITION {start_position} MAXRESULTS {QUERY_PAGE_SIZE}"
+            )
             response = requests.post(
                 f"{base_url}/company/{realm_id}/query",
                 headers=headers,

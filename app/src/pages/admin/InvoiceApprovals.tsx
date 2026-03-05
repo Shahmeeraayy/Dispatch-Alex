@@ -833,17 +833,9 @@ export default function InvoiceApprovalsPage() {
                 </Card>
             )}
 
-            <Sheet
-                open={drawerOpen && selectedInvoice !== null}
-                onOpenChange={(open) => {
-                    setDrawerOpen(open);
-                    if (!open) {
-                        setSelectedInvoice(null);
-                    }
-                }}
-            >
+            <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
                 <SheetContent
-                    className="relative flex flex-col gap-0 overflow-hidden border-l border-border/60 bg-[#07101f] p-0 text-foreground shadow-2xl sm:max-w-none"
+                    className="relative flex w-full flex-col gap-0 overflow-hidden border-l border-border/60 bg-[#07101f] p-0 text-foreground shadow-2xl sm:max-w-none"
                     style={isMobile ? undefined : { width: `${previewPanelWidth}px` }}
                 >
                     {!isMobile && (

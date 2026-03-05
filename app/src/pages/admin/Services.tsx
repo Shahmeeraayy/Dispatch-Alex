@@ -611,6 +611,7 @@ export default function ServicesPage() {
                             <TableRow>
                                 <TableHead className="pl-6 w-[150px]">Service Code</TableHead>
                                 <TableHead className="min-w-[260px]">Service Name</TableHead>
+                                <TableHead className="w-[150px]">QB ID</TableHead>
                                 <TableHead className="w-[140px]">SKU</TableHead>
                                 <TableHead className="w-[120px]">Category</TableHead>
                                 <TableHead className="w-[120px] text-right pr-6">Default Price</TableHead>
@@ -628,6 +629,7 @@ export default function ServicesPage() {
                                 >
                                     <TableCell className="pl-6 font-semibold text-gray-900">{service.code}</TableCell>
                                     <TableCell className="text-gray-700 font-medium">{service.name}</TableCell>
+                                    <TableCell className="font-mono text-xs text-gray-500">{service.qb_item_id || '-'}</TableCell>
                                     <TableCell className="font-mono text-xs text-gray-500">{service.sku || '-'}</TableCell>
                                     <TableCell className="text-gray-600">{service.category}</TableCell>
                                     <TableCell className="text-right pr-6 font-mono text-gray-600">

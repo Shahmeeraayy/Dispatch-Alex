@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
     CheckCircle2,
+    Save,
     Download,
     Filter,
     RefreshCw,
@@ -10,6 +11,8 @@ import {
     ChevronRight,
     DollarSign,
     AlertTriangle,
+    Pencil,
+    X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { exportArrayData, selectColumnsForExport, type ExportFormat } from '@/lib/export';
@@ -69,6 +72,18 @@ const INVOICE_APPROVAL_EXPORT_COLUMNS = [
 
 type PendingInvoice = BackendPendingInvoiceApproval;
 type BlockedInvoice = BackendPendingInvoiceApprovalIssue;
+type EditableServiceLine = {
+    id: string;
+    name: string;
+    qb_item_id?: string | null;
+    quantity: number;
+    price: number;
+    notes?: string | null;
+};
+
+const QUEBEC_GST_RATE = 0.05;
+const QUEBEC_QST_RATE = 0.09975;
+const QUEBEC_TOTAL_TAX_RATE = QUEBEC_GST_RATE + QUEBEC_QST_RATE;
 
 const toNumber = (value: string | number | null | undefined): number => {
     if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -107,6 +122,8 @@ export default function InvoiceApprovalsPage() {
     const [approvalNote, setApprovalNote] = useState('');
     const [isApproving, setIsApproving] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [isEditingInvoice, setIsEditingInvoice] = useState(false);
+    const [editableServices, setEditableServices] = useState<EditableServiceLine[]>([]);
 
     const fetchInvoicesData = async () => {
         setLoading(true);
@@ -172,20 +189,55 @@ export default function InvoiceApprovalsPage() {
     }), [filterDealership, filterTechnician, invoices, searchQuery]);
 
     const handleOpenDrawer = (invoice: PendingInvoice) => {
+        const nextEditableServices = invoice.services.map((service) => ({
+            id: service.id,
+            name: service.name,
+            qb_item_id: service.qb_item_id,
+            quantity: toNumber(service.quantity),
+            price: toNumber(service.price),
+            notes: service.notes,
+        }));
         setSelectedInvoice(invoice);
+        setEditableServices(nextEditableServices);
+        setIsEditingInvoice(false);
         setApprovalNote('');
         setDrawerOpen(true);
     };
 
     const totals = useMemo(() => {
         if (!selectedInvoice) {
-            return { subtotal: 0, tax: 0, total: 0 };
+            return { subtotal: 0, gst: 0, qst: 0, tax: 0, total: 0 };
         }
-        const subtotal = toNumber(selectedInvoice.estimated_subtotal);
-        const tax = toNumber(selectedInvoice.estimated_sales_tax);
-        const total = toNumber(selectedInvoice.estimated_total);
-        return { subtotal, tax, total };
-    }, [selectedInvoice]);
+        const subtotal = editableServices.reduce(
+            (acc, service) => acc + Math.max(0, service.quantity) * Math.max(0, service.price),
+            0,
+        );
+        const gst = subtotal * QUEBEC_GST_RATE;
+        const qst = subtotal * QUEBEC_QST_RATE;
+        const tax = subtotal * QUEBEC_TOTAL_TAX_RATE;
+        const total = subtotal + tax;
+        return { subtotal, gst, qst, tax, total };
+    }, [editableServices, selectedInvoice]);
+
+    const resetEditableServices = () => {
+        if (!selectedInvoice) return;
+        setEditableServices(selectedInvoice.services.map((service) => ({
+            id: service.id,
+            name: service.name,
+            qb_item_id: service.qb_item_id,
+            quantity: toNumber(service.quantity),
+            price: toNumber(service.price),
+            notes: service.notes,
+        })));
+    };
+
+    const handleUpdateService = (serviceId: string, field: 'quantity' | 'price', rawValue: string) => {
+        const parsedValue = Number(rawValue);
+        const nextValue = Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
+        setEditableServices((prev) => prev.map((service) => (
+            service.id === serviceId ? { ...service, [field]: nextValue } : service
+        )));
+    };
 
     const handleApprove = async () => {
         if (!selectedInvoice) return;
@@ -194,12 +246,31 @@ export default function InvoiceApprovalsPage() {
             alert('Admin session missing. Please login again.');
             return;
         }
+        if (editableServices.length === 0) {
+            alert('Invoice must include at least one service line.');
+            return;
+        }
+        const hasInvalidLines = editableServices.some((service) => service.quantity <= 0 || service.price <= 0);
+        if (hasInvalidLines) {
+            alert('All service quantities and prices must be greater than 0.');
+            return;
+        }
 
         setIsApproving(true);
         setConfirmDialogOpen(false);
         try {
             await createInvoice(adminToken, {
                 dispatch_job_ids: [selectedInvoice.job_id],
+                replace_dispatch_line_items: true,
+                line_items: editableServices.map((service) => ({
+                    product_service: service.name,
+                    qb_item_id: service.qb_item_id,
+                    description: service.notes || undefined,
+                    quantity: service.quantity,
+                    qty: service.quantity,
+                    rate: service.price,
+                    tax_code: 'GST_QST',
+                })),
                 status: 'sent',
                 terms: 'NET_15',
                 shipping: 0,
@@ -482,6 +553,45 @@ export default function InvoiceApprovalsPage() {
                                             <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
                                                 <DollarSign className="h-4 w-4 text-cyan-300" /> Billable Items
                                             </h3>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="border-cyan-500/40 bg-cyan-500/10 text-cyan-200">
+                                                    GST 5% + QST 9.975%
+                                                </Badge>
+                                                {!isEditingInvoice ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 gap-2 border-cyan-500/40 bg-transparent text-cyan-200 hover:bg-cyan-500/10"
+                                                        onClick={() => setIsEditingInvoice(true)}
+                                                    >
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                        Edit
+                                                    </Button>
+                                                ) : (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 gap-2 border-border/60 bg-transparent text-slate-200 hover:bg-slate-900"
+                                                            onClick={() => {
+                                                                resetEditableServices();
+                                                                setIsEditingInvoice(false);
+                                                            }}
+                                                        >
+                                                            <X className="h-3.5 w-3.5" />
+                                                            Cancel Edit
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-8 gap-2 bg-[#2F8E92] text-white hover:bg-[#267276]"
+                                                            onClick={() => setIsEditingInvoice(false)}
+                                                        >
+                                                            <Save className="h-3.5 w-3.5" />
+                                                            Save
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="overflow-hidden rounded-xl border border-border/60 bg-slate-950/70">
                                             <Table>
@@ -494,7 +604,7 @@ export default function InvoiceApprovalsPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {selectedInvoice.services.map((item) => (
+                                                    {editableServices.map((item) => (
                                                         <TableRow key={item.id} className="border-border/50">
                                                             <TableCell className="py-3 text-sm text-slate-100">
                                                                 <div>{item.name}</div>
@@ -502,9 +612,37 @@ export default function InvoiceApprovalsPage() {
                                                                     <div className="mt-1 text-xs text-slate-400">{item.notes}</div>
                                                                 )}
                                                             </TableCell>
-                                                            <TableCell className="py-3 text-center text-sm text-slate-200">{toNumber(item.quantity).toFixed(2)}</TableCell>
-                                                            <TableCell className="py-3 text-right text-sm text-slate-100">${toNumber(item.price).toFixed(2)}</TableCell>
-                                                            <TableCell className="py-3 text-right font-mono text-sm text-cyan-200">${toNumber(item.total).toFixed(2)}</TableCell>
+                                                            <TableCell className="py-3 text-center text-sm text-slate-200">
+                                                                {isEditingInvoice ? (
+                                                                    <Input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="0.01"
+                                                                        className="h-8 border-border/60 bg-slate-900 text-right text-slate-100"
+                                                                        value={item.quantity}
+                                                                        onChange={(e) => handleUpdateService(item.id, 'quantity', e.target.value)}
+                                                                    />
+                                                                ) : (
+                                                                    item.quantity.toFixed(2)
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="py-3 text-right text-sm text-slate-100">
+                                                                {isEditingInvoice ? (
+                                                                    <Input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="0.01"
+                                                                        className="h-8 border-border/60 bg-slate-900 text-right text-slate-100"
+                                                                        value={item.price}
+                                                                        onChange={(e) => handleUpdateService(item.id, 'price', e.target.value)}
+                                                                    />
+                                                                ) : (
+                                                                    `$${item.price.toFixed(2)}`
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="py-3 text-right font-mono text-sm text-cyan-200">
+                                                                ${(item.quantity * item.price).toFixed(2)}
+                                                            </TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -515,7 +653,15 @@ export default function InvoiceApprovalsPage() {
                                                     <span className="font-mono">${totals.subtotal.toFixed(2)}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm text-slate-300">
-                                                    <span>Tax</span>
+                                                    <span>GST (5%)</span>
+                                                    <span className="font-mono">${totals.gst.toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm text-slate-300">
+                                                    <span>QST (9.975%)</span>
+                                                    <span className="font-mono">${totals.qst.toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm text-slate-300">
+                                                    <span>Total Tax (14.975%)</span>
                                                     <span className="font-mono">${totals.tax.toFixed(2)}</span>
                                                 </div>
                                                 <div className="flex justify-between border-t border-border/60 pt-2 text-lg font-bold text-slate-50">

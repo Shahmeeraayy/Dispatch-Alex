@@ -875,9 +875,10 @@ class InvoiceService:
             payment_recorded_at=payload.payment_recorded_at,
         )
 
+        use_dispatch_lines = not (payload.replace_dispatch_line_items and payload.line_items)
         subtotal, sales_tax = self._replace_line_items(
             invoice,
-            dispatch_line_inputs=dispatch_lines,
+            dispatch_line_inputs=dispatch_lines if use_dispatch_lines else [],
             manual_line_inputs=payload.line_items,
         )
         if len(invoice.line_items) == 0:
@@ -1036,9 +1037,10 @@ class InvoiceService:
 
         if replacing_lines:
             self.repo.clear_jobs_for_invoice(invoice.id)
+            use_dispatch_lines = not (bool(payload.replace_dispatch_line_items) and bool(payload.line_items))
             subtotal, sales_tax = self._replace_line_items(
                 invoice,
-                dispatch_line_inputs=dispatch_lines,
+                dispatch_line_inputs=dispatch_lines if use_dispatch_lines else [],
                 manual_line_inputs=payload.line_items or [],
             )
             if len(invoice.line_items) == 0:

@@ -154,6 +154,7 @@ class InvoiceCreateRequest(BaseModel):
     payment_recorded_at: Optional[datetime] = None
     dispatch_job_ids: List[UUID] = Field(default_factory=list)
     line_items: List[InvoiceLineItemPayload] = Field(default_factory=list)
+    replace_dispatch_line_items: bool = False
 
     @field_validator("invoice_number", "customer_message", "approval_note")
     @classmethod
@@ -198,6 +199,7 @@ class InvoiceUpdateRequest(BaseModel):
     payment_recorded_at: Optional[datetime] = None
     dispatch_job_ids: Optional[List[UUID]] = None
     line_items: Optional[List[InvoiceLineItemPayload]] = None
+    replace_dispatch_line_items: Optional[bool] = None
 
     @field_validator("invoice_number", "customer_message", "approval_note")
     @classmethod

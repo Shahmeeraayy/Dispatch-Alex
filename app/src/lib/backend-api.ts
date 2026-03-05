@@ -291,6 +291,18 @@ export type BackendInvoiceLineItem = {
   line_order: number;
 };
 
+export type BackendInvoiceLineItemPayload = {
+  product_service: string;
+  qb_item_id?: string | null;
+  description?: string | null;
+  quantity?: string | number;
+  qty?: string | number;
+  rate: string | number;
+  tax_code: string;
+  tax_rate?: string | number | null;
+  job_id?: string | null;
+};
+
 export type BackendInvoice = {
   id: string;
   invoice_number: string;
@@ -1007,6 +1019,8 @@ export async function createInvoice(
   token: string,
   payload: {
     dispatch_job_ids?: string[];
+    line_items?: BackendInvoiceLineItemPayload[];
+    replace_dispatch_line_items?: boolean;
     terms?: 'NET_15' | 'NET_30' | 'CUSTOM';
     custom_term_days?: number;
     shipping?: string | number;

@@ -49,7 +49,6 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -82,7 +81,11 @@ type EditableServiceLine = {
     qb_item_id?: string | null;
     quantity: number;
     price: number;
-    notes?: string | null;
+};
+type ServiceCatalogOption = {
+    name: string;
+    default_price: number;
+    qb_item_id?: string | null;
 };
 
 const QUEBEC_GST_RATE = 0.05;
@@ -124,12 +127,12 @@ export default function InvoiceApprovalsPage() {
     const [selectedInvoice, setSelectedInvoice] = useState<PendingInvoice | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-    const [approvalNote, setApprovalNote] = useState('');
     const [isApproving, setIsApproving] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [isEditingInvoice, setIsEditingInvoice] = useState(false);
     const [editableServices, setEditableServices] = useState<EditableServiceLine[]>([]);
     const [serviceSuggestions, setServiceSuggestions] = useState<string[]>([]);
+    const [serviceCatalogOptions, setServiceCatalogOptions] = useState<ServiceCatalogOption[]>([]);
 
     const fetchInvoicesData = async () => {
         setLoading(true);
@@ -139,6 +142,7 @@ export default function InvoiceApprovalsPage() {
                 setInvoices([]);
                 setBlockedInvoices([]);
                 setServiceSuggestions([]);
+                setServiceCatalogOptions([]);
                 return;
             }
             const [rows, blockedRows, serviceRows] = await Promise.all([
@@ -148,19 +152,26 @@ export default function InvoiceApprovalsPage() {
             ]);
             setInvoices(rows);
             setBlockedInvoices(blockedRows);
+            const catalogOptions = serviceRows.map((service) => ({
+                name: service.name.trim(),
+                default_price: toNumber(service.default_price),
+                qb_item_id: service.qb_item_id,
+            })).filter((service) => service.name.length > 0);
             const nextSuggestions = Array.from(
                 new Set(
-                    serviceRows
+                    catalogOptions
                         .map((service) => service.name.trim())
                         .filter((serviceName) => serviceName.length > 0),
                 ),
             ).sort((a, b) => a.localeCompare(b));
             setServiceSuggestions(nextSuggestions);
+            setServiceCatalogOptions(catalogOptions);
         } catch (error) {
             console.error(error);
             setInvoices([]);
             setBlockedInvoices([]);
             setServiceSuggestions([]);
+            setServiceCatalogOptions([]);
         } finally {
             setLoading(false);
         }
@@ -218,12 +229,10 @@ export default function InvoiceApprovalsPage() {
             qb_item_id: service.qb_item_id,
             quantity: toNumber(service.quantity),
             price: toNumber(service.price),
-            notes: service.notes,
         }));
         setSelectedInvoice(invoice);
         setEditableServices(nextEditableServices);
         setIsEditingInvoice(false);
-        setApprovalNote('');
         setDrawerOpen(true);
     };
 
@@ -250,7 +259,6 @@ export default function InvoiceApprovalsPage() {
             qb_item_id: service.qb_item_id,
             quantity: toNumber(service.quantity),
             price: toNumber(service.price),
-            notes: service.notes,
         })));
     };
 
@@ -262,12 +270,31 @@ export default function InvoiceApprovalsPage() {
         )));
     };
 
-    const handleUpdateServiceText = (serviceId: string, field: 'name' | 'notes', rawValue: string) => {
-        setEditableServices((prev) => prev.map((service) => (
-            service.id === serviceId
-                ? { ...service, [field]: field === 'name' ? rawValue : (rawValue || null) }
-                : service
-        )));
+    const resolveCatalogOption = (value: string): ServiceCatalogOption | null => {
+        const normalized = value.trim().toLowerCase();
+        if (!normalized) return null;
+        const exact = serviceCatalogOptions.find((service) => service.name.toLowerCase() === normalized);
+        if (exact) return exact;
+        const startsWith = serviceCatalogOptions.filter((service) => service.name.toLowerCase().startsWith(normalized));
+        return startsWith.length === 1 ? startsWith[0] : null;
+    };
+
+    const handleUpdateServiceName = (serviceId: string, rawValue: string) => {
+        setEditableServices((prev) => prev.map((service) => {
+            if (service.id !== serviceId) return service;
+
+            const resolved = resolveCatalogOption(rawValue);
+            if (!resolved) {
+                return { ...service, name: rawValue };
+            }
+            const shouldAutofillPrice = service.price <= 0 || service.id.startsWith('manual-');
+            return {
+                ...service,
+                name: resolved.name,
+                qb_item_id: resolved.qb_item_id,
+                price: shouldAutofillPrice ? resolved.default_price : service.price,
+            };
+        }));
     };
 
     const handleAddService = () => {
@@ -276,7 +303,6 @@ export default function InvoiceApprovalsPage() {
             name: 'New Service',
             quantity: 1,
             price: 0,
-            notes: null,
         };
         setEditableServices((prev) => [...prev, nextLine]);
     };
@@ -316,7 +342,6 @@ export default function InvoiceApprovalsPage() {
                 line_items: editableServices.map((service) => ({
                     product_service: service.name,
                     qb_item_id: service.qb_item_id,
-                    description: service.notes || undefined,
                     quantity: service.quantity,
                     qty: service.quantity,
                     rate: service.price,
@@ -325,7 +350,6 @@ export default function InvoiceApprovalsPage() {
                 status: 'sent',
                 terms: 'NET_15',
                 shipping: 0,
-                approval_note: approvalNote.trim() || undefined,
             });
 
             setInvoices((prev) => prev.filter((inv) => inv.job_id !== selectedInvoice.job_id));
@@ -651,21 +675,12 @@ export default function InvoiceApprovalsPage() {
                                                         <div key={item.id} className="rounded-lg border border-border/60 bg-slate-900/70 p-3">
                                                             <div className="mb-2">
                                                                 <Label className="mb-1 block text-[11px] uppercase tracking-wide text-slate-400">Service</Label>
-                                                                    <Input
-                                                                        className="h-8 border-border/60 bg-slate-900 text-slate-100"
-                                                                        value={item.name}
-                                                                        list="invoice-service-suggestions"
-                                                                        onChange={(e) => handleUpdateServiceText(item.id, 'name', e.target.value)}
-                                                                        placeholder="Service name"
-                                                                    />
-                                                            </div>
-                                                            <div className="mb-2">
-                                                                <Label className="mb-1 block text-[11px] uppercase tracking-wide text-slate-400">Note</Label>
                                                                 <Input
                                                                     className="h-8 border-border/60 bg-slate-900 text-slate-100"
-                                                                    value={item.notes || ''}
-                                                                    onChange={(e) => handleUpdateServiceText(item.id, 'notes', e.target.value)}
-                                                                    placeholder="Optional note"
+                                                                    value={item.name}
+                                                                    list="invoice-service-suggestions"
+                                                                    onChange={(e) => handleUpdateServiceName(item.id, e.target.value)}
+                                                                    placeholder="Service name"
                                                                 />
                                                             </div>
                                                             <div className="grid grid-cols-2 gap-2">
@@ -717,11 +732,6 @@ export default function InvoiceApprovalsPage() {
                                                             <TableHead className={cn('h-10 text-xs font-semibold text-slate-300', isEditingInvoice ? 'w-[28%]' : 'w-[48%]')}>
                                                                 Service
                                                             </TableHead>
-                                                            {isEditingInvoice && (
-                                                                <TableHead className="h-10 w-[24%] text-xs font-semibold text-slate-300">
-                                                                    Note
-                                                                </TableHead>
-                                                            )}
                                                             <TableHead className="h-10 w-[14%] text-center text-xs font-semibold text-slate-300">Qty</TableHead>
                                                             <TableHead className="h-10 w-[14%] text-right text-xs font-semibold text-slate-300">Price</TableHead>
                                                             <TableHead className="h-10 w-[14%] text-right text-xs font-semibold text-slate-300">Total</TableHead>
@@ -737,28 +747,13 @@ export default function InvoiceApprovalsPage() {
                                                                             className="h-8 border-border/60 bg-slate-900 text-slate-100"
                                                                             value={item.name}
                                                                             list="invoice-service-suggestions"
-                                                                            onChange={(e) => handleUpdateServiceText(item.id, 'name', e.target.value)}
+                                                                            onChange={(e) => handleUpdateServiceName(item.id, e.target.value)}
                                                                             placeholder="Service name"
                                                                         />
                                                                     ) : (
-                                                                        <>
-                                                                            <div>{item.name}</div>
-                                                                            {item.notes && (
-                                                                                <div className="mt-1 text-xs text-slate-400">{item.notes}</div>
-                                                                            )}
-                                                                        </>
+                                                                        <div>{item.name}</div>
                                                                     )}
                                                                 </TableCell>
-                                                                {isEditingInvoice && (
-                                                                    <TableCell className="align-middle py-3 text-sm text-slate-300">
-                                                                        <Input
-                                                                            className="h-8 border-border/60 bg-slate-900 text-slate-100"
-                                                                            value={item.notes || ''}
-                                                                            onChange={(e) => handleUpdateServiceText(item.id, 'notes', e.target.value)}
-                                                                            placeholder="Optional note"
-                                                                        />
-                                                                    </TableCell>
-                                                                )}
                                                                 <TableCell className="align-middle py-3 text-center text-sm text-slate-200">
                                                                     {isEditingInvoice ? (
                                                                         <Input
@@ -850,18 +845,6 @@ export default function InvoiceApprovalsPage() {
                                         </div>
                                     </section>
 
-                                    <section>
-                                        <Label htmlFor="audit-note" className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                                            Internal Approval Note (Optional)
-                                        </Label>
-                                        <Textarea
-                                            id="audit-note"
-                                            placeholder="Add an internal note for invoice approval..."
-                                            className="min-h-[112px] resize-none border-cyan-500/40 bg-slate-950/70 text-slate-100 placeholder:text-slate-500 focus-visible:ring-cyan-400/50"
-                                            value={approvalNote}
-                                            onChange={(e) => setApprovalNote(e.target.value)}
-                                        />
-                                    </section>
                                 </div>
                             </ScrollArea>
 

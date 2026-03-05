@@ -315,7 +315,7 @@ export default function InvoiceApprovalsPage() {
         setSelectedInvoice(invoice);
         setEditableServices(nextEditableServices);
         setIsEditingInvoice(false);
-        setDrawerOpen(true);
+        requestAnimationFrame(() => setDrawerOpen(true));
     };
 
     const totals = useMemo(() => {
@@ -834,7 +834,7 @@ export default function InvoiceApprovalsPage() {
             )}
 
             <Sheet
-                open={drawerOpen && selectedInvoice !== null}
+                open={drawerOpen}
                 onOpenChange={(open) => {
                     setDrawerOpen(open);
                     if (!open) {

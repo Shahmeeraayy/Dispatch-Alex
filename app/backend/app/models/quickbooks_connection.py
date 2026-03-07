@@ -17,7 +17,7 @@ class QuickBooksConnection(Base):
     scope = Column(Text, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     refresh_expires_at = Column(DateTime(timezone=True), nullable=False)
-    environment = Column(String(32), nullable=False, server_default=text("'sandbox'"))
+    environment = Column(String(32), nullable=False, server_default=text("'production'"))
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

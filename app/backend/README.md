@@ -88,21 +88,21 @@ Local example:
 QB_CLIENT_ID=
 QB_CLIENT_SECRET=
 QB_REDIRECT_URI=http://localhost:8000/integrations/quickbooks/callback
-QB_ENV=sandbox
+QB_ENV=production
 QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN=
 ```
 
 Render example:
 ```env
 QB_REDIRECT_URI=https://dispatch-alex.onrender.com/integrations/quickbooks/callback
-QB_ENV=sandbox
+QB_ENV=production
 ```
 
 ### Intuit Configuration
 - Redirect URI must exactly match `QB_REDIRECT_URI`
 - Webhook endpoint must be:
   `https://dispatch-alex.onrender.com/integrations/quickbooks/webhook`
-- If `QB_ENV=sandbox`, the Intuit account must have at least one sandbox company
+- If `QB_ENV=production`, the Intuit account must have access to the production QuickBooks company
 
 ### How To Connect
 1. Open `/integrations/quickbooks/connect`
@@ -126,7 +126,7 @@ Successful status response should show:
 
 ### Current Production State
 - Render service URL: `https://dispatch-alex.onrender.com`
-- QuickBooks connection is working in `sandbox`
+- QuickBooks connection is configured for `production`
 - Webhook verification is configured
 - Tokens are stored in database, not in a local file
 

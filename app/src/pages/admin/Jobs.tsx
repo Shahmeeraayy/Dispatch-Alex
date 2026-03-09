@@ -117,6 +117,7 @@ type Urgency = 'low' | 'normal' | 'high' | 'critical';
 interface Job {
     job_id: string;
     job_code: string;
+    dealership_code?: string | null;
     dealership_name: string;
     service_name: string;
     service_names: string[];
@@ -176,6 +177,7 @@ type QuickFilterKey =
 
 type DealershipOption = {
     id: string;
+    backendId: string;
     code: string;
     name: string;
     city: string;
@@ -255,7 +257,8 @@ const mapBackendPriorityRule = (row: BackendPriorityRule): PriorityRule => ({
 });
 
 const mapBackendDealershipOption = (row: BackendDealership): DealershipOption => ({
-    id: row.id,
+    id: row.code,
+    backendId: row.id,
     code: row.code,
     name: (row.name || '').trim(),
     city: (row.city || '').trim(),
@@ -319,6 +322,78 @@ const deriveUrgencyFromBackendJob = (row: BackendAdminJob): Urgency => {
     return 'normal';
 };
 
+const urgencyToPriorityMap: Record<Urgency, UrgencyLevel> = {
+    low: 'LOW',
+    normal: 'MEDIUM',
+    high: 'HIGH',
+    critical: 'CRITICAL',
+};
+
+const priorityToUrgencyMap: Record<UrgencyLevel, Urgency> = {
+    LOW: 'low',
+    MEDIUM: 'normal',
+    HIGH: 'high',
+    CRITICAL: 'critical',
+};
+
+const extractVehicleMake = (vehicleSummary: string): string => {
+    const tokens = vehicleSummary.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return '';
+    const token = /^\d{4}$/.test(tokens[0]) ? (tokens[1] || '') : tokens[0];
+    if (!token) return '';
+    return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+};
+
+const resolveDealershipRuleId = (
+    dealershipName: string,
+    dealershipCode: string | null | undefined,
+    dealershipOptions: DealershipOption[],
+): string => {
+    const normalizedName = normalizeText(dealershipName);
+    const directMatch = dealershipOptions.find((row) => normalizeText(row.name) === normalizedName);
+    return dealershipCode || directMatch?.code || dealershipName.trim();
+};
+
+const resolveServiceRuleId = (
+    serviceNames: string[],
+    primaryServiceName: string,
+    serviceCatalog: Array<{ id: string; name: string }>,
+): string => {
+    const normalizedCandidates = new Set(
+        [primaryServiceName, ...serviceNames]
+            .map((value) => normalizeText(value))
+            .filter(Boolean),
+    );
+    const matched = serviceCatalog.find((row) => normalizedCandidates.has(normalizeText(row.name)));
+    return matched?.id || '';
+};
+
+const applyDispatchRankingToJob = (
+    job: Job,
+    dealershipOptions: DealershipOption[],
+    serviceCatalog: Array<{ id: string; name: string }>,
+    dispatchRankingRules: PriorityRule[],
+): Job => {
+    const dealershipRuleId = resolveDealershipRuleId(job.dealership_name, job.dealership_code, dealershipOptions);
+    const serviceRuleId = resolveServiceRuleId(job.service_names, job.service_name, serviceCatalog);
+    const priorityResult = calculateJobRanking(
+        {
+            dealershipId: dealershipRuleId,
+            serviceId: serviceRuleId,
+            urgency: urgencyToPriorityMap[job.urgency],
+            vehicleMake: extractVehicleMake(job.vehicle_summary),
+        },
+        dispatchRankingRules,
+    );
+
+    return {
+        ...job,
+        urgency: priorityToUrgencyMap[priorityResult.finalUrgency] || job.urgency,
+        ranking_score: priorityResult.score,
+        applied_rules: priorityResult.appliedRules,
+    };
+};
+
 const getBackendDisplayDateTimeIso = (row: BackendAdminJob): string => {
     const datePart = row.requested_service_date?.trim();
     if (!datePart) {
@@ -332,7 +407,12 @@ const getBackendDisplayDateTimeIso = (row: BackendAdminJob): string => {
     return Number.isNaN(parsed.getTime()) ? row.created_at : localDateTime;
 };
 
-const mapBackendJobToUiJob = (row: BackendAdminJob): Job => {
+const mapBackendJobToUiJob = (
+    row: BackendAdminJob,
+    dealershipOptions: DealershipOption[],
+    serviceCatalog: Array<{ id: string; name: string }>,
+    dispatchRankingRules: PriorityRule[],
+): Job => {
     const normalizedServiceNames = Array.from(
         new Set(
             (row.service_names ?? [])
@@ -358,9 +438,10 @@ const mapBackendJobToUiJob = (row: BackendAdminJob): Job => {
             : backendTechName;
     const displayDateTime = getBackendDisplayDateTimeIso(row);
 
-    return {
+    const baseJob: Job = {
         job_id: row.id,
         job_code: row.job_code,
+        dealership_code: row.dealership_id ?? null,
         dealership_name: row.dealership_name?.trim() || 'Unknown Dealership',
         service_name: primaryServiceName,
         service_names: normalizedServiceNames.length > 0 ? normalizedServiceNames : [primaryServiceName],
@@ -385,13 +466,20 @@ const mapBackendJobToUiJob = (row: BackendAdminJob): Job => {
                 : (row.updated_at || row.created_at),
         pending_push_to_available: false,
     };
+
+    return applyDispatchRankingToJob(baseJob, dealershipOptions, serviceCatalog, dispatchRankingRules);
 };
 
-const mergeBackendJobsIntoLocalStore = (backendRows: BackendAdminJob[]) => {
+const mergeBackendJobsIntoLocalStore = (
+    backendRows: BackendAdminJob[],
+    dealershipOptions: DealershipOption[],
+    serviceCatalog: Array<{ id: string; name: string }>,
+    dispatchRankingRules: PriorityRule[],
+) => {
     const localJobs = loadPersistedJobs();
     const localByCode = new Map(localJobs.map((job) => [job.job_code, job]));
     const nextJobs = backendRows.map((row) => {
-        const incoming = mapBackendJobToUiJob(row);
+        const incoming = mapBackendJobToUiJob(row, dealershipOptions, serviceCatalog, dispatchRankingRules);
         const existing = localByCode.get(incoming.job_code);
         if (!existing) {
             return incoming;
@@ -403,8 +491,6 @@ const mergeBackendJobsIntoLocalStore = (backendRows: BackendAdminJob[]) => {
             ...incoming,
             invoice_state: existing.invoice_state ?? incoming.invoice_state,
             attention_flag: existing.attention_flag ?? incoming.attention_flag,
-            ranking_score: existing.ranking_score ?? incoming.ranking_score,
-            applied_rules: existing.applied_rules ?? incoming.applied_rules,
             allowed_actions: existing.allowed_actions?.length ? existing.allowed_actions : incoming.allowed_actions,
         };
     });
@@ -850,7 +936,12 @@ export default function JobsPage() {
         try {
             const backendJobs = await fetchAdminJobs(token);
             const syncedBackendJobs = await syncLegacyConfirmedLocalJobsToBackend(token, backendJobs);
-            return mergeBackendJobsIntoLocalStore(syncedBackendJobs);
+            return mergeBackendJobsIntoLocalStore(
+                syncedBackendJobs,
+                dealershipOptions,
+                serviceCatalog,
+                dispatchRankingRules,
+            );
         } catch (error) {
             if (showErrorToast) {
                 const message = error instanceof Error ? error.message : 'Failed to refresh jobs from backend';
@@ -939,6 +1030,13 @@ export default function JobsPage() {
     }, []);
 
     useEffect(() => {
+        if (dealershipOptions.length === 0 || dispatchRankingRules.length === 0) {
+            return;
+        }
+        refreshJobs({ background: true });
+    }, [dealershipOptions, serviceCatalog, dispatchRankingRules]);
+
+    useEffect(() => {
         const maybeRefreshInBackground = () => {
             if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
                 return;
@@ -1025,23 +1123,10 @@ export default function JobsPage() {
         const service = serviceCatalog.find((entry) => entry.name === serviceName);
         const vehicleMake = vehicleSummary.split(' ')[1] || '';
 
-        const urgencyMap: Record<Urgency, UrgencyLevel> = {
-            low: 'LOW',
-            normal: 'MEDIUM',
-            high: 'HIGH',
-            critical: 'CRITICAL',
-        };
-        const reverseUrgencyMap: Record<UrgencyLevel, Urgency> = {
-            LOW: 'low',
-            MEDIUM: 'normal',
-            HIGH: 'high',
-            CRITICAL: 'critical',
-        };
-
         const priorityResult = calculateJobRanking({
-            dealershipId: dealership?.id || '',
+            dealershipId: dealership?.code || dealershipName,
             serviceId: service?.id || '',
-            urgency: urgencyMap[newJobForm.urgency],
+            urgency: urgencyToPriorityMap[newJobForm.urgency],
             vehicleMake,
         }, dispatchRankingRules);
 
@@ -1079,15 +1164,16 @@ export default function JobsPage() {
 
         const nowIso = new Date().toISOString();
         const baseUiJob = createdBackendJob
-            ? mapBackendJobToUiJob(createdBackendJob)
+            ? mapBackendJobToUiJob(createdBackendJob, dealershipOptions, serviceCatalog, dispatchRankingRules)
             : ({
                 job_id: `job-local-${Date.now()}`,
                 job_code: `SM2-NEW-${String(Date.now()).slice(-6)}`,
+                dealership_code: dealership?.code ?? null,
                 dealership_name: dealershipName,
                 service_name: serviceName,
                 service_names: serviceNamesInput.length > 0 ? serviceNamesInput : [serviceName],
                 vehicle_summary: vehicleSummary,
-                urgency: reverseUrgencyMap[priorityResult.finalUrgency] || newJobForm.urgency,
+                urgency: priorityToUrgencyMap[priorityResult.finalUrgency] || newJobForm.urgency,
                 assigned_technician_name: null,
                 pending_assigned_technician_name: pendingAssignedTechnicianName,
                 job_status: 'admin_preview',
@@ -1105,7 +1191,7 @@ export default function JobsPage() {
 
         const newJob: Job = {
             ...baseUiJob,
-            urgency: reverseUrgencyMap[priorityResult.finalUrgency] || baseUiJob.urgency,
+            urgency: priorityToUrgencyMap[priorityResult.finalUrgency] || baseUiJob.urgency,
             ranking_score: priorityResult.score,
             applied_rules: priorityResult.appliedRules,
             pending_push_to_available: Boolean(newJobForm.push_to_available),
@@ -1218,14 +1304,17 @@ export default function JobsPage() {
         }
 
         if (confirmedBackendJob) {
-            const mapped = mapBackendJobToUiJob(confirmedBackendJob);
+            const mapped = mapBackendJobToUiJob(
+                confirmedBackendJob,
+                dealershipOptions,
+                serviceCatalog,
+                dispatchRankingRules,
+            );
             updatePersistedJob(confirmedJobId, (current) => ({
                 ...current,
                 ...mapped,
                 invoice_state: current.invoice_state ?? mapped.invoice_state,
                 attention_flag: current.attention_flag ?? mapped.attention_flag,
-                ranking_score: current.ranking_score ?? mapped.ranking_score,
-                applied_rules: current.applied_rules ?? mapped.applied_rules,
             }));
         } else {
             const nowIso = new Date().toISOString();

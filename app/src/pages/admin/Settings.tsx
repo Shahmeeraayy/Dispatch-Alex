@@ -79,8 +79,9 @@ import { useAuth } from '@/contexts/AuthContext';
 type ThemeMode = 'light' | 'dark' | 'system';
 
 type DealershipOption = {
-    id: string;
-    name: string;
+  id: string;
+  backendId: string;
+  name: string;
 };
 
 // --- Components ---
@@ -110,7 +111,8 @@ const mapBackendPriorityRule = (row: BackendPriorityRule): PriorityRule => ({
 });
 
 const mapBackendDealershipOption = (row: BackendDealership): DealershipOption => ({
-    id: row.id,
+    id: row.code,
+    backendId: row.id,
     name: row.name?.trim() || '',
 });
 

@@ -1,6 +1,7 @@
 import os
 import unittest
-from datetime import date, time
+from datetime import date, datetime, time, timezone
+from unittest.mock import patch
 from uuid import UUID
 
 from fastapi.testclient import TestClient
@@ -119,17 +120,20 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             }
         ]
 
-        res = self.client.post("/integrations/make/jobs", json=payload)
+        with patch("app.services.job_workflow_service.random.randint", return_value=4821):
+            with patch("app.services.job_workflow_service.datetime") as mocked_datetime:
+                mocked_datetime.now.return_value = datetime(2026, 3, 9, 12, 0, 0, tzinfo=timezone.utc)
+                res = self.client.post("/integrations/make/jobs", json=payload)
         self.assertEqual(res.status_code, 201, res.text)
         body = res.json()
 
         self.assertEqual(body["total"], 1)
         self.assertEqual(body["created"], 1)
-        self.assertEqual(body["items"][0]["job_code"], "D-001-20260115-26043")
+        self.assertEqual(body["items"][0]["job_code"], "SM2-20260309-4821")
         self.assertEqual(body["items"][0]["status"], "admin_review")
 
         with SessionLocal() as db:
-            job = db.query(Job).filter(Job.job_code == "D-001-20260115-26043").first()
+            job = db.query(Job).filter(Job.job_code == "SM2-20260309-4821").first()
             self.assertIsNotNone(job)
             self.assertEqual(job.source_metadata["flags"], ["AUDI_PRICING"])
 

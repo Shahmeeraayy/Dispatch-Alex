@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import random
 import unicodedata
 from typing import Iterable, Literal, Optional
 from uuid import UUID, uuid4
@@ -128,10 +129,9 @@ class JobWorkflowService:
         if explicit_job_id:
             return explicit_job_id
 
-        code_part = (item.dealership.dealership_code or "").strip().upper() or "MAKE"
-        vehicle_part = (item.vehicle_number or "").strip().upper() or "JOB"
-        date_part = item.date.strftime("%Y%m%d")
-        return f"{code_part}-{date_part}-{vehicle_part}"
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        rand = random.randint(1000, 9999)
+        return f"SM2-{today}-{rand}"
 
     def _get_or_create_dealership(self, *, name: str, code: Optional[str], phone: Optional[str]) -> Optional[Dealership]:
         normalized_name = (name or "").strip()

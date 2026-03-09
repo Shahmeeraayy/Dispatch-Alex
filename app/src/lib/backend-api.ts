@@ -479,44 +479,68 @@ export function getStoredAdminToken(): string | null {
   if (typeof window === 'undefined') {
     return null;
   }
-  const raw = window.localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
-  return raw && raw.trim() ? raw : null;
+  try {
+    const raw = window.localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+    return raw && raw.trim() ? raw : null;
+  } catch {
+    return null;
+  }
 }
 
 export function setStoredAdminToken(token: string): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
+  try {
+    window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
+  } catch {
+    // Ignore storage failures so login errors surface from the API layer instead.
+  }
 }
 
 export function clearStoredAdminToken(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+  try {
+    window.localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 export function getStoredTechnicianToken(): string | null {
   if (typeof window === 'undefined') {
     return null;
   }
-  const raw = window.localStorage.getItem(TECHNICIAN_TOKEN_STORAGE_KEY);
-  return raw && raw.trim() ? raw : null;
+  try {
+    const raw = window.localStorage.getItem(TECHNICIAN_TOKEN_STORAGE_KEY);
+    return raw && raw.trim() ? raw : null;
+  } catch {
+    return null;
+  }
 }
 
 export function setStoredTechnicianToken(token: string): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(TECHNICIAN_TOKEN_STORAGE_KEY, token);
+  try {
+    window.localStorage.setItem(TECHNICIAN_TOKEN_STORAGE_KEY, token);
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 export function clearStoredTechnicianToken(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.removeItem(TECHNICIAN_TOKEN_STORAGE_KEY);
+  try {
+    window.localStorage.removeItem(TECHNICIAN_TOKEN_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 async function tryRefreshAdminToken(expiredToken: string): Promise<string | null> {

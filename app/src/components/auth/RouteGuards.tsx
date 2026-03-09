@@ -58,9 +58,13 @@ export function RequireRole({ role, children }: { role: UserRole; children: Reac
 }
 
 export function PublicOnly({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, hasBackendTechnicianToken } = useAuth();
+  const { user, isAuthenticated, hasBackendAdminToken, hasBackendTechnicianToken } = useAuth();
 
   if (!isAuthenticated || !user) {
+    return <>{children}</>;
+  }
+
+  if (user.role === 'admin' && !hasBackendAdminToken) {
     return <>{children}</>;
   }
 
@@ -72,10 +76,14 @@ export function PublicOnly({ children }: { children: ReactNode }) {
 }
 
 export function HomeRoute() {
-  const { user, isAuthenticated, hasBackendTechnicianToken } = useAuth();
+  const { user, isAuthenticated, hasBackendAdminToken, hasBackendTechnicianToken } = useAuth();
 
   if (!isAuthenticated || !user) {
     return <Navigate to={CANONICAL_LOGIN_PATH} replace />;
+  }
+
+  if (user.role === 'admin' && !hasBackendAdminToken) {
+    return <Navigate to={ADMIN_LOGIN_PATH} replace />;
   }
 
   if (user.role === 'technician' && !hasBackendTechnicianToken) {

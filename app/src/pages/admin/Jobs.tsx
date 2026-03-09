@@ -194,7 +194,7 @@ const JOB_EXPORT_COLUMNS = [
     'Urgency',
     'Technician',
     'JobStatus',
-    'Date',
+    'AppointmentDate',
     'Time',
     'CreatedAt',
     'UpdatedAt',
@@ -1651,7 +1651,7 @@ export default function JobsPage() {
         Urgency: job.urgency,
         Technician: job.assigned_technician_name || '',
         JobStatus: job.job_status,
-        Date: formatJobDate(job.created_at),
+        AppointmentDate: formatJobDate(job.created_at),
         Time: formatJobTime(job.created_at),
         CreatedAt: job.created_at,
         UpdatedAt: job.updated_at,
@@ -2211,7 +2211,7 @@ export default function JobsPage() {
 
                                     <TableHead className="w-[140px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Status</TableHead>
 
-                                    <TableHead className="w-[140px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Date</TableHead>
+                                    <TableHead className="w-[140px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Appointment Date</TableHead>
                                     <TableHead className="w-[120px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Time</TableHead>
                                     <TableHead className="w-[220px] text-right font-semibold text-xs text-muted-foreground uppercase tracking-wider">Actions</TableHead>
                                 </TableRow>

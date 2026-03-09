@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LockKeyhole, Mail, Shield } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   requestForgotPasswordOtp,
@@ -8,7 +8,6 @@ import {
   verifyForgotPasswordOtp,
 } from '@/lib/backend-api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +24,16 @@ type NavigationState = {
   from?: string;
 };
 
+const brandingGradientStyle: CSSProperties = {
+  backgroundImage:
+    'linear-gradient(135deg, #0a192f 0%, #112240 52%, #008080 100%)',
+};
+
+const brandingPatternStyle: CSSProperties = {
+  backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
+  backgroundSize: '30px 30px',
+};
+
 export default function AdminLoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -32,6 +41,7 @@ export default function AdminLoginPage() {
   const [email, setEmail] = useState('admin@sm2dispatch.com');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberSession, setRememberSession] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
@@ -113,7 +123,7 @@ export default function AdminLoginPage() {
       setForgotError('Enter and confirm the new password.');
       return;
     }
-    if (newPassword !== confirmNewPassword) {
+    if (newPassword != confirmNewPassword) {
       setForgotError('New password and confirmation do not match.');
       return;
     }
@@ -136,30 +146,55 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(47,142,146,0.18),_transparent_28%),linear-gradient(135deg,#eff7f8_0%,#f8fbff_52%,#edf3fb_100%)] p-4 sm:p-6 flex items-center justify-center">
-      <Card className="w-full max-w-[480px] overflow-hidden border-white/70 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.14)] backdrop-blur">
-        <CardHeader className="space-y-4 border-b border-slate-100 bg-[linear-gradient(180deg,rgba(4,16,43,0.98)_0%,rgba(10,34,71,0.98)_100%)] px-6 py-7 text-white sm:px-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3aa7ac] to-[#2F8E92] shadow-lg shadow-cyan-950/30">
-              <Shield className="h-5 w-5 text-white" />
-            </div>
-            <div className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100">
-              Admin Portal
+    <div className="min-h-screen bg-white font-sans text-slate-900 antialiased">
+      <main className="min-h-screen lg:flex">
+        <section
+          className="relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex lg:w-[60%]"
+          style={brandingGradientStyle}
+        >
+          <div className="pointer-events-none absolute inset-0 opacity-20" style={brandingPatternStyle} />
+
+          <div className="relative z-10 max-w-2xl">
+            <h1 className="mb-4 text-5xl font-bold tracking-tight">SM2 Dispatch</h1>
+            <h2 className="mb-6 text-2xl font-medium text-teal-100">
+              Technician Dispatch &amp; Service Management Platform
+            </h2>
+            <p className="max-w-xl text-lg leading-relaxed text-teal-50/80">
+              Streamline your operations. Manage technicians, track jobs in real-time, handle invoices, and process approvals all in one unified platform.
+            </p>
+          </div>
+
+          <div className="relative z-10 mt-12 flex items-center justify-center">
+            <div className="flex aspect-video w-full max-w-lg items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-sm">
+              <img
+                alt="SM2 Dispatch Logistics Dashboard Preview"
+                className="h-full w-full object-cover opacity-80"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDG35ncXB25BVPgSH6CugIxactx4gf8pZ_0lNO3gqkFSfUFqvekujRbL-UblCvoFP0bd-rHpZ6PVxpPNZFDuhhFO099kHPfJeNVi6wFHdLtP43RLqskAaTKKkBe4m5-BFLQPLm6p7-dqfKDyghQuP243Um8TKHeq-qyap6GEDhlj0g48Rs15qTFZUeC0YEMnDnlaECQZKipqbaT5pFoV00mux_xfCacWv6GTSMFjHkID5G88UMlmBGjp6-j65OQF2wkB7kg2dIv7MGP"
+              />
             </div>
           </div>
-          <div className="space-y-2">
-            <CardTitle className="text-2xl font-semibold tracking-tight text-white">Admin Sign In</CardTitle>
-            <CardDescription className="max-w-sm text-sm leading-6 text-slate-300">
-              Sign in to manage dispatch operations, technician activity, jobs, approvals, and platform settings.
-            </CardDescription>
+
+          <div className="relative z-10 text-sm text-teal-200/50">
+            &copy; 2023 SM2 Dispatch Inc. All rights reserved.
           </div>
-        </CardHeader>
-        <CardContent className="px-6 py-6 sm:px-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="admin-email" className="text-sm font-semibold text-slate-800">Email</Label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        </section>
+
+        <section className="flex items-center justify-center bg-white p-6 sm:p-12 lg:w-[40%]">
+          <div className="w-full max-w-[520px] space-y-8">
+            <div className="mb-10 text-center lg:hidden">
+              <h1 className="text-3xl font-bold text-[#0a192f]">SM2 Dispatch</h1>
+            </div>
+
+            <header>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900">Admin Sign In</h2>
+              <p className="mt-2 text-slate-500">Please enter your credentials to access the admin portal.</p>
+            </header>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="admin-email" className="block text-sm font-medium text-slate-700">
+                  Email Address
+                </Label>
                 <Input
                   id="admin-email"
                   type="email"
@@ -167,176 +202,198 @@ export default function AdminLoginPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   autoComplete="email"
                   required
-                  className="h-11 border-slate-200 bg-slate-50 pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:border-[#2F8E92] focus-visible:ring-[#2F8E92]"
+                  placeholder="admin@sm2dispatch.com"
+                  className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base outline-none transition-all focus-visible:border-[#008080] focus-visible:ring-2 focus-visible:ring-[#008080]/20"
                 />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="admin-password" className="text-sm font-semibold text-slate-800">Password</Label>
-                <Dialog
-                  open={isForgotPasswordOpen}
-                  onOpenChange={(open) => {
-                    setIsForgotPasswordOpen(open);
-                    if (open) {
-                      resetForgotState();
-                    }
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-[#2F8E92] transition hover:text-[#256f73] hover:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Forgot admin password</DialogTitle>
-                      <DialogDescription>
-                        Reset the admin password by email OTP.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="forgot-admin-email">Admin Email</Label>
-                        <Input
-                          id="forgot-admin-email"
-                          type="email"
-                          value={forgotEmail}
-                          onChange={(event) => setForgotEmail(event.target.value)}
-                          disabled={forgotStep !== 'request'}
-                          autoComplete="email"
-                        />
-                      </div>
-
-                      {forgotStep !== 'request' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="admin-password" className="block text-sm font-medium text-slate-700">
+                    Password
+                  </Label>
+                  <Dialog
+                    open={isForgotPasswordOpen}
+                    onOpenChange={(open) => {
+                      setIsForgotPasswordOpen(open);
+                      if (open) {
+                        resetForgotState();
+                      }
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-[#008080] transition-colors hover:text-[#006666]"
+                      >
+                        Forgot password?
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Forgot admin password</DialogTitle>
+                        <DialogDescription>
+                          Reset the admin password by email OTP.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="forgot-admin-otp">OTP Code</Label>
+                          <Label htmlFor="forgot-admin-email">Admin Email</Label>
                           <Input
-                            id="forgot-admin-otp"
-                            inputMode="numeric"
-                            maxLength={6}
-                            placeholder="6-digit OTP"
-                            value={otp}
-                            onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                            id="forgot-admin-email"
+                            type="email"
+                            value={forgotEmail}
+                            onChange={(event) => setForgotEmail(event.target.value)}
+                            disabled={forgotStep !== 'request'}
+                            autoComplete="email"
                           />
                         </div>
-                      )}
 
-                      {forgotStep === 'reset' && (
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        {forgotStep !== 'request' && (
                           <div className="space-y-2">
-                            <Label htmlFor="forgot-admin-new-password">New Password</Label>
+                            <Label htmlFor="forgot-admin-otp">OTP Code</Label>
                             <Input
-                              id="forgot-admin-new-password"
-                              type="password"
-                              value={newPassword}
-                              onChange={(event) => setNewPassword(event.target.value)}
-                              autoComplete="new-password"
+                              id="forgot-admin-otp"
+                              inputMode="numeric"
+                              maxLength={6}
+                              placeholder="6-digit OTP"
+                              value={otp}
+                              onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="forgot-admin-confirm-password">Confirm Password</Label>
-                            <Input
-                              id="forgot-admin-confirm-password"
-                              type="password"
-                              value={confirmNewPassword}
-                              onChange={(event) => setConfirmNewPassword(event.target.value)}
-                              autoComplete="new-password"
-                            />
+                        )}
+
+                        {forgotStep === 'reset' && (
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label htmlFor="forgot-admin-new-password">New Password</Label>
+                              <Input
+                                id="forgot-admin-new-password"
+                                type="password"
+                                value={newPassword}
+                                onChange={(event) => setNewPassword(event.target.value)}
+                                autoComplete="new-password"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="forgot-admin-confirm-password">Confirm Password</Label>
+                              <Input
+                                id="forgot-admin-confirm-password"
+                                type="password"
+                                value={confirmNewPassword}
+                                onChange={(event) => setConfirmNewPassword(event.target.value)}
+                                autoComplete="new-password"
+                              />
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {forgotMessage && (
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                          {forgotMessage}
-                        </div>
-                      )}
+                        {forgotMessage && (
+                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                            {forgotMessage}
+                          </div>
+                        )}
 
-                      {forgotError && (
-                        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                          {forgotError}
-                        </div>
-                      )}
-                    </div>
-                    <DialogFooter className="sm:justify-between">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setIsForgotPasswordOpen(false);
-                          resetForgotState();
-                        }}
-                      >
-                        Close
-                      </Button>
-                      {forgotStep === 'request' && (
-                        <Button type="button" onClick={handleRequestOtp} disabled={isForgotSubmitting}>
-                          {isForgotSubmitting ? 'Sending...' : 'Send OTP'}
+                        {forgotError && (
+                          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            {forgotError}
+                          </div>
+                        )}
+                      </div>
+                      <DialogFooter className="sm:justify-between">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setIsForgotPasswordOpen(false);
+                            resetForgotState();
+                          }}
+                        >
+                          Close
                         </Button>
-                      )}
-                      {forgotStep === 'verify' && (
-                        <Button type="button" onClick={handleVerifyOtp} disabled={isForgotSubmitting}>
-                          {isForgotSubmitting ? 'Verifying...' : 'Verify OTP'}
-                        </Button>
-                      )}
-                      {forgotStep === 'reset' && (
-                        <Button type="button" onClick={handleResetPassword} disabled={isForgotSubmitting}>
-                          {isForgotSubmitting ? 'Updating...' : 'Reset Password'}
-                        </Button>
-                      )}
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                        {forgotStep === 'request' && (
+                          <Button type="button" onClick={handleRequestOtp} disabled={isForgotSubmitting}>
+                            {isForgotSubmitting ? 'Sending...' : 'Send OTP'}
+                          </Button>
+                        )}
+                        {forgotStep === 'verify' && (
+                          <Button type="button" onClick={handleVerifyOtp} disabled={isForgotSubmitting}>
+                            {isForgotSubmitting ? 'Verifying...' : 'Verify OTP'}
+                          </Button>
+                        )}
+                        {forgotStep === 'reset' && (
+                          <Button type="button" onClick={handleResetPassword} disabled={isForgotSubmitting}>
+                            {isForgotSubmitting ? 'Updating...' : 'Reset Password'}
+                          </Button>
+                        )}
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="relative">
+                  <Input
+                    id="admin-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    autoComplete="current-password"
+                    required
+                    placeholder="••••••••"
+                    className="w-full rounded-lg border border-slate-200 px-4 py-3 pr-12 text-base outline-none transition-all focus-visible:border-[#008080] focus-visible:ring-2 focus-visible:ring-[#008080]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-              <div className="relative">
-                <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  id="admin-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  autoComplete="current-password"
-                  required
-                  className="h-11 border-slate-200 bg-slate-50 pl-10 pr-11 text-slate-900 placeholder:text-slate-400 focus-visible:border-[#2F8E92] focus-visible:ring-[#2F8E92]"
+
+              <label className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberSession}
+                  onChange={(event) => setRememberSession(event.target.checked)}
+                  className="h-4 w-4 cursor-pointer rounded border-slate-300 text-[#008080] focus:ring-[#008080]"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                <span className="ml-2 block cursor-pointer text-sm text-slate-600">Remember this session</span>
+              </label>
+
+              {errorMessage && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {errorMessage}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full rounded-lg bg-[#008080] px-4 py-3 text-base font-semibold text-white shadow-sm transition-all hover:bg-[#006666] hover:shadow-md active:scale-[0.98]"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Signing in...' : 'Sign in as Admin'}
+              </Button>
+            </form>
+
+            <footer className="border-t border-slate-100 pt-6 text-center">
+              <p className="text-sm text-slate-600">
+                Technician account?{' '}
+                <Link
+                  to="/tech/login"
+                  className="ml-1 font-semibold text-[#008080] transition-colors hover:text-[#006666]"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {errorMessage && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {errorMessage}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="h-11 w-full rounded-xl bg-[#2F8E92] text-sm font-semibold shadow-sm transition hover:bg-[#27797d]"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Signing in...' : 'Sign in as Admin'}
-            </Button>
-
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="text-sm text-slate-600 text-center">
-                Technician account? <Link to="/tech/login" className="font-medium text-[#2F8E92] hover:underline">Go to technician login</Link>
+                  Go to technician login →
+                </Link>
               </p>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            </footer>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

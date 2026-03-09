@@ -29,7 +29,7 @@ class AdminSettingsApiTests(unittest.TestCase):
 
     def _admin_token(self, email: str = "admin@sm2dispatch.com", password: str = "admin123") -> str:
         response = self.client.post(
-            "/auth/dev/admin-token",
+            "/auth/admin-token",
             json={"email": email, "password": password},
         )
         self.assertEqual(response.status_code, 200, response.text)
@@ -74,10 +74,17 @@ class AdminSettingsApiTests(unittest.TestCase):
         self.assertEqual(refreshed_payload["recovery_email"], "super@sm2dispatch.com")
 
         new_login_response = self.client.post(
-            "/auth/dev/admin-token",
+            "/auth/admin-token",
             json={"email": "owner@sm2dispatch.com", "password": "newpass123"},
         )
         self.assertEqual(new_login_response.status_code, 200, new_login_response.text)
+
+    def test_dev_admin_token_stays_development_only(self):
+        response = self.client.post(
+            "/auth/dev/admin-token",
+            json={"email": "admin@sm2dispatch.com", "password": "admin123"},
+        )
+        self.assertNotEqual(response.status_code, 404, response.text)
 
 
 if __name__ == "__main__":

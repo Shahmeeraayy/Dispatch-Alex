@@ -41,18 +41,13 @@ class DevAdminTokenRequest(BaseModel):
     password: str = Field(..., min_length=1, max_length=255)
 
 
-@router.post("/dev/admin-token", response_model=DevTokenResponse)
-def create_dev_admin_token(
-    payload: DevAdminTokenRequest,
-    db: Session = Depends(deps.get_db),
-):
-    if APP_ENV != "development":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not found",
-        )
+class AdminTokenRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+    password: str = Field(..., min_length=1, max_length=255)
 
-    if not AdminCredentialSettingsService(db).verify_admin_credentials(payload.email, payload.password):
+
+def _issue_admin_token(*, email: str, password: str, db: Session) -> DevTokenResponse:
+    if not AdminCredentialSettingsService(db).verify_admin_credentials(email, password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin credentials")
 
     expires_at = datetime.now(timezone.utc) + timedelta(hours=8)
@@ -66,6 +61,28 @@ def create_dev_admin_token(
         expires_at=expires_at,
         role=UserRole.ADMIN,
     )
+
+
+@router.post("/admin-token", response_model=DevTokenResponse)
+def create_admin_token(
+    payload: AdminTokenRequest,
+    db: Session = Depends(deps.get_db),
+):
+    return _issue_admin_token(email=payload.email, password=payload.password, db=db)
+
+
+@router.post("/dev/admin-token", response_model=DevTokenResponse)
+def create_dev_admin_token(
+    payload: DevAdminTokenRequest,
+    db: Session = Depends(deps.get_db),
+):
+    if APP_ENV != "development":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
+
+    return _issue_admin_token(email=payload.email, password=payload.password, db=db)
 
 
 @router.post("/dev/technician-token", response_model=DevTokenResponse)

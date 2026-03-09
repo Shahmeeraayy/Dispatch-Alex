@@ -76,7 +76,7 @@ class PasswordResetApiTests(unittest.TestCase):
         self.assertEqual(reset_response.json()["status"], "ok")
 
         login_response = self.client.post(
-            "/auth/dev/admin-token",
+            "/auth/admin-token",
             json={"email": "admin@sm2dispatch.com", "password": "resetpass123"},
         )
         self.assertEqual(login_response.status_code, 200, login_response.text)

@@ -14,7 +14,7 @@ type ErrorPayload = {
   detail?: unknown;
 };
 
-type DevAdminTokenResponse = {
+type AdminTokenResponse = {
   access_token: string;
   token_type: string;
   expires_at: string;
@@ -604,11 +604,11 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   return response.json() as Promise<T>;
 }
 
-export async function fetchDevAdminToken(payload: {
+export async function fetchAdminToken(payload: {
   email: string;
   password: string;
-}): Promise<DevAdminTokenResponse> {
-  return requestJson<DevAdminTokenResponse>('/auth/dev/admin-token', {
+}): Promise<AdminTokenResponse> {
+  return requestJson<AdminTokenResponse>('/auth/admin-token', {
     method: 'POST',
     body: payload,
   });

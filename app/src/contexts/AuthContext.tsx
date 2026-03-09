@@ -6,11 +6,11 @@ import {
   clearStoredTechnicianToken,
   clearStoredAdminToken,
   createTechnicianSignupRequest,
+  fetchAdminToken,
   fetchDevTechnicianToken,
   fetchTechnicianMeProfile,
   fetchAdminTechnicianSignupRequests,
   fetchAdminTechnicians,
-  fetchDevAdminToken,
   getStoredAdminToken,
   getStoredTechnicianToken,
   rejectAdminTechnicianSignupRequest,
@@ -449,7 +449,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (role === 'admin') {
-      const tokenResponse = await fetchDevAdminToken({
+      const tokenResponse = await fetchAdminToken({
         email: normalizedEmail,
         password: normalizedPassword,
       });

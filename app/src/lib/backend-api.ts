@@ -1,6 +1,8 @@
+import { safeGetItem, safeRemoveItem, safeSetItem } from '@/lib/storage';
+
 const ADMIN_TOKEN_STORAGE_KEY = 'sm_dispatch_admin_access_token';
 const TECHNICIAN_TOKEN_STORAGE_KEY = 'sm_dispatch_technician_access_token';
-const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_URL_ENV_KEY = 'VITE_API_URL';
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -475,72 +477,46 @@ export type BackendReportsOverview = {
   invoicing_detail_rows: BackendInvoicingDetailRow[];
 };
 
+function getApiBaseUrl(): string {
+  const rawValue = import.meta.env.VITE_API_URL;
+  const normalized = typeof rawValue === 'string' ? rawValue.trim().replace(/\/$/, '') : '';
+
+  if (!normalized) {
+    console.error(`Missing ${API_URL_ENV_KEY}. Configure the frontend API base URL before making backend requests.`);
+    throw new Error('API URL not configured');
+  }
+
+  return normalized;
+}
+
+export function assertApiUrlConfigured(): void {
+  void getApiBaseUrl();
+}
+
 export function getStoredAdminToken(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  try {
-    const raw = window.localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
-    return raw && raw.trim() ? raw : null;
-  } catch {
-    return null;
-  }
+  const raw = safeGetItem(ADMIN_TOKEN_STORAGE_KEY);
+  return raw && raw.trim() ? raw : null;
 }
 
 export function setStoredAdminToken(token: string): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  try {
-    window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
-  } catch {
-    // Ignore storage failures so login errors surface from the API layer instead.
-  }
+  safeSetItem(ADMIN_TOKEN_STORAGE_KEY, token);
 }
 
 export function clearStoredAdminToken(): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  try {
-    window.localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
-  } catch {
-    // Ignore storage failures.
-  }
+  safeRemoveItem(ADMIN_TOKEN_STORAGE_KEY);
 }
 
 export function getStoredTechnicianToken(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  try {
-    const raw = window.localStorage.getItem(TECHNICIAN_TOKEN_STORAGE_KEY);
-    return raw && raw.trim() ? raw : null;
-  } catch {
-    return null;
-  }
+  const raw = safeGetItem(TECHNICIAN_TOKEN_STORAGE_KEY);
+  return raw && raw.trim() ? raw : null;
 }
 
 export function setStoredTechnicianToken(token: string): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  try {
-    window.localStorage.setItem(TECHNICIAN_TOKEN_STORAGE_KEY, token);
-  } catch {
-    // Ignore storage failures.
-  }
+  safeSetItem(TECHNICIAN_TOKEN_STORAGE_KEY, token);
 }
 
 export function clearStoredTechnicianToken(): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  try {
-    window.localStorage.removeItem(TECHNICIAN_TOKEN_STORAGE_KEY);
-  } catch {
-    // Ignore storage failures.
-  }
+  safeRemoveItem(TECHNICIAN_TOKEN_STORAGE_KEY);
 }
 
 async function tryRefreshAdminToken(expiredToken: string): Promise<string | null> {
@@ -569,6 +545,7 @@ function extractErrorDetail(detail: unknown, fallback: string): string {
 }
 
 async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const apiBaseUrl = getApiBaseUrl();
   const headers: Record<string, string> = {
     Accept: 'application/json',
   };
@@ -580,7 +557,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     headers.Authorization = `Bearer ${options.token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     method: options.method ?? 'GET',
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
@@ -590,7 +567,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     const refreshedToken = await tryRefreshAdminToken(options.token);
     if (refreshedToken) {
       const retryHeaders: Record<string, string> = { ...headers, Authorization: `Bearer ${refreshedToken}` };
-      const retryResponse = await fetch(`${API_BASE_URL}${path}`, {
+      const retryResponse = await fetch(`${apiBaseUrl}${path}`, {
         method: options.method ?? 'GET',
         headers: retryHeaders,
         body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

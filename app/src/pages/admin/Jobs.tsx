@@ -201,6 +201,22 @@ const JOB_EXPORT_COLUMNS = [
 ];
 const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
 
+const getStoredAdminJobsSnapshot = () => {
+    try {
+        return localStorage.getItem(ADMIN_JOBS_STORAGE_KEY);
+    } catch {
+        return null;
+    }
+};
+
+const setStoredAdminJobsSnapshot = (jobs: Job[]) => {
+    try {
+        localStorage.setItem(ADMIN_JOBS_STORAGE_KEY, JSON.stringify(jobs));
+    } catch {
+        // Ignore storage failures so the live jobs page can still render from backend data.
+    }
+};
+
 const EMPTY_QUICK_FILTER_COUNTS: QuickFilterCounts = {
     pendingReview: 0,
     awaitingTechAcceptance: 0,
@@ -508,7 +524,7 @@ const normalizeAssignedTechnicianStatus = (job: Job): Job => {
 
 const loadPersistedJobs = (): Job[] => {
     try {
-        const raw = localStorage.getItem(ADMIN_JOBS_STORAGE_KEY);
+        const raw = getStoredAdminJobsSnapshot();
         if (!raw) return [];
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed)) {
@@ -526,7 +542,7 @@ const loadPersistedJobs = (): Job[] => {
         });
 
         if (didNormalize) {
-            localStorage.setItem(ADMIN_JOBS_STORAGE_KEY, JSON.stringify(normalizedJobs));
+            setStoredAdminJobsSnapshot(normalizedJobs);
         }
 
         return normalizedJobs;
@@ -536,7 +552,7 @@ const loadPersistedJobs = (): Job[] => {
 };
 
 const persistJobs = (jobs: Job[]) => {
-    localStorage.setItem(ADMIN_JOBS_STORAGE_KEY, JSON.stringify(jobs));
+    setStoredAdminJobsSnapshot(jobs);
 };
 
 const isPendingReviewJob = (job: Job) =>

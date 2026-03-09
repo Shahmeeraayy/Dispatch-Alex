@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { safeGetItem, safeSetItem } from "@/lib/storage";
 
 type Theme = "dark" | "light" | "system";
 
@@ -20,38 +21,20 @@ const initialState: ThemeProviderState = {
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
-function safeGetStorageItem(key: string): string | null {
-    if (typeof window === "undefined") {
-        return null;
-    }
-    try {
-        return window.localStorage.getItem(key);
-    } catch {
-        return null;
-    }
-}
-
-function safeSetStorageItem(key: string, value: string): void {
-    if (typeof window === "undefined") {
-        return;
-    }
-    try {
-        window.localStorage.setItem(key, value);
-    } catch {
-        // Ignore storage failures and keep in-memory theme state working.
-    }
-}
-
 export function ThemeProvider({
     children,
     defaultTheme = "system",
     storageKey = "vite-ui-theme",
 }: ThemeProviderProps) {
     const [theme, setTheme] = useState<Theme>(
-        () => (safeGetStorageItem(storageKey) as Theme) || defaultTheme
+        () => (safeGetItem(storageKey) as Theme) || defaultTheme
     );
 
     useEffect(() => {
+        if (typeof window === "undefined") {
+            return;
+        }
+
         const root = window.document.documentElement;
 
         root.classList.remove("light", "dark");
@@ -72,7 +55,7 @@ export function ThemeProvider({
     const value = {
         theme,
         setTheme: (theme: Theme) => {
-            safeSetStorageItem(storageKey, theme);
+            safeSetItem(storageKey, theme);
             setTheme(theme);
         },
     };

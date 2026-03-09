@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { User, UserRole } from '@/types';
 import { currentUser, technicianUser } from '@/mock/data';
+import { safeGetItem, safeParseJSON, safeSetItem, safeRemoveItem } from '@/lib/storage';
 import {
   approveAdminTechnicianSignupRequest,
   clearStoredTechnicianToken,
@@ -80,6 +81,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isTechnician: boolean;
+  isAuthLoading: boolean;
   hasBackendAdminToken: boolean;
   hasBackendTechnicianToken: boolean;
   technicianAccounts: TechnicianAccountSummary[];
@@ -100,6 +102,8 @@ const AUTH_STORAGE_KEY = 'sm_dispatch_auth_user';
 const TECHNICIANS_STORAGE_KEY = 'sm_dispatch_technician_accounts';
 const TECHNICIAN_SIGNUP_REQUESTS_STORAGE_KEY = 'sm_dispatch_technician_signup_requests';
 const ADMIN_EMAIL = currentUser.email.toLowerCase();
+const ADMIN_TOKEN_STORAGE_KEY = 'sm_dispatch_admin_access_token';
+const TECHNICIAN_TOKEN_STORAGE_KEY = 'sm_dispatch_technician_access_token';
 
 const DEFAULT_TECHNICIAN_ACCOUNTS: TechnicianAccount[] = [
   {
@@ -212,11 +216,7 @@ function mapBackendPendingRequests(
 }
 
 function parseStoredUser(): User | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+  const raw = safeGetItem(AUTH_STORAGE_KEY);
   if (!raw) {
     return null;
   }
@@ -224,130 +224,114 @@ function parseStoredUser(): User | null {
   try {
     return JSON.parse(raw) as User;
   } catch {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    safeRemoveItem(AUTH_STORAGE_KEY);
     return null;
   }
 }
 
 function parseStoredTechnicians(): TechnicianAccount[] {
-  if (typeof window === 'undefined') {
+  const parsed = safeParseJSON<Partial<TechnicianAccount>[]>(TECHNICIANS_STORAGE_KEY, []);
+  if (!Array.isArray(parsed) || parsed.length === 0) {
     return DEFAULT_TECHNICIAN_ACCOUNTS;
   }
 
-  const raw = window.localStorage.getItem(TECHNICIANS_STORAGE_KEY);
-  if (!raw) {
-    return DEFAULT_TECHNICIAN_ACCOUNTS;
-  }
+  const validAccounts = parsed
+    .map((item): TechnicianAccount | null => {
+      if (
+        typeof item?.id !== 'string'
+        || typeof item?.name !== 'string'
+        || typeof item?.email !== 'string'
+        || typeof item?.createdAt !== 'string'
+        || typeof item?.updatedAt !== 'string'
+      ) {
+        return null;
+      }
 
-  try {
-    const parsed = JSON.parse(raw) as Partial<TechnicianAccount>[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return DEFAULT_TECHNICIAN_ACCOUNTS;
-    }
+      return {
+        id: item.id,
+        name: item.name,
+        email: normalizeEmail(item.email),
+        phone: item.phone,
+        password: typeof item.password === 'string' ? item.password : undefined,
+        avatar: item.avatar,
+        isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      };
+    })
+    .filter((item): item is TechnicianAccount => item !== null)
+    .filter((item, index, list) =>
+      list.findIndex((candidate) => candidate.id === item.id) === index
+    );
 
-    const validAccounts = parsed
-      .map((item): TechnicianAccount | null => {
-        if (
-          typeof item?.id !== 'string'
-          || typeof item?.name !== 'string'
-          || typeof item?.email !== 'string'
-          || typeof item?.createdAt !== 'string'
-          || typeof item?.updatedAt !== 'string'
-        ) {
-          return null;
-        }
-
-        return {
-          id: item.id,
-          name: item.name,
-          email: normalizeEmail(item.email),
-          phone: item.phone,
-          password: typeof item.password === 'string' ? item.password : undefined,
-          avatar: item.avatar,
-          isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        };
-      })
-      .filter((item): item is TechnicianAccount => item !== null)
-      .filter((item, index, list) =>
-        list.findIndex((candidate) => candidate.id === item.id) === index
-      );
-
-    return validAccounts.length > 0 ? validAccounts : DEFAULT_TECHNICIAN_ACCOUNTS;
-  } catch {
-    window.localStorage.removeItem(TECHNICIANS_STORAGE_KEY);
-    return DEFAULT_TECHNICIAN_ACCOUNTS;
-  }
+  return validAccounts.length > 0 ? validAccounts : DEFAULT_TECHNICIAN_ACCOUNTS;
 }
 
 function parseStoredSignupRequests(): TechnicianSignupRequest[] {
-  if (typeof window === 'undefined') {
+  const parsed = safeParseJSON<Partial<TechnicianSignupRequest>[]>(TECHNICIAN_SIGNUP_REQUESTS_STORAGE_KEY, []);
+  if (!Array.isArray(parsed) || parsed.length === 0) {
     return [];
   }
 
-  const raw = window.localStorage.getItem(TECHNICIAN_SIGNUP_REQUESTS_STORAGE_KEY);
-  if (!raw) {
-    return [];
-  }
+  return parsed
+    .map((item): TechnicianSignupRequest | null => {
+      if (
+        typeof item?.id !== 'string'
+        || typeof item?.name !== 'string'
+        || typeof item?.email !== 'string'
+        || typeof item?.password !== 'string'
+        || typeof item?.requestedAt !== 'string'
+        || typeof item?.updatedAt !== 'string'
+      ) {
+        return null;
+      }
 
-  try {
-    const parsed = JSON.parse(raw) as Partial<TechnicianSignupRequest>[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return [];
-    }
-
-    return parsed
-      .map((item): TechnicianSignupRequest | null => {
-        if (
-          typeof item?.id !== 'string'
-          || typeof item?.name !== 'string'
-          || typeof item?.email !== 'string'
-          || typeof item?.password !== 'string'
-          || typeof item?.requestedAt !== 'string'
-          || typeof item?.updatedAt !== 'string'
-        ) {
-          return null;
-        }
-
-        return {
-          id: item.id,
-          name: item.name,
-          email: normalizeEmail(item.email),
-          phone: item.phone,
-          password: item.password,
-          requestedAt: item.requestedAt,
-          updatedAt: item.updatedAt,
-        };
-      })
-      .filter((item): item is TechnicianSignupRequest => item !== null)
-      .filter((item, index, list) =>
-        list.findIndex((candidate) => candidate.id === item.id) === index
-      );
-  } catch {
-    window.localStorage.removeItem(TECHNICIAN_SIGNUP_REQUESTS_STORAGE_KEY);
-    return [];
-  }
+      return {
+        id: item.id,
+        name: item.name,
+        email: normalizeEmail(item.email),
+        phone: item.phone,
+        password: item.password,
+        requestedAt: item.requestedAt,
+        updatedAt: item.updatedAt,
+      };
+    })
+    .filter((item): item is TechnicianSignupRequest => item !== null)
+    .filter((item, index, list) =>
+      list.findIndex((candidate) => candidate.id === item.id) === index
+    );
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => parseStoredUser());
-  const [technicianAccounts, setTechnicianAccounts] = useState<TechnicianAccount[]>(() => parseStoredTechnicians());
-  const [pendingTechnicianRequests, setPendingTechnicianRequests] = useState<TechnicianSignupRequest[]>(() => parseStoredSignupRequests());
-  const [hasBackendAdminToken, setHasBackendAdminToken] = useState<boolean>(() => {
-    if (typeof window === 'undefined') {
-      return false;
+  const [user, setUser] = useState<User | null>(null);
+  const [technicianAccounts, setTechnicianAccounts] = useState<TechnicianAccount[]>(DEFAULT_TECHNICIAN_ACCOUNTS);
+  const [pendingTechnicianRequests, setPendingTechnicianRequests] = useState<TechnicianSignupRequest[]>([]);
+  const [hasBackendAdminToken, setHasBackendAdminToken] = useState<boolean>(false);
+  const [hasBackendTechnicianToken, setHasBackendTechnicianToken] = useState<boolean>(false);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    try {
+      setUser(parseStoredUser());
+      setTechnicianAccounts(parseStoredTechnicians());
+      setPendingTechnicianRequests(parseStoredSignupRequests());
+
+      const adminToken = safeGetItem(ADMIN_TOKEN_STORAGE_KEY);
+      const technicianToken = safeGetItem(TECHNICIAN_TOKEN_STORAGE_KEY);
+
+      setHasBackendAdminToken(Boolean(adminToken && adminToken.trim()));
+      setHasBackendTechnicianToken(Boolean(technicianToken && technicianToken.trim()));
+    } catch (error) {
+      console.error('Failed to restore auth session from storage.', error);
+      setUser(null);
+      setTechnicianAccounts(DEFAULT_TECHNICIAN_ACCOUNTS);
+      setPendingTechnicianRequests([]);
+      setHasBackendAdminToken(false);
+      setHasBackendTechnicianToken(false);
+    } finally {
+      setIsAuthLoading(false);
     }
-    const token = window.localStorage.getItem('sm_dispatch_admin_access_token');
-    return Boolean(token && token.trim());
-  });
-  const [hasBackendTechnicianToken, setHasBackendTechnicianToken] = useState<boolean>(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    const token = window.localStorage.getItem('sm_dispatch_technician_access_token');
-    return Boolean(token && token.trim());
-  });
+  }, []);
 
   const refreshBackendAdminData = useCallback(async () => {
     const token = getStoredAdminToken();
@@ -388,32 +372,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [technicianAccounts, user]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
     if (user) {
-      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+      safeSetItem(AUTH_STORAGE_KEY, JSON.stringify(user));
       return;
     }
 
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    safeRemoveItem(AUTH_STORAGE_KEY);
   }, [user]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    window.localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(technicianAccounts));
+    safeSetItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(technicianAccounts));
   }, [technicianAccounts]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    window.localStorage.setItem(TECHNICIAN_SIGNUP_REQUESTS_STORAGE_KEY, JSON.stringify(pendingTechnicianRequests));
+    safeSetItem(TECHNICIAN_SIGNUP_REQUESTS_STORAGE_KEY, JSON.stringify(pendingTechnicianRequests));
   }, [pendingTechnicianRequests]);
 
   useEffect(() => {
@@ -766,6 +738,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isTechnician: user?.role === 'technician',
+    isAuthLoading,
     hasBackendAdminToken,
     hasBackendTechnicianToken,
     technicianAccounts: technicianAccounts.map(toTechnicianSummary),
@@ -780,6 +753,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     switchRole,
   };
+
+  if (isAuthLoading) {
+    return <div>Loading...</div>;
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

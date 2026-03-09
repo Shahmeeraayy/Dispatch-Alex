@@ -17,8 +17,12 @@ function getLoginPathForRole(role: UserRole): string {
 }
 
 export function RequireRole({ role, children }: { role: UserRole; children: ReactNode }) {
-  const { user, isAuthenticated, hasBackendAdminToken, hasBackendTechnicianToken } = useAuth();
+  const { user, isAuthenticated, isAuthLoading, hasBackendAdminToken, hasBackendTechnicianToken } = useAuth();
   const location = useLocation();
+
+  if (isAuthLoading) {
+    return <div>Loading...</div>;
+  }
 
   if (!isAuthenticated || !user) {
     return (
@@ -58,7 +62,11 @@ export function RequireRole({ role, children }: { role: UserRole; children: Reac
 }
 
 export function PublicOnly({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, hasBackendAdminToken, hasBackendTechnicianToken } = useAuth();
+  const { user, isAuthenticated, isAuthLoading, hasBackendAdminToken, hasBackendTechnicianToken } = useAuth();
+
+  if (isAuthLoading) {
+    return <div>Loading...</div>;
+  }
 
   if (!isAuthenticated || !user) {
     return <>{children}</>;
@@ -76,7 +84,11 @@ export function PublicOnly({ children }: { children: ReactNode }) {
 }
 
 export function HomeRoute() {
-  const { user, isAuthenticated, hasBackendAdminToken, hasBackendTechnicianToken } = useAuth();
+  const { user, isAuthenticated, isAuthLoading, hasBackendAdminToken, hasBackendTechnicianToken } = useAuth();
+
+  if (isAuthLoading) {
+    return <div>Loading...</div>;
+  }
 
   if (!isAuthenticated || !user) {
     return <Navigate to={CANONICAL_LOGIN_PATH} replace />;

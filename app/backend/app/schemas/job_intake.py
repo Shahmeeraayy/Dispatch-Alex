@@ -2,20 +2,36 @@ from datetime import date, time
 from typing import List, Literal, Optional
 from uuid import UUID
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class MakeDealershipPayload(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     dealership_name: str = Field(..., min_length=1, max_length=255)
+    dealership_code: Optional[str] = Field(default=None, max_length=32)
     # Make.com payloads may contain the expected accented key, but keep a fallback
     # for mojibake exports to avoid dropping the phone number.
     telephone: Optional[str] = Field(
         default=None,
-        validation_alias=AliasChoices("Téléphone", "TÃ©lÃ©phone"),
+        validation_alias=AliasChoices("telephone", "Telephone", "TÃ©lÃ©phone", "TÃƒÂ©lÃƒÂ©phone"),
     )
     service: Optional[str] = Field(default=None, max_length=255)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_make_keys(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+
+        raw = dict(value)
+        if "telephone" not in raw:
+            for candidate, candidate_value in raw.items():
+                normalized_key = str(candidate).strip().lower()
+                if "telephone" in normalized_key or "phone" in normalized_key:
+                    raw["telephone"] = candidate_value
+                    break
+        return raw
 
     @field_validator("dealership_name", mode="before")
     @classmethod
@@ -24,7 +40,7 @@ class MakeDealershipPayload(BaseModel):
             return value.strip()
         return value
 
-    @field_validator("telephone", "service", mode="before")
+    @field_validator("dealership_code", "telephone", "service", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         if isinstance(value, str):
@@ -36,7 +52,7 @@ class MakeDealershipPayload(BaseModel):
 class MakeJobIntakeItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    job_id: str = Field(..., min_length=1, max_length=50)
+    job_id: Optional[str] = Field(default=None, min_length=1, max_length=50)
     dealership: MakeDealershipPayload
     vehicle: str = Field(..., min_length=1, max_length=255)
     vehicle_number: Optional[str] = Field(default=None, max_length=64)
@@ -59,6 +75,11 @@ class MakeJobIntakeItem(BaseModel):
     def normalize_flags(cls, value: object) -> object:
         if value is None:
             return []
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            return [stripped]
         return value
 
 

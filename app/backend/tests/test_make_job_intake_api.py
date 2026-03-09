@@ -99,6 +99,45 @@ class MakeJobIntakeApiTests(unittest.TestCase):
             self.assertEqual(dealership.name, "Audi levis")
             self.assertEqual(dealership.phone, "+13438421791")
 
+    def test_make_job_intake_accepts_make_pattern_without_job_id(self):
+        payload = [
+            {
+                "dealership": {
+                    "dealership_name": "Audi Levis",
+                    "dealership_code": "D-001",
+                    "telephone": "+13438421791",
+                    "service": "Two-Way Remote Starter Installation / Demarreur a distance 2 voies",
+                },
+                "vehicle": "audi a3 2026",
+                "vehicle_number": "26043",
+                "date": "2026-01-15",
+                "time": "09:30",
+                "urgent": True,
+                "confidence": 84,
+                "flags": "AUDI_PRICING",
+                "raw": "",
+            }
+        ]
+
+        res = self.client.post("/integrations/make/jobs", json=payload)
+        self.assertEqual(res.status_code, 201, res.text)
+        body = res.json()
+
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["created"], 1)
+        self.assertEqual(body["items"][0]["job_code"], "D-001-20260115-26043")
+        self.assertEqual(body["items"][0]["status"], "admin_review")
+
+        with SessionLocal() as db:
+            job = db.query(Job).filter(Job.job_code == "D-001-20260115-26043").first()
+            self.assertIsNotNone(job)
+            self.assertEqual(job.source_metadata["flags"], ["AUDI_PRICING"])
+
+            dealership = db.query(Dealership).filter(Dealership.id == job.dealership_id).first()
+            self.assertIsNotNone(dealership)
+            self.assertEqual(dealership.code, "D-001")
+            self.assertEqual(dealership.name, "Audi Levis")
+
     def test_make_job_intake_retry_creates_new_job_without_overwriting_previous(self):
         create_res = self.client.post("/integrations/make/jobs", json=self._make_payload())
         self.assertEqual(create_res.status_code, 201, create_res.text)

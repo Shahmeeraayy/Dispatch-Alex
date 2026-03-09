@@ -123,10 +123,35 @@ class JobWorkflowService:
 
         return None
 
-    def _get_or_create_dealership(self, *, name: str, phone: Optional[str]) -> Optional[Dealership]:
+    def _generate_job_code_from_make_item(self, item: MakeJobIntakeItem) -> str:
+        explicit_job_id = (item.job_id or "").strip()
+        if explicit_job_id:
+            return explicit_job_id
+
+        code_part = (item.dealership.dealership_code or "").strip().upper() or "MAKE"
+        vehicle_part = (item.vehicle_number or "").strip().upper() or "JOB"
+        date_part = item.date.strftime("%Y%m%d")
+        return f"{code_part}-{date_part}-{vehicle_part}"
+
+    def _get_or_create_dealership(self, *, name: str, code: Optional[str], phone: Optional[str]) -> Optional[Dealership]:
         normalized_name = (name or "").strip()
+        normalized_code = (code or "").strip().upper() or None
         if not normalized_name:
             return None
+
+        if normalized_code:
+            row = self.dealership_repo.get_dealership_by_code(normalized_code)
+            if row is not None:
+                if normalized_name and row.name != normalized_name:
+                    row.name = normalized_name
+                if phone and (row.phone or "").strip() != phone:
+                    row.phone = phone
+                if not (row.city or "").strip():
+                    inferred_city = self._infer_city_from_dealership_name(normalized_name)
+                    if inferred_city:
+                        row.city = inferred_city
+                self.db.flush()
+                return row
 
         row = (
             self.db.query(Dealership)
@@ -134,6 +159,8 @@ class JobWorkflowService:
             .first()
         )
         if row is not None:
+            if normalized_code and (row.code or "").strip().upper() != normalized_code:
+                row.code = normalized_code
             if phone and (row.phone or "").strip() != phone:
                 # Keep dealership data fresh from automation, but only update phone for now.
                 row.phone = phone
@@ -145,7 +172,7 @@ class JobWorkflowService:
                     self.db.flush()
             return row
 
-        code = self.dealership_repo.generate_next_code()
+        code = normalized_code or self.dealership_repo.generate_next_code()
         inferred_city = self._infer_city_from_dealership_name(normalized_name)
         return self.dealership_repo.create_dealership(
             code=code,
@@ -197,10 +224,11 @@ class JobWorkflowService:
         results: list[MakeJobUpsertResult] = []
 
         for item in items:
-            job_code = self._resolve_unique_job_code_for_make(item.job_id)
+            job_code = self._resolve_unique_job_code_for_make(self._generate_job_code_from_make_item(item))
 
             dealership = self._get_or_create_dealership(
                 name=item.dealership.dealership_name,
+                code=item.dealership.dealership_code,
                 phone=item.dealership.telephone,
             )
 
@@ -231,6 +259,7 @@ class JobWorkflowService:
                 "source": "make.com",
                 "dealership": {
                     "dealership_name": item.dealership.dealership_name,
+                    "dealership_code": item.dealership.dealership_code,
                     "telephone": item.dealership.telephone,
                     "service": item.dealership.service,
                 },

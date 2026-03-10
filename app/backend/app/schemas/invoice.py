@@ -143,8 +143,10 @@ class InvoiceApprovalDraftLinePayload(BaseModel):
     quantity: Optional[Decimal] = Field(default=None, gt=0)
     qty: Optional[Decimal] = Field(default=None, gt=0)
     rate: Decimal = Field(..., ge=0)
+    tax_code: Optional[str] = Field(default=None, min_length=1, max_length=32)
+    tax_rate: Optional[Decimal] = Field(default=None, ge=0, le=1)
 
-    @field_validator("product_service", "qb_item_id")
+    @field_validator("product_service", "qb_item_id", "tax_code")
     @classmethod
     def _normalize_text(cls, value: Optional[str]) -> Optional[str]:
         if value is None:

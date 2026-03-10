@@ -409,6 +409,23 @@ export type BackendQuickBooksItemSyncResponse = {
   archived_count: number;
 };
 
+export type BackendQuickBooksConnectionStatus = {
+  connected: boolean;
+  provider: 'quickbooks';
+  environment?: string | null;
+  realm_id?: string | null;
+  token_type?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  access_token_expires_at?: string | null;
+  refresh_token_expires_at?: string | null;
+  is_active?: boolean | null;
+  has_access_token?: boolean | null;
+  has_refresh_token?: boolean | null;
+  token_expired?: boolean | null;
+  refresh_error?: string | null;
+};
+
 export type BackendPendingInvoiceApprovalIssue = {
   job_id: string;
   job_code: string;
@@ -1155,6 +1172,14 @@ export async function syncQuickBooksItems(
 ): Promise<BackendQuickBooksItemSyncResponse> {
   return requestJson<BackendQuickBooksItemSyncResponse>('/admin/quickbooks/sync-items', {
     method: 'POST',
+    token,
+  });
+}
+
+export async function fetchQuickBooksConnectionStatus(
+  token: string,
+): Promise<BackendQuickBooksConnectionStatus> {
+  return requestJson<BackendQuickBooksConnectionStatus>('/integrations/quickbooks/status', {
     token,
   });
 }

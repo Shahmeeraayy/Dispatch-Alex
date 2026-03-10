@@ -639,6 +639,67 @@ class InvoiceApiTests(unittest.TestCase):
         self.assertIsNotNone(issue)
         self.assertTrue(any("quickbooks customer" in reason.lower() for reason in issue["blocking_reasons"]))
 
+    def test_pending_approval_issues_honor_saved_draft_lines(self):
+        dealership = self._seed_dealership()
+        technician = self._seed_technician()
+        self._seed_service_catalog(name="PPF ailes complètes (2)", qb_item_id="QB-ITEM-PPF")
+
+        with SessionLocal() as db:
+            row = Job(
+                id=uuid4(),
+                job_code="SM2-2024-5200",
+                status="COMPLETED",
+                assigned_tech_id=technician.id,
+                dealership_id=dealership.id,
+                customer_name=dealership.name,
+                customer_address=dealership.address,
+                customer_city=dealership.city,
+                customer_state="QC",
+                customer_zip_code=dealership.postal_code,
+                service_type="Remote Starter Installation",
+                tax_code="GST",
+                vehicle="2024 Audi A6",
+            )
+            db.add(row)
+            db.flush()
+            db.add(
+                JobService(
+                    job_id=row.id,
+                    service_name_snapshot="Remote Starter Installation",
+                    source="dealership",
+                    quantity=Decimal("1.00"),
+                    unit_price=Decimal("250.00"),
+                    sort_order=0,
+                )
+            )
+            db.commit()
+            job_id = str(row.id)
+
+        initial_issues = self.client.get("/invoices/pending-approval-issues", headers=self.auth_header)
+        self.assertEqual(initial_issues.status_code, 200, initial_issues.text)
+        self.assertIsNotNone(next((item for item in initial_issues.json() if item["job_code"] == "SM2-2024-5200"), None))
+
+        draft_res = self.client.put(
+            f"/invoices/pending-approvals/{job_id}/draft",
+            json={
+                "line_items": [
+                    {
+                        "product_service": "PPF ailes complètes (2)",
+                        "qb_item_id": "QB-ITEM-PPF",
+                        "quantity": "1.00",
+                        "rate": "400.00",
+                        "tax_code": "GST",
+                    }
+                ]
+            },
+            headers=self.auth_header,
+        )
+        self.assertEqual(draft_res.status_code, 200, draft_res.text)
+
+        issues_res = self.client.get("/invoices/pending-approval-issues", headers=self.auth_header)
+        self.assertEqual(issues_res.status_code, 200, issues_res.text)
+        self.assertIsNone(next((item for item in issues_res.json() if item["job_code"] == "SM2-2024-5200"), None))
+
     def test_invoice_branding_settings_endpoints_and_invoice_defaults(self):
         get_default_res = self.client.get(
             "/admin/settings/invoice-branding",

@@ -91,10 +91,6 @@ type ServiceCatalogOption = {
     qb_item_id?: string | null;
 };
 
-const QUEBEC_GST_RATE = 0.05;
-const QUEBEC_QST_RATE = 0.09975;
-const QUEBEC_TOTAL_TAX_RATE = QUEBEC_GST_RATE + QUEBEC_QST_RATE;
-
 const toNumber = (value: string | number | null | undefined): number => {
     if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
     if (typeof value === 'string') {
@@ -102,6 +98,18 @@ const toNumber = (value: string | number | null | undefined): number => {
         return Number.isFinite(parsed) ? parsed : 0;
     }
     return 0;
+};
+
+const formatTaxCodeLabel = (taxCode: string, taxRate: number) => {
+    const normalizedCode = taxCode.trim().toUpperCase();
+    const percentage = `${(taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}%`;
+    if (normalizedCode === 'GST_QST') return `GST + QST (${percentage})`;
+    if (normalizedCode === 'GST') return `GST (${percentage})`;
+    if (normalizedCode === 'QST') return `QST (${percentage})`;
+    if (normalizedCode === 'EXEMPT' || taxRate === 0) return 'Tax Exempt';
+    if (normalizedCode === 'ZERO') return 'Zero Rated';
+    if (normalizedCode === 'CUSTOM') return `Custom Tax (${percentage})`;
+    return `${normalizedCode} (${percentage})`;
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -260,17 +268,39 @@ export default function InvoiceApprovalsPage() {
 
     const totals = useMemo(() => {
         if (!selectedInvoice) {
-            return { subtotal: 0, gst: 0, qst: 0, tax: 0, total: 0 };
+            return { subtotal: 0, tax: 0, total: 0, taxBreakdown: [] as Array<{ key: string; label: string; amount: number }> };
         }
         const subtotal = editableServices.reduce(
             (acc, service) => acc + Math.max(0, service.quantity) * Math.max(0, service.price),
             0,
         );
-        const gst = subtotal * QUEBEC_GST_RATE;
-        const qst = subtotal * QUEBEC_QST_RATE;
-        const tax = subtotal * QUEBEC_TOTAL_TAX_RATE;
+        const taxBuckets = new Map<string, { label: string; amount: number }>();
+        const tax = editableServices.reduce((acc, service) => {
+            const lineSubtotal = Math.max(0, service.quantity) * Math.max(0, service.price);
+            const lineTax = lineSubtotal * Math.max(0, service.tax_rate);
+            const key = `${service.tax_code}:${service.tax_rate}`;
+            const existing = taxBuckets.get(key);
+            if (existing) {
+                existing.amount += lineTax;
+            } else {
+                taxBuckets.set(key, {
+                    label: formatTaxCodeLabel(service.tax_code, service.tax_rate),
+                    amount: lineTax,
+                });
+            }
+            return acc + lineTax;
+        }, 0);
         const total = subtotal + tax;
-        return { subtotal, gst, qst, tax, total };
+        return {
+            subtotal,
+            tax,
+            total,
+            taxBreakdown: Array.from(taxBuckets.entries()).map(([key, value]) => ({
+                key,
+                label: value.label,
+                amount: value.amount,
+            })),
+        };
     }, [editableServices, selectedInvoice]);
 
     const resetEditableServices = () => {
@@ -721,9 +751,21 @@ export default function InvoiceApprovalsPage() {
                                                 <DollarSign className="h-4 w-4 text-cyan-300" /> Billable Items
                                             </h3>
                                             <div className="flex flex-wrap items-center justify-end gap-2">
-                                                <Badge variant="outline" className="border-cyan-500/40 bg-cyan-500/10 text-cyan-200">
-                                                    GST 5% + QST 9.975%
-                                                </Badge>
+                                                {totals.taxBreakdown.length > 0 ? (
+                                                    totals.taxBreakdown.map((taxLine) => (
+                                                        <Badge
+                                                            key={taxLine.key}
+                                                            variant="outline"
+                                                            className="border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
+                                                        >
+                                                            {taxLine.label}
+                                                        </Badge>
+                                                    ))
+                                                ) : (
+                                                    <Badge variant="outline" className="border-slate-500/40 bg-slate-500/10 text-slate-300">
+                                                        Tax Exempt
+                                                    </Badge>
+                                                )}
                                                 {!isEditingInvoice ? (
                                                     <Button
                                                         variant="outline"
@@ -959,16 +1001,14 @@ export default function InvoiceApprovalsPage() {
                                                     <span>Subtotal</span>
                                                     <span className="font-mono">${totals.subtotal.toFixed(2)}</span>
                                                 </div>
+                                                {totals.taxBreakdown.map((taxLine) => (
+                                                    <div key={taxLine.key} className="flex justify-between text-sm text-slate-300">
+                                                        <span>{taxLine.label}</span>
+                                                        <span className="font-mono">${taxLine.amount.toFixed(2)}</span>
+                                                    </div>
+                                                ))}
                                                 <div className="flex justify-between text-sm text-slate-300">
-                                                    <span>GST (5%)</span>
-                                                    <span className="font-mono">${totals.gst.toFixed(2)}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm text-slate-300">
-                                                    <span>QST (9.975%)</span>
-                                                    <span className="font-mono">${totals.qst.toFixed(2)}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm text-slate-300">
-                                                    <span>Total Tax (14.975%)</span>
+                                                    <span>Total Tax</span>
                                                     <span className="font-mono">${totals.tax.toFixed(2)}</span>
                                                 </div>
                                                 <div className="flex justify-between border-t border-border/60 pt-2 text-lg font-bold text-slate-50">

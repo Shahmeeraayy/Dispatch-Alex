@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -18,10 +18,14 @@ import {
   RefreshCw,
   Bell,
   Eye,
-  UserCog
+  UserCog,
+  Link2,
+  AlertTriangle,
+  Clock3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchQuickBooksConnectionStatus, getStoredAdminToken, type BackendQuickBooksConnectionStatus } from '@/lib/backend-api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -156,6 +160,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState('Updated 2 min ago');
+  const [qbStatus, setQbStatus] = useState<BackendQuickBooksConnectionStatus | null>(null);
   const hideHeaderRefreshControls = location.pathname.startsWith('/admin');
 
   const headerTitle = (() => {
@@ -177,6 +182,71 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       }));
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadQuickBooksStatus = async () => {
+      const token = getStoredAdminToken();
+      if (!token) {
+        if (!cancelled) {
+          setQbStatus(null);
+        }
+        return;
+      }
+
+      try {
+        const status = await fetchQuickBooksConnectionStatus(token);
+        if (!cancelled) {
+          setQbStatus(status);
+        }
+      } catch {
+        if (!cancelled) {
+          setQbStatus({
+            connected: false,
+            provider: 'quickbooks',
+            refresh_error: 'Unable to reach QuickBooks status endpoint.',
+          });
+        }
+      }
+    };
+
+    void loadQuickBooksStatus();
+    const intervalId = window.setInterval(() => {
+      void loadQuickBooksStatus();
+    }, 30000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  const quickBooksBadge = (() => {
+    if (!qbStatus) {
+      return {
+        label: 'QB Status Unknown',
+        title: 'QuickBooks status has not loaded yet.',
+        className: 'border-slate-500/30 bg-slate-500/10 text-slate-300',
+        Icon: Clock3,
+      };
+    }
+    if (qbStatus.connected && !qbStatus.token_expired && !qbStatus.refresh_error) {
+      return {
+        label: `QB Connected${qbStatus.environment ? ` (${qbStatus.environment})` : ''}`,
+        title: qbStatus.realm_id ? `QuickBooks connected. Realm ID: ${qbStatus.realm_id}` : 'QuickBooks connected.',
+        className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+        Icon: Link2,
+      };
+    }
+    return {
+      label: 'QB Disconnected',
+      title: qbStatus.refresh_error || 'QuickBooks is not connected.',
+      className: 'border-red-500/30 bg-red-500/10 text-red-300',
+      Icon: AlertTriangle,
+    };
+  })();
+  const QuickBooksStatusIcon = quickBooksBadge.Icon;
 
   return (
     <div className="admin-shell min-h-screen bg-muted/40">
@@ -203,6 +273,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-3 sm:gap-6">
+              <div
+                className={cn(
+                  'hidden md:flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium',
+                  quickBooksBadge.className,
+                )}
+                title={quickBooksBadge.title}
+              >
+                <QuickBooksStatusIcon className="h-3.5 w-3.5" />
+                <span>{quickBooksBadge.label}</span>
+              </div>
+
               {!hideHeaderRefreshControls && (
                 <>
                   <span className="hidden sm:block text-xs font-medium text-muted-foreground bg-muted px-3 py-1.5 rounded-full">

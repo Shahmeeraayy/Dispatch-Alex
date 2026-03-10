@@ -525,6 +525,7 @@ class InvoiceService:
         *,
         job: Job,
         dealership: Dealership | None,
+        draft: object | None = None,
     ) -> tuple[list[str], list[InvoiceLineItemPayload]]:
         blockers: list[str] = []
 
@@ -545,10 +546,9 @@ class InvoiceService:
         if dealership is None or not str(dealership.qb_customer_id or "").strip():
             blockers.append("Missing QuickBooks customer link")
 
-        try:
-            dispatch_line_inputs = self._resolve_job_dispatch_line_inputs(job)
-        except HTTPException as exc:
-            blockers.append(exc.detail if isinstance(exc.detail, str) else "Invalid dispatch service lines")
+        dispatch_line_inputs = self._resolve_pending_approval_line_inputs(job, draft=draft)
+        if dispatch_line_inputs is None:
+            blockers.append("Invalid dispatch service lines")
             dispatch_line_inputs = []
 
         if not dispatch_line_inputs:
@@ -565,6 +565,48 @@ class InvoiceService:
                     blockers.append(f"Service '{line.product_service}' is missing QuickBooks item mapping")
 
         return list(dict.fromkeys(blockers)), dispatch_line_inputs
+
+    def _resolve_pending_approval_line_inputs(
+        self,
+        job: Job,
+        *,
+        draft: object | None = None,
+    ) -> list[InvoiceLineItemPayload] | None:
+        if (
+            draft is not None
+            and hasattr(draft, "line_items")
+            and isinstance(draft.line_items, list)
+            and len(draft.line_items) > 0
+        ):
+            dispatch_line_inputs: list[InvoiceLineItemPayload] = []
+            for line in draft.line_items:
+                if not isinstance(line, dict):
+                    continue
+                try:
+                    dispatch_line_inputs.append(
+                        InvoiceLineItemPayload(
+                            product_service=str(line.get("product_service") or "Dispatch Service"),
+                            qb_item_id=(str(line.get("qb_item_id")) if line.get("qb_item_id") else None),
+                            quantity=Decimal(str(line.get("quantity") or "0")),
+                            qty=Decimal(str(line.get("quantity") or "0")),
+                            rate=Decimal(str(line.get("rate") or "0")),
+                            tax_code=str(line.get("tax_code") or job.tax_code or "EXEMPT"),
+                            tax_rate=(
+                                Decimal(str(line.get("tax_rate")))
+                                if line.get("tax_rate") is not None
+                                else job.tax_rate
+                            ),
+                            job_id=job.id,
+                        )
+                    )
+                except Exception:
+                    continue
+            return dispatch_line_inputs
+
+        try:
+            return self._resolve_job_dispatch_line_inputs(job)
+        except HTTPException:
+            return None
 
     def _build_dispatch_line_items(
         self,
@@ -876,35 +918,9 @@ class InvoiceService:
                 continue
 
             draft = drafts_by_job_id.get(job.id)
-            if draft is not None and isinstance(draft.line_items, list) and len(draft.line_items) > 0:
-                dispatch_line_inputs: list[InvoiceLineItemPayload] = []
-                for line in draft.line_items:
-                    if not isinstance(line, dict):
-                        continue
-                    try:
-                        dispatch_line_inputs.append(
-                            InvoiceLineItemPayload(
-                                product_service=str(line.get("product_service") or "Dispatch Service"),
-                                qb_item_id=(str(line.get("qb_item_id")) if line.get("qb_item_id") else None),
-                                quantity=Decimal(str(line.get("quantity") or "0")),
-                                qty=Decimal(str(line.get("quantity") or "0")),
-                                rate=Decimal(str(line.get("rate") or "0")),
-                                tax_code=str(line.get("tax_code") or job.tax_code or "EXEMPT"),
-                                tax_rate=(
-                                    Decimal(str(line.get("tax_rate")))
-                                    if line.get("tax_rate") is not None
-                                    else job.tax_rate
-                                ),
-                                job_id=job.id,
-                            )
-                        )
-                    except Exception:
-                        continue
-            else:
-                try:
-                    dispatch_line_inputs = self._resolve_job_dispatch_line_inputs(job)
-                except HTTPException:
-                    continue
+            dispatch_line_inputs = self._resolve_pending_approval_line_inputs(job, draft=draft)
+            if dispatch_line_inputs is None:
+                continue
 
             if not dispatch_line_inputs:
                 continue
@@ -1041,10 +1057,13 @@ class InvoiceService:
 
     def list_pending_approval_issues(self) -> list[InvoicePendingApprovalIssueResponse]:
         rows = self.repo.list_pending_approval_jobs()
+        draft_rows = self.repo.list_pending_approval_drafts([job.id for job, _, _ in rows])
+        drafts_by_job_id = {row.job_id: row for row in draft_rows}
         payload: list[InvoicePendingApprovalIssueResponse] = []
 
         for job, dealership, technician in rows:
-            blockers, _ = self._collect_pending_approval_blockers(job=job, dealership=dealership)
+            draft = drafts_by_job_id.get(job.id)
+            blockers, effective_lines = self._collect_pending_approval_blockers(job=job, dealership=dealership, draft=draft)
             if not blockers:
                 continue
 
@@ -1054,7 +1073,9 @@ class InvoiceService:
                     job_code=job.job_code,
                     dealership_name=(dealership.name if dealership else (job.customer_name or "").strip()) or "Unknown Dealership",
                     technician_name=technician.name if technician else None,
-                    service_summary=job.service_type or "Dispatch Service",
+                    service_summary=", ".join(
+                        [line.product_service for line in effective_lines if line.product_service]
+                    ) or (job.service_type or "Dispatch Service"),
                     vehicle_summary=job.vehicle or "-",
                     completed_at=job.completed_at,
                     blocking_reasons=blockers,

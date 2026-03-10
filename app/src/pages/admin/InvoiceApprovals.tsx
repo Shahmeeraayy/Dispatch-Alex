@@ -224,6 +224,21 @@ export default function InvoiceApprovalsPage() {
             .sort((a, b) => a.localeCompare(b));
     }, [editableServices, serviceSuggestions]);
 
+    const missingQuickBooksItemMappings = useMemo(
+        () => editableServices
+            .map((service, index) => ({
+                id: service.id,
+                index,
+                name: service.name.trim() || `Line ${index + 1}`,
+            }))
+            .filter((service) => {
+                const original = editableServices.find((row) => row.id === service.id);
+                return !original?.qb_item_id || original.qb_item_id.trim().length === 0;
+            }),
+        [editableServices],
+    );
+    const hasQuickBooksMappingIssues = missingQuickBooksItemMappings.length > 0;
+
     const handleOpenDrawer = (invoice: PendingInvoice) => {
         const defaultEditableServices = invoice.services.map((service) => ({
             id: service.id,
@@ -288,7 +303,7 @@ export default function InvoiceApprovalsPage() {
 
             const resolved = resolveCatalogOption(rawValue);
             if (!resolved) {
-                return { ...service, name: rawValue };
+                return { ...service, name: rawValue, qb_item_id: null };
             }
             const shouldAutofillPrice = service.price <= 0 || service.id.startsWith('manual-');
             return {
@@ -391,6 +406,10 @@ export default function InvoiceApprovalsPage() {
         const hasInvalidLines = editableServices.some((service) => service.quantity <= 0 || service.price <= 0);
         if (hasInvalidLines) {
             alert('All service quantities and prices must be greater than 0.');
+            return;
+        }
+        if (hasQuickBooksMappingIssues) {
+            alert('QuickBooks item IDs are missing for one or more service lines. Fix the service mapping before approval.');
             return;
         }
 
@@ -730,6 +749,29 @@ export default function InvoiceApprovalsPage() {
                                                 )}
                                             </div>
                                         </div>
+                                        {hasQuickBooksMappingIssues && (
+                                            <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                                                <div className="flex items-start gap-2">
+                                                    <AlertTriangle className="mt-0.5 h-4 w-4 text-red-300" />
+                                                    <div className="space-y-2">
+                                                        <p className="text-sm font-semibold text-red-200">
+                                                            QuickBooks item ID is missing. This invoice cannot be sent to QuickBooks yet.
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {missingQuickBooksItemMappings.map((service) => (
+                                                                <Badge
+                                                                    key={service.id}
+                                                                    variant="outline"
+                                                                    className="border-red-500/30 bg-red-500/10 text-red-200"
+                                                                >
+                                                                    {service.name}
+                                                                </Badge>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="overflow-hidden rounded-xl border border-border/60 bg-slate-950/70">
                                             {isEditingInvoice && isMobile ? (
                                                 <div className="space-y-3 p-3">
@@ -773,6 +815,17 @@ export default function InvoiceApprovalsPage() {
                                                                 <span className="text-xs uppercase tracking-wide text-slate-400">Line Total</span>
                                                                 <span className="font-mono text-sm text-cyan-200">${(item.quantity * item.price).toFixed(2)}</span>
                                                             </div>
+                                                            <div className="mt-2">
+                                                                {item.qb_item_id ? (
+                                                                    <Badge variant="outline" className="border-cyan-500/30 bg-cyan-500/10 text-cyan-200">
+                                                                        QB Item ID: {item.qb_item_id}
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-red-200">
+                                                                        Missing QB Item ID
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
                                                             <div className="mt-2 flex justify-end">
                                                                 <Button
                                                                     variant="ghost"
@@ -813,7 +866,14 @@ export default function InvoiceApprovalsPage() {
                                                                             placeholder="Service name"
                                                                         />
                                                                     ) : (
-                                                                        <div>{item.name}</div>
+                                                                        <div className="space-y-1">
+                                                                            <div>{item.name}</div>
+                                                                            {item.qb_item_id ? (
+                                                                                <div className="text-xs text-cyan-300">QB Item ID: {item.qb_item_id}</div>
+                                                                            ) : (
+                                                                                <div className="text-xs text-red-300">Missing QB Item ID</div>
+                                                                            )}
+                                                                        </div>
                                                                     )}
                                                                 </TableCell>
                                                                 <TableCell className="align-middle py-3 text-center text-sm text-slate-200">
@@ -913,13 +973,16 @@ export default function InvoiceApprovalsPage() {
                             <div className="sticky bottom-0 z-20 border-t border-border/60 bg-slate-950/95 p-6 backdrop-blur">
                                 <div className="flex gap-3">
                                     <Button variant="outline" className="flex-1 border-border/70 bg-transparent text-slate-200 hover:bg-slate-900 hover:text-white" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-                                    <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button className="flex-[2] bg-[#2F8E92] hover:bg-[#267276] text-white shadow-sm font-semibold">
+                                        <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+                                            <DialogTrigger asChild>
+                                            <Button
+                                                className="flex-[2] bg-[#2F8E92] hover:bg-[#267276] text-white shadow-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                                                disabled={hasQuickBooksMappingIssues}
+                                            >
                                                 <CheckCircle2 className="w-4 h-4 mr-2" />
                                                 Approve & Generate
                                             </Button>
-                                        </DialogTrigger>
+                                            </DialogTrigger>
                                         <DialogContent className="border-border/60 bg-slate-950 text-foreground">
                                             <DialogHeader>
                                                 <DialogTitle className="flex items-center gap-2 text-foreground">

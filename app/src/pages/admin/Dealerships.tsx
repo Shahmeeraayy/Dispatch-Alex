@@ -79,6 +79,7 @@ interface JobSummary {
 interface Dealership {
     id: string;
     backend_id?: string;
+    qb_customer_id?: string;
     name: string;
     phone: string;
     email: string;
@@ -95,6 +96,7 @@ interface Dealership {
 const mapBackendDealership = (item: BackendDealership): Dealership => ({
     id: item.code,
     backend_id: item.id,
+    qb_customer_id: item.qb_customer_id ?? undefined,
     name: item.name,
     phone: formatPhoneForDisplay(item.phone ?? ''),
     email: item.email ?? '',
@@ -621,6 +623,7 @@ function StatusBadge({ status }: { status: 'active' | 'inactive' }) {
 
 const DEALERSHIP_EXPORT_COLUMNS = [
     'ID',
+    'QuickBooks ID',
     'Name',
     'Phone',
     'Email',
@@ -849,6 +852,7 @@ export default function DealershipsPage() {
 
     const getDealershipExportRows = () => dealerships.map(d => ({
             ID: d.id,
+            'QuickBooks ID': d.qb_customer_id || '',
             Name: d.name,
             Phone: formatPhoneForDisplay(d.phone),
             Email: d.email,
@@ -1031,6 +1035,7 @@ export default function DealershipsPage() {
                                     <TableCell className="pl-6">
                                         <div className="font-medium text-gray-900 group-hover:text-[#2F8E92]">{dealer.name}</div>
                                         <div className="text-xs text-gray-400 font-mono">ID: {dealer.id}</div>
+                                        <div className="text-xs text-gray-400 font-mono">QB: {dealer.qb_customer_id || '-'}</div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="text-sm text-gray-900">{formatPhoneForDisplay(dealer.phone)}</div>
@@ -1092,6 +1097,9 @@ export default function DealershipsPage() {
                                     </div>
                                     <div className="text-sm text-gray-500">
                                         {selectedDealership.city || 'No city/ville provided'}
+                                    </div>
+                                    <div className="text-xs text-gray-400 font-mono">
+                                        QuickBooks ID: {selectedDealership.qb_customer_id || '-'}
                                     </div>
                                     </div>
                                     <div className="flex items-center justify-start sm:justify-end">

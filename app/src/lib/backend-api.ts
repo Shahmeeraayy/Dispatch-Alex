@@ -126,6 +126,7 @@ export type BackendSignupRequest = {
 
 export type BackendDealership = {
   id: string;
+  qb_customer_id?: string | null;
   code: string;
   name: string;
   phone?: string | null;

@@ -533,6 +533,8 @@ class InvoiceService:
             blockers.append("Missing customer/dealership bill-to name")
         if not bill_to_street:
             blockers.append("Missing customer/dealership bill-to address")
+        if dealership is None or not str(dealership.qb_customer_id or "").strip():
+            blockers.append("Missing QuickBooks customer link")
 
         try:
             dispatch_line_inputs = self._resolve_job_dispatch_line_inputs(job)
@@ -550,6 +552,8 @@ class InvoiceService:
                     blockers.append(f"Service '{line.product_service}' has invalid quantity")
                 if rate <= ZERO:
                     blockers.append(f"Service '{line.product_service}' is missing price")
+                if not str(line.qb_item_id or "").strip():
+                    blockers.append(f"Service '{line.product_service}' is missing QuickBooks item mapping")
 
         return list(dict.fromkeys(blockers)), dispatch_line_inputs
 
@@ -859,6 +863,8 @@ class InvoiceService:
             bill_to_zip = job.customer_zip_code or (dealership.postal_code if dealership else None)
             if not bill_to_name or not bill_to_street:
                 continue
+            if dealership is None or not str(dealership.qb_customer_id or "").strip():
+                continue
 
             draft = drafts_by_job_id.get(job.id)
             if draft is not None and isinstance(draft.line_items, list) and len(draft.line_items) > 0:
@@ -888,6 +894,8 @@ class InvoiceService:
                     continue
 
             if not dispatch_line_inputs:
+                continue
+            if any(not str(line.qb_item_id or "").strip() for line in dispatch_line_inputs):
                 continue
 
             services: list[InvoicePendingApprovalServiceResponse] = []
@@ -921,7 +929,11 @@ class InvoiceService:
                     InvoicePendingApprovalServiceResponse(
                         id=service_id,
                         name=service_name,
-                        qb_item_id=service_catalog.qb_item_id if service_catalog is not None else None,
+                        qb_item_id=(
+                            str(line.qb_item_id)
+                            if draft is not None and line.qb_item_id is not None
+                            else (service_catalog.qb_item_id if service_catalog is not None else None)
+                        ),
                         quantity=quantity,
                         price=rate,
                         total=amount,

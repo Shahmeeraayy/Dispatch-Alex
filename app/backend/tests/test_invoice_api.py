@@ -22,6 +22,7 @@ from app.models.invoice_branding_settings import InvoiceBrandingSettings
 from app.models.job import Job
 from app.models.job_service import JobService
 from app.models.priority_rule import PriorityRule
+from app.models.service_catalog import ServiceCatalog
 from app.models.technician import Technician
 
 
@@ -51,6 +52,7 @@ class InvoiceApiTests(unittest.TestCase):
             db.query(Invoice).delete()
             db.query(InvoiceBrandingSettings).delete()
             db.query(PriorityRule).delete()
+            db.query(ServiceCatalog).delete()
             db.query(Job).delete()
             db.query(Technician).delete()
             db.query(Dealership).delete()
@@ -83,6 +85,7 @@ class InvoiceApiTests(unittest.TestCase):
         with SessionLocal() as db:
             row = Dealership(
                 id=uuid4(),
+                qb_customer_id="QB-CUST-900",
                 code="D-900",
                 name="Audi de Quebec",
                 phone="+1-418-555-2200",
@@ -96,6 +99,23 @@ class InvoiceApiTests(unittest.TestCase):
             db.commit()
             db.refresh(row)
             return row
+
+    def _seed_service_catalog(self, *, name: str, qb_item_id: str, code: str | None = None) -> None:
+        with SessionLocal() as db:
+            db.add(
+                ServiceCatalog(
+                    id=uuid4(),
+                    qb_item_id=qb_item_id,
+                    code=code or name.upper().replace(" ", "-"),
+                    name=name,
+                    category="General",
+                    qb_type="Service",
+                    default_price=Decimal("100.00"),
+                    approval_required=False,
+                    status="active",
+                )
+            )
+            db.commit()
 
     def _seed_technician(self) -> Technician:
         with SessionLocal() as db:
@@ -289,6 +309,7 @@ class InvoiceApiTests(unittest.TestCase):
     def test_pending_approvals_route_returns_completed_uninvoiced_jobs(self):
         dealership = self._seed_dealership()
         technician = self._seed_technician()
+        self._seed_service_catalog(name="Diagnostics", qb_item_id="QB-ITEM-DIAG-3001")
 
         with SessionLocal() as db:
             row = Job(
@@ -342,6 +363,7 @@ class InvoiceApiTests(unittest.TestCase):
     def test_pending_approval_estimate_matches_created_invoice_totals(self):
         dealership = self._seed_dealership()
         technician = self._seed_technician()
+        self._seed_service_catalog(name="Key Programming", qb_item_id="QB-ITEM-KEY")
 
         with SessionLocal() as db:
             row = Job(
@@ -395,6 +417,8 @@ class InvoiceApiTests(unittest.TestCase):
     def test_pending_approvals_and_invoice_creation_use_job_services(self):
         dealership = self._seed_dealership()
         technician = self._seed_technician()
+        self._seed_service_catalog(name="Remote Starter Installation", qb_item_id="QB-ITEM-RS")
+        self._seed_service_catalog(name="Window Tint", qb_item_id="QB-ITEM-WT")
 
         with SessionLocal() as db:
             row = Job(
@@ -510,10 +534,13 @@ class InvoiceApiTests(unittest.TestCase):
         self.assertIsNotNone(issue)
         self.assertTrue(any("address" in reason.lower() for reason in issue["blocking_reasons"]))
         self.assertTrue(any("missing price" in reason.lower() for reason in issue["blocking_reasons"]))
+        self.assertTrue(any("quickbooks customer" in reason.lower() for reason in issue["blocking_reasons"]))
+        self.assertTrue(any("quickbooks item mapping" in reason.lower() for reason in issue["blocking_reasons"]))
 
     def test_reports_pending_approvals_matches_invoice_pending_endpoint(self):
         dealership = self._seed_dealership()
         technician = self._seed_technician()
+        self._seed_service_catalog(name="Diagnostics", qb_item_id="QB-ITEM-DIAG")
 
         with SessionLocal() as db:
             valid_job = Job(
@@ -572,6 +599,45 @@ class InvoiceApiTests(unittest.TestCase):
         )
         self.assertIsNotNone(pending_row)
         self.assertEqual(pending_row["count"], 1)
+
+    def test_pending_approvals_exclude_jobs_missing_quickbooks_links(self):
+        dealership = self._seed_dealership()
+        technician = self._seed_technician()
+
+        with SessionLocal() as db:
+            dealership_row = db.query(Dealership).filter(Dealership.id == dealership.id).first()
+            assert dealership_row is not None
+            dealership_row.qb_customer_id = None
+
+            row = Job(
+                id=uuid4(),
+                job_code="SM2-2024-5100",
+                status="COMPLETED",
+                assigned_tech_id=technician.id,
+                dealership_id=dealership.id,
+                customer_name=dealership.name,
+                customer_address=dealership.address,
+                customer_city=dealership.city,
+                customer_state="QC",
+                customer_zip_code=dealership.postal_code,
+                service_type="Key Programming",
+                hours_worked=Decimal("1.00"),
+                rate=Decimal("100.00"),
+                tax_code="GST",
+                vehicle="2024 Audi Q6",
+            )
+            db.add(row)
+            db.commit()
+
+        pending_res = self.client.get("/invoices/pending-approvals", headers=self.auth_header)
+        self.assertEqual(pending_res.status_code, 200, pending_res.text)
+        self.assertIsNone(next((item for item in pending_res.json() if item["job_code"] == "SM2-2024-5100"), None))
+
+        issues_res = self.client.get("/invoices/pending-approval-issues", headers=self.auth_header)
+        self.assertEqual(issues_res.status_code, 200, issues_res.text)
+        issue = next((item for item in issues_res.json() if item["job_code"] == "SM2-2024-5100"), None)
+        self.assertIsNotNone(issue)
+        self.assertTrue(any("quickbooks customer" in reason.lower() for reason in issue["blocking_reasons"]))
 
     def test_invoice_branding_settings_endpoints_and_invoice_defaults(self):
         get_default_res = self.client.get(

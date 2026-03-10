@@ -113,6 +113,70 @@ const mapBackendServiceToUi = (row: BackendServiceCatalogItem): ServiceItem => (
     allowed_actions: ['edit', row.status === 'active' ? 'archive' : 'unarchive', 'duplicate'],
 });
 
+type BusinessCategoryFilter =
+    | 'all'
+    | 'ppf'
+    | 'window_tint'
+    | 'engine_immobilizers'
+    | 'remote_starters'
+    | 'vehicle_tracking_systems'
+    | 'windshield_repair'
+    | 'windshield_replacement';
+
+const normalizeFilterText = (value: string | undefined): string =>
+    (value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+const classifyBusinessCategory = (service: ServiceItem): BusinessCategoryFilter => {
+    const category = normalizeFilterText(service.category);
+    const name = normalizeFilterText(service.name);
+    const code = normalizeFilterText(service.code);
+    const description = normalizeFilterText(service.description);
+    const haystack = [category, name, code, description].join(' ');
+
+    if (haystack.includes('ppf')) return 'ppf';
+    if (haystack.includes('window tint') || haystack.includes('teintage') || haystack.includes('tint')) {
+        return 'window_tint';
+    }
+    if (
+        haystack.includes('immobilizer') ||
+        haystack.includes('anti-demarrage') ||
+        haystack.includes('antidemarrage')
+    ) {
+        return 'engine_immobilizers';
+    }
+    if (
+        haystack.includes('remote starter') ||
+        haystack.includes('demarreur') ||
+        haystack.includes('mycar')
+    ) {
+        return 'remote_starters';
+    }
+    if (
+        haystack.includes('tracking') ||
+        haystack.includes('reperage') ||
+        haystack.includes('geotrac') ||
+        haystack.includes('gps')
+    ) {
+        return 'vehicle_tracking_systems';
+    }
+    if (haystack.includes('windshield repair') || haystack.includes('reparation de pare-brise')) {
+        return 'windshield_repair';
+    }
+    if (haystack.includes('windshield replacement') || haystack.includes('remplacement de pare-brise')) {
+        return 'windshield_replacement';
+    }
+    return 'all';
+};
+
+const getEffectiveQuickBooksType = (service: ServiceItem): string => {
+    const raw = service.qb_type?.trim() || service.category.trim() || 'General';
+    return raw;
+};
+
 const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
 
 // --- Mock Data ---
@@ -220,7 +284,8 @@ export default function ServicesPage() {
     const [services, setServices] = useState<ServiceItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterCategory, setFilterCategory] = useState<string>('all');
+    const [filterQuickBooksType, setFilterQuickBooksType] = useState<string>('all');
+    const [filterCategory, setFilterCategory] = useState<BusinessCategoryFilter>('all');
     const [minPrice, setMinPrice] = useState<string>('');
     const [maxPrice, setMaxPrice] = useState<string>('');
     const [quickBooksOnly, setQuickBooksOnly] = useState(true);
@@ -304,7 +369,15 @@ export default function ServicesPage() {
     };
 
     // Filter Logic
-    const filteredServices = services.filter(s => {
+    const availableQuickBooksTypes = Array.from(
+        new Set(
+            services
+                .map((service) => getEffectiveQuickBooksType(service))
+                .filter((value) => value.length > 0),
+        ),
+    ).sort((a, b) => a.localeCompare(b));
+
+    const filteredServices = services.filter((s) => {
         if (quickBooksOnly && !s.qb_item_id) {
             return false;
         }
@@ -313,6 +386,9 @@ export default function ServicesPage() {
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (s.sku || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
             (s.qb_item_id || '').toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesQuickBooksType =
+            filterQuickBooksType === 'all' ||
+            getEffectiveQuickBooksType(s).toLowerCase() === filterQuickBooksType.toLowerCase();
         const normalizedCategory = s.category.trim().toLowerCase();
         const normalizedName = s.name.trim().toLowerCase();
         const normalizedCode = s.code.trim().toLowerCase();
@@ -365,7 +441,7 @@ export default function ServicesPage() {
         const matchesMin = min === null || (!Number.isNaN(min) && s.default_price >= min);
         const matchesMax = max === null || (!Number.isNaN(max) && s.default_price <= max);
 
-        return matchesSearch && matchesCategory && matchesMin && matchesMax;
+        return matchesSearch && matchesQuickBooksType && matchesCategory && matchesMin && matchesMax;
     });
 
     // Handlers
@@ -550,12 +626,26 @@ export default function ServicesPage() {
                         />
                     </div>
                     <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto">
-                        <Select value={filterCategory} onValueChange={setFilterCategory}>
+                        <Select value={filterQuickBooksType} onValueChange={setFilterQuickBooksType}>
                             <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Category" />
+                                <SelectValue placeholder="QuickBooks Type" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Categories</SelectItem>
+                                <SelectItem value="all">All QB Types</SelectItem>
+                                {availableQuickBooksTypes.map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                        {type}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={filterCategory} onValueChange={(value) => setFilterCategory(value as BusinessCategoryFilter)}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Business Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Business Categories</SelectItem>
                                 <SelectItem value="ppf">PPF</SelectItem>
                                 <SelectItem value="window_tint">Window Tint</SelectItem>
                                 <SelectItem value="engine_immobilizers">Engine immobilizers</SelectItem>
@@ -624,7 +714,7 @@ export default function ServicesPage() {
                         </div>
                         <h3 className="text-lg font-semibold text-foreground">No services found</h3>
                         <p className="text-sm mt-1">Try adjusting your filters or search query.</p>
-                        <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterCategory('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</Button>
+                        <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterQuickBooksType('all'); setFilterCategory('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</Button>
                     </div>
                 ) : (
                     <Table>

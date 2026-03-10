@@ -288,7 +288,6 @@ export default function ServicesPage() {
     const [filterCategory, setFilterCategory] = useState<BusinessCategoryFilter>('all');
     const [minPrice, setMinPrice] = useState<string>('');
     const [maxPrice, setMaxPrice] = useState<string>('');
-    const [quickBooksOnly, setQuickBooksOnly] = useState(true);
 
     // Drawers & Modals
     const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
@@ -378,7 +377,7 @@ export default function ServicesPage() {
     ).sort((a, b) => a.localeCompare(b));
 
     const filteredServices = services.filter((s) => {
-        if (quickBooksOnly && !s.qb_item_id) {
+        if (!s.qb_item_id) {
             return false;
         }
         const matchesSearch =
@@ -655,14 +654,6 @@ export default function ServicesPage() {
                                 <SelectItem value="windshield_replacement">Windshield replacement</SelectItem>
                             </SelectContent>
                         </Select>
-
-                        <Button
-                            variant={quickBooksOnly ? 'default' : 'outline'}
-                            className="w-[180px] justify-start"
-                            onClick={() => setQuickBooksOnly((prev) => !prev)}
-                        >
-                            {quickBooksOnly ? 'QuickBooks Only: On' : 'QuickBooks Only: Off'}
-                        </Button>
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

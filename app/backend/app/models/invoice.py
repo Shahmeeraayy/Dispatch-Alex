@@ -60,6 +60,10 @@ class Invoice(Base):
     customer_message = Column(Text, nullable=True)
     approval_note = Column(Text, nullable=True)
     status = Column(String(16), nullable=False, server_default=text("'draft'"))
+    qb_invoice_id = Column(String(64), nullable=True, unique=True)
+    qb_customer_id = Column(String(64), nullable=True)
+    qb_sync_status = Column(String(16), nullable=False, server_default=text("'pending'"))
+    qb_sync_error = Column(Text, nullable=True)
     payment_recorded_at = Column(DateTime(timezone=True), nullable=True)
     voided_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -81,6 +85,7 @@ class Invoice(Base):
         CheckConstraint("shipping >= 0", name="invoices_shipping_non_negative_chk"),
         CheckConstraint("total >= 0", name="invoices_total_non_negative_chk"),
         CheckConstraint("custom_term_days IS NULL OR custom_term_days >= 0", name="invoices_custom_term_days_chk"),
+        CheckConstraint("qb_sync_status IN ('pending','synced','failed')", name="invoices_qb_sync_status_chk"),
     )
 
 

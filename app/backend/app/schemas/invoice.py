@@ -350,6 +350,10 @@ class InvoicePendingApprovalIssueResponse(BaseModel):
 class InvoiceResponse(BaseModel):
     id: UUID
     invoice_number: str
+    qb_invoice_id: Optional[str] = None
+    qb_customer_id: Optional[str] = None
+    qb_sync_status: Optional[str] = None
+    qb_sync_error: Optional[str] = None
     job_code: Optional[str] = None
     dealership_name: Optional[str] = None
     technician_name: Optional[str] = None

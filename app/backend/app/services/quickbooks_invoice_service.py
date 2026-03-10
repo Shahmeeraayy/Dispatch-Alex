@@ -1,0 +1,147 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Any
+from uuid import UUID
+
+import requests
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session, selectinload
+
+from ..core.config import QB_ENV
+from ..models.invoice import Invoice
+from ..services.quickbooks_connection_service import QuickBooksConnectionService
+
+
+@dataclass(frozen=True)
+class QuickBooksInvoiceSyncResult:
+    qb_invoice_id: str
+    payload: dict[str, Any]
+    provider_response: dict[str, Any]
+
+
+class QuickBooksInvoiceService:
+    def __init__(self, db: Session):
+        self.db = db
+        self.connection_service = QuickBooksConnectionService(db)
+
+    def sync_invoice(self, invoice_id: UUID) -> QuickBooksInvoiceSyncResult:
+        invoice = (
+            self.db.query(Invoice)
+            .options(selectinload(Invoice.line_items))
+            .filter(Invoice.id == invoice_id)
+            .first()
+        )
+        if invoice is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
+        return self.sync_invoice_row(invoice)
+
+    def sync_invoice_row(self, invoice: Invoice) -> QuickBooksInvoiceSyncResult:
+        connection = self.connection_service.get_active_connection_or_raise(refresh_if_needed=True)
+        payload = self.build_payload(invoice)
+        response_payload = self._post_invoice(
+            realm_id=connection.realm_id,
+            access_token=connection.access_token,
+            payload=payload,
+        )
+
+        invoice_payload = response_payload.get("Invoice") if isinstance(response_payload, dict) else None
+        qb_invoice_id = str((invoice_payload or {}).get("Id") or "").strip()
+        if not qb_invoice_id:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="QuickBooks invoice response did not include an invoice Id.",
+            )
+
+        return QuickBooksInvoiceSyncResult(
+            qb_invoice_id=qb_invoice_id,
+            payload=payload,
+            provider_response=response_payload,
+        )
+
+    def build_payload(self, invoice: Invoice) -> dict[str, Any]:
+        qb_customer_id = str(invoice.qb_customer_id or "").strip()
+        if not qb_customer_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invoice is missing qb_customer_id and cannot be synced to QuickBooks.",
+            )
+        if not invoice.line_items:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invoice has no line items to sync to QuickBooks.",
+            )
+
+        lines: list[dict[str, Any]] = []
+        for item in invoice.line_items:
+            qb_item_id = str(item.qb_item_id or "").strip()
+            if not qb_item_id:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invoice line '{item.product_service}' is missing qb_item_id.",
+                )
+
+            quantity = Decimal(str(item.quantity))
+            rate = Decimal(str(item.rate))
+            amount = Decimal(str(item.amount))
+            lines.append(
+                {
+                    "Amount": float(amount),
+                    "Description": item.description or item.product_service,
+                    "DetailType": "SalesItemLineDetail",
+                    "SalesItemLineDetail": {
+                        "ItemRef": {"value": qb_item_id},
+                        "Qty": float(quantity),
+                        "UnitPrice": float(rate),
+                    },
+                }
+            )
+
+        payload: dict[str, Any] = {
+            "DocNumber": invoice.invoice_number,
+            "TxnDate": invoice.invoice_date.isoformat(),
+            "DueDate": invoice.due_date.isoformat(),
+            "CustomerRef": {"value": qb_customer_id},
+            "Line": lines,
+        }
+        if invoice.customer_message:
+            payload["CustomerMemo"] = {"value": invoice.customer_message}
+        return payload
+
+    def _post_invoice(self, *, realm_id: str, access_token: str, payload: dict[str, Any]) -> dict[str, Any]:
+        response = requests.post(
+            f"{self._company_api_base()}/company/{realm_id}/invoice",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            params={"minorversion": 75},
+            json=payload,
+            timeout=30,
+        )
+        try:
+            response_payload = response.json()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="QuickBooks invoice response was not valid JSON.",
+            ) from exc
+
+        if not response.ok:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "message": "QuickBooks invoice creation failed.",
+                    "provider_status": response.status_code,
+                    "provider_response": response_payload,
+                },
+            )
+        return response_payload
+
+    @staticmethod
+    def _company_api_base() -> str:
+        if QB_ENV == "production":
+            return "https://quickbooks.api.intuit.com/v3"
+        return "https://sandbox-quickbooks.api.intuit.com/v3"

@@ -59,6 +59,14 @@ def ensure_runtime_schema() -> None:
         invoice_columns = {column["name"] for column in inspect(conn).get_columns("invoices")}
         if invoice_columns and "approval_note" not in invoice_columns:
             conn.exec_driver_sql("ALTER TABLE invoices ADD COLUMN approval_note TEXT")
+        if invoice_columns and "qb_invoice_id" not in invoice_columns:
+            conn.exec_driver_sql("ALTER TABLE invoices ADD COLUMN qb_invoice_id VARCHAR(64)")
+        if invoice_columns and "qb_customer_id" not in invoice_columns:
+            conn.exec_driver_sql("ALTER TABLE invoices ADD COLUMN qb_customer_id VARCHAR(64)")
+        if invoice_columns and "qb_sync_status" not in invoice_columns:
+            conn.exec_driver_sql("ALTER TABLE invoices ADD COLUMN qb_sync_status VARCHAR(16) DEFAULT 'pending' NOT NULL")
+        if invoice_columns and "qb_sync_error" not in invoice_columns:
+            conn.exec_driver_sql("ALTER TABLE invoices ADD COLUMN qb_sync_error TEXT")
 
         invoice_line_item_columns = {column["name"] for column in inspect(conn).get_columns("invoice_line_items")}
         if invoice_line_item_columns and "qb_item_id" not in invoice_line_item_columns:
@@ -171,6 +179,7 @@ app.include_router(technician_profile.router)
 app.include_router(technician_time_off.router)
 app.include_router(auth.router)
 app.include_router(invoices.router)
+app.include_router(invoices.quickbooks_router)
 app.include_router(integrations_make_jobs.router)
 app.include_router(integrations_quickbooks_oauth.router)
 app.include_router(integrations_quickbooks_webhooks.router)

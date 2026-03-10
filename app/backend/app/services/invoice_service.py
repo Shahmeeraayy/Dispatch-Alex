@@ -41,6 +41,7 @@ from .invoice_branding_settings_service import (
     get_default_invoice_branding_payload,
 )
 from .job_services_service import JobServicesService
+from .quickbooks_invoice_service import QuickBooksInvoiceService
 
 
 CENTS = Decimal("0.01")
@@ -312,6 +313,10 @@ class InvoiceService:
             {
                 "id": invoice.id,
                 "invoice_number": invoice.invoice_number,
+                "qb_invoice_id": invoice.qb_invoice_id,
+                "qb_customer_id": invoice.qb_customer_id,
+                "qb_sync_status": invoice.qb_sync_status,
+                "qb_sync_error": invoice.qb_sync_error,
                 "job_code": first_job_code,
                 "dealership_name": dealership_name,
                 "technician_name": technician_name,
@@ -636,6 +641,63 @@ class InvoiceService:
             linked_job_ids.append(job.id)
 
         return line_items, billing_payload or InvoiceBillingPayload(), linked_job_ids
+
+    def _resolve_invoice_qb_customer_id(
+        self,
+        *,
+        dispatch_job_ids: list[UUID],
+        billing: InvoiceBillingPayload,
+    ) -> Optional[str]:
+        if dispatch_job_ids:
+            jobs = self.repo.get_jobs_by_ids(dispatch_job_ids)
+            dealership_qb_ids = {
+                str(dealership.qb_customer_id).strip()
+                for job in jobs
+                for dealership in [self.repo.get_dealership_by_id(job.dealership_id) if job.dealership_id else None]
+                if dealership is not None and str(dealership.qb_customer_id or "").strip()
+            }
+            if len(dealership_qb_ids) == 1:
+                return next(iter(dealership_qb_ids))
+            if len(dealership_qb_ids) > 1:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Merged dispatch jobs resolve to multiple QuickBooks customers.",
+                )
+
+        bill_to_name = (billing.bill_to_name or "").strip()
+        if not bill_to_name:
+            return None
+
+        dealership = (
+            self.db.query(Dealership)
+            .filter(Dealership.name.ilike(bill_to_name))
+            .first()
+        )
+        if dealership is None:
+            return None
+        return str(dealership.qb_customer_id or "").strip() or None
+
+    def _sync_invoice_to_quickbooks_non_blocking(self, invoice_id: UUID) -> Invoice:
+        invoice = self._require_invoice(invoice_id)
+        if str(invoice.qb_invoice_id or "").strip() and invoice.qb_sync_status == "synced":
+            return invoice
+        try:
+            result = QuickBooksInvoiceService(self.db).sync_invoice_row(invoice)
+            invoice.qb_invoice_id = result.qb_invoice_id
+            invoice.qb_sync_status = "synced"
+            invoice.qb_sync_error = None
+        except HTTPException as exc:
+            detail = exc.detail
+            invoice.qb_sync_status = "failed"
+            invoice.qb_sync_error = detail if isinstance(detail, str) else str(detail)
+        except Exception as exc:
+            invoice.qb_sync_status = "failed"
+            invoice.qb_sync_error = str(exc)
+
+        self.repo.update(invoice)
+        self.db.commit()
+        self.db.refresh(invoice)
+        return invoice
 
     def _resolve_company_payload(
         self,
@@ -980,6 +1042,10 @@ class InvoiceService:
             self.db.refresh(row)
         return self._to_response(row)
 
+    def sync_invoice_to_quickbooks(self, invoice_id: UUID) -> InvoiceResponse:
+        row = self._sync_invoice_to_quickbooks_non_blocking(invoice_id)
+        return self._to_response(row)
+
     def create_invoice(self, payload: InvoiceCreateRequest) -> InvoiceResponse:
         dispatch_lines, dispatch_billing, dispatch_job_ids = self._build_dispatch_line_items(payload.dispatch_job_ids)
         company = self._resolve_company_payload(payload.company, payload.company_info)
@@ -1020,6 +1086,11 @@ class InvoiceService:
             customer_message=payload.customer_message,
             approval_note=payload.approval_note,
             status=resolved_status.value,
+            qb_customer_id=self._resolve_invoice_qb_customer_id(
+                dispatch_job_ids=payload.dispatch_job_ids,
+                billing=billing,
+            ),
+            qb_sync_status="pending",
             payment_recorded_at=payload.payment_recorded_at,
         )
 
@@ -1071,6 +1142,7 @@ class InvoiceService:
         )
         self.db.commit()
         self.db.refresh(created)
+        created = self._sync_invoice_to_quickbooks_non_blocking(created.id)
         return self._to_response(created)
 
     def update_invoice(self, invoice_id: UUID, payload: InvoiceUpdateRequest) -> InvoiceResponse:

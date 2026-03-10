@@ -19,6 +19,7 @@ from ...schemas.invoice import (
 from ...services.invoice_service import InvoiceService
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
+quickbooks_router = APIRouter(prefix="/quickbooks/invoices", tags=["quickbooks-invoices"])
 
 
 @router.get("", response_model=List[InvoiceResponse])
@@ -103,3 +104,12 @@ def mark_invoice_paid(
         invoice_id,
         payment_recorded_at=payload.payment_recorded_at,
     )
+
+
+@quickbooks_router.post("/{invoice_id}", response_model=InvoiceResponse)
+def sync_invoice_to_quickbooks(
+    invoice_id: UUID,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    return InvoiceService(db, current_user).sync_invoice_to_quickbooks(invoice_id)

@@ -1,0 +1,252 @@
+import os
+import unittest
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from unittest.mock import Mock, patch
+from uuid import uuid4
+
+from fastapi.testclient import TestClient
+
+_TEST_DB_FILE = os.path.join(os.path.dirname(__file__), "quickbooks_invoice_test.sqlite3")
+if os.path.exists(_TEST_DB_FILE):
+    os.remove(_TEST_DB_FILE)
+
+os.environ["APP_ENV"] = "development"
+os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_FILE.replace(os.sep, '/')}"
+os.environ["QB_CLIENT_ID"] = "qb-client-id"
+os.environ["QB_CLIENT_SECRET"] = "qb-client-secret"
+os.environ["QB_REDIRECT_URI"] = "http://localhost:8000/integrations/quickbooks/callback"
+os.environ["QB_ENV"] = "sandbox"
+
+from app.api.deps import SessionLocal, engine
+from app.main import app
+from app.models.base import Base
+from app.models.dealership import Dealership
+from app.models.invoice import Invoice, InvoiceLineItem
+from app.models.job import Job
+from app.models.job_service import JobService
+from app.models.priority_rule import PriorityRule
+from app.models.quickbooks_connection import QuickBooksConnection
+from app.models.service_catalog import ServiceCatalog
+from app.models.technician import Technician
+
+
+class QuickBooksInvoiceApiTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        Base.metadata.create_all(bind=engine)
+        cls.client = TestClient(app)
+        token_response = cls.client.post(
+            "/auth/dev/admin-token",
+            json={"email": "admin@sm2dispatch.com", "password": "admin123"},
+        )
+        assert token_response.status_code == 200
+        cls.auth_header = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+
+    @classmethod
+    def tearDownClass(cls):
+        engine.dispose()
+        if os.path.exists(_TEST_DB_FILE):
+            os.remove(_TEST_DB_FILE)
+
+    def setUp(self):
+        with SessionLocal() as db:
+            db.query(InvoiceLineItem).delete()
+            db.query(JobService).delete()
+            db.query(Job).update({"invoice_id": None}, synchronize_session=False)
+            db.query(Invoice).delete()
+            db.query(ServiceCatalog).delete()
+            db.query(QuickBooksConnection).delete()
+            db.query(PriorityRule).delete()
+            db.query(Job).delete()
+            db.query(Technician).delete()
+            db.query(Dealership).delete()
+            db.commit()
+
+    def _seed_qb_connection(self) -> None:
+        with SessionLocal() as db:
+            db.add(
+                QuickBooksConnection(
+                    realm_id="9341456520395836",
+                    access_token="access-token",
+                    refresh_token="refresh-token",
+                    token_type="bearer",
+                    scope="com.intuit.quickbooks.accounting",
+                    expires_at=datetime.now(UTC) + timedelta(hours=1),
+                    refresh_expires_at=datetime.now(UTC) + timedelta(days=30),
+                    environment="sandbox",
+                    is_active=True,
+                )
+            )
+            db.commit()
+
+    def _seed_dealership(self) -> Dealership:
+        with SessionLocal() as db:
+            row = Dealership(
+                id=uuid4(),
+                qb_customer_id="QB-CUST-100",
+                code="D-900",
+                name="Audi Levis",
+                phone="+1-418-555-2200",
+                email="service@audilevis.example",
+                address="6000 rue des Moissons",
+                city="Levis",
+                postal_code="G6Y 0Z6",
+                status="active",
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+            return row
+
+    def _seed_job_with_service_catalog(self, dealership: Dealership) -> str:
+        with SessionLocal() as db:
+            service_catalog = ServiceCatalog(
+                id=uuid4(),
+                qb_item_id="QB-ITEM-200",
+                code="PPF-001",
+                name="PPF ailes complètes (2)",
+                category="PPF",
+                qb_type="Service",
+                default_price=Decimal("400.00"),
+                approval_required=False,
+                status="active",
+            )
+            db.add(service_catalog)
+            db.flush()
+
+            job = Job(
+                id=uuid4(),
+                job_code="SM2-20231124-1234",
+                status="COMPLETED",
+                dealership_id=dealership.id,
+                customer_name=dealership.name,
+                customer_address=dealership.address,
+                customer_city=dealership.city,
+                customer_state="QC",
+                customer_zip_code=dealership.postal_code,
+                service_type=service_catalog.name,
+                vehicle="audi a3 2026",
+                location="Levis",
+                tax_code="GST_QST",
+            )
+            db.add(job)
+            db.flush()
+
+            db.add(
+                JobService(
+                    job_id=job.id,
+                    service_catalog_id=service_catalog.id,
+                    service_name_snapshot=service_catalog.name,
+                    source="dealership",
+                    quantity=Decimal("1.00"),
+                    unit_price=Decimal("400.00"),
+                    sort_order=0,
+                )
+            )
+            db.commit()
+            return str(job.id)
+
+    def test_create_invoice_syncs_to_quickbooks_and_stores_ids(self):
+        self._seed_qb_connection()
+        dealership = self._seed_dealership()
+        job_id = self._seed_job_with_service_catalog(dealership)
+
+        mocked_response = Mock()
+        mocked_response.ok = True
+        mocked_response.json.return_value = {
+            "Invoice": {
+                "Id": "QB-INV-500",
+                "CustomerRef": {"value": "QB-CUST-100"},
+            }
+        }
+
+        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=mocked_response):
+            create_res = self.client.post(
+                "/invoices",
+                json={
+                    "dispatch_job_ids": [job_id],
+                    "terms": "NET_15",
+                    "shipping": "0.00",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        created = create_res.json()
+        self.assertEqual(created["qb_invoice_id"], "QB-INV-500")
+        self.assertEqual(created["qb_customer_id"], "QB-CUST-100")
+        self.assertEqual(created["qb_sync_status"], "synced")
+        self.assertIsNone(created["qb_sync_error"])
+        self.assertEqual(created["line_items"][0]["qb_item_id"], "QB-ITEM-200")
+
+    def test_create_invoice_keeps_local_record_when_quickbooks_sync_fails(self):
+        self._seed_qb_connection()
+        dealership = self._seed_dealership()
+        job_id = self._seed_job_with_service_catalog(dealership)
+
+        mocked_response = Mock()
+        mocked_response.ok = False
+        mocked_response.status_code = 400
+        mocked_response.json.return_value = {"Fault": {"Error": [{"Message": "Bad request"}]}}
+
+        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=mocked_response):
+            create_res = self.client.post(
+                "/invoices",
+                json={
+                    "dispatch_job_ids": [job_id],
+                    "terms": "NET_15",
+                    "shipping": "0.00",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        created = create_res.json()
+        self.assertIsNone(created["qb_invoice_id"])
+        self.assertEqual(created["qb_customer_id"], "QB-CUST-100")
+        self.assertEqual(created["qb_sync_status"], "failed")
+        self.assertIsNotNone(created["qb_sync_error"])
+
+    def test_manual_quickbooks_invoice_sync_endpoint_retries_failed_invoice(self):
+        self._seed_qb_connection()
+        dealership = self._seed_dealership()
+        job_id = self._seed_job_with_service_catalog(dealership)
+
+        failing_response = Mock()
+        failing_response.ok = False
+        failing_response.status_code = 400
+        failing_response.json.return_value = {"Fault": {"Error": [{"Message": "Bad request"}]}}
+
+        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=failing_response):
+            create_res = self.client.post(
+                "/invoices",
+                json={
+                    "dispatch_job_ids": [job_id],
+                    "terms": "NET_15",
+                    "shipping": "0.00",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        invoice_id = create_res.json()["id"]
+
+        success_response = Mock()
+        success_response.ok = True
+        success_response.json.return_value = {"Invoice": {"Id": "QB-INV-777"}}
+
+        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=success_response):
+            sync_res = self.client.post(f"/quickbooks/invoices/{invoice_id}", headers=self.auth_header)
+
+        self.assertEqual(sync_res.status_code, 200, sync_res.text)
+        synced = sync_res.json()
+        self.assertEqual(synced["qb_invoice_id"], "QB-INV-777")
+        self.assertEqual(synced["qb_sync_status"], "synced")
+        self.assertIsNone(synced["qb_sync_error"])
+
+
+if __name__ == "__main__":
+    unittest.main()

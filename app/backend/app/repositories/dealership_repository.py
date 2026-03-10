@@ -41,6 +41,7 @@ class DealershipRepository:
     def create_dealership(
         self,
         *,
+        qb_customer_id: Optional[str] = None,
         code: str,
         name: str,
         phone: Optional[str],
@@ -52,6 +53,7 @@ class DealershipRepository:
         notes: Optional[str],
     ) -> Dealership:
         row = Dealership(
+            qb_customer_id=qb_customer_id,
             code=code,
             name=name,
             phone=phone,

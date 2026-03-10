@@ -14,6 +14,7 @@ from ...core.config import (
     QUICKBOOKS_WEBHOOK_PRODUCTION_VERIFIER_TOKEN,
     QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN,
 )
+from ...services.quickbooks_customer_sync_service import QuickBooksCustomerSyncService
 from ...services.quickbooks_item_sync_service import QuickBooksItemSyncService
 
 logger = logging.getLogger(__name__)
@@ -50,14 +51,15 @@ def _validate_intuit_signature(payload: bytes, signature: str) -> bool:
     return False
 
 
-def _extract_item_change_events(payload: Any) -> list[dict[str, Any]]:
+def _extract_entity_change_events(payload: Any, entity_name: str) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
+    normalized_entity_name = entity_name.strip().lower()
 
     if isinstance(payload, list):
         for item in payload:
             if isinstance(item, dict):
                 event_type = str(item.get("type") or "").lower()
-                if "item" in event_type:
+                if normalized_entity_name in event_type:
                     events.append(item)
         return events
 
@@ -80,7 +82,7 @@ def _extract_item_change_events(payload: Any) -> list[dict[str, Any]]:
         for entity in entities:
             if not isinstance(entity, dict):
                 continue
-            if str(entity.get("name") or "").strip().lower() == "item":
+            if str(entity.get("name") or "").strip().lower() == normalized_entity_name:
                 events.append(entity)
 
     return events
@@ -125,25 +127,38 @@ async def receive_quickbooks_webhook(
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=400, detail="Invalid QuickBooks webhook JSON payload.") from exc
 
-    item_events = _extract_item_change_events(parsed)
-    event_count = len(parsed) if isinstance(parsed, list) else len(item_events) if item_events else 1
+    item_events = _extract_entity_change_events(parsed, "item")
+    customer_events = _extract_entity_change_events(parsed, "customer")
+    event_count = len(parsed) if isinstance(parsed, list) else max(len(item_events) + len(customer_events), 1)
 
     synced = False
-    sync_result: dict[str, int] | None = None
+    sync_result: dict[str, dict[str, int]] | None = None
     if item_events:
         result = QuickBooksItemSyncService(db).sync_items()
         synced = True
-        sync_result = {
+        sync_result = sync_result or {}
+        sync_result["items"] = {
             "synced_count": result.synced_count,
             "created_count": result.created_count,
             "updated_count": result.updated_count,
             "archived_count": result.archived_count,
         }
+    if customer_events:
+        result = QuickBooksCustomerSyncService(db).sync_customers()
+        synced = True
+        sync_result = sync_result or {}
+        sync_result["customers"] = {
+            "synced_count": result.synced_count,
+            "created_count": result.created_count,
+            "updated_count": result.updated_count,
+            "inactive_count": result.inactive_count,
+        }
 
     logger.info(
-        "Accepted QuickBooks webhook notification with %s event(s); item_event_count=%s; synced=%s.",
+        "Accepted QuickBooks webhook notification with %s event(s); item_event_count=%s; customer_event_count=%s; synced=%s.",
         event_count,
         len(item_events),
+        len(customer_events),
         synced,
     )
 
@@ -151,6 +166,7 @@ async def receive_quickbooks_webhook(
         "status": "accepted",
         "event_count": event_count,
         "item_event_count": len(item_events),
+        "customer_event_count": len(customer_events),
         "synced": synced,
         "sync_result": sync_result,
     }

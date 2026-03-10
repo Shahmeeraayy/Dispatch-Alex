@@ -32,6 +32,7 @@ class DealershipAdminService:
     def _to_response(self, row) -> DealershipResponse:
         return DealershipResponse(
             id=row.id,
+            qb_customer_id=row.qb_customer_id,
             code=row.code,
             name=row.name,
             phone=row.phone,
@@ -63,6 +64,7 @@ class DealershipAdminService:
             code = explicit_code or self.repo.generate_next_code()
             try:
                 row = self.repo.create_dealership(
+                    qb_customer_id=None,
                     code=code,
                     name=payload.name,
                     phone=payload.phone,

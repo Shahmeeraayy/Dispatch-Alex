@@ -30,6 +30,7 @@ from .models.job import Job
 from .models.base import Base
 from .services.job_services_service import JobServicesService
 from .services.quickbooks_connection_service import QuickBooksConnectionService
+from .services.quickbooks_customer_sync_service import QuickBooksCustomerSyncService
 from .services.quickbooks_item_sync_service import QuickBooksItemSyncService
 
 
@@ -78,6 +79,9 @@ def ensure_runtime_schema() -> None:
             conn.exec_driver_sql("ALTER TABLE service_catalog ADD COLUMN description TEXT")
         if service_catalog_columns and "qb_type" not in service_catalog_columns:
             conn.exec_driver_sql("ALTER TABLE service_catalog ADD COLUMN qb_type VARCHAR(64)")
+        dealership_columns = {column["name"] for column in inspect(conn).get_columns("dealerships")}
+        if dealership_columns and "qb_customer_id" not in dealership_columns:
+            conn.exec_driver_sql("ALTER TABLE dealerships ADD COLUMN qb_customer_id VARCHAR(64)")
     with deps.SessionLocal() as session:
         service = JobServicesService(session)
         changed = False
@@ -86,7 +90,7 @@ def ensure_runtime_schema() -> None:
         if changed:
             session.commit()
 
-    _sync_quickbooks_items_once()
+    _sync_quickbooks_once()
     _start_quickbooks_sync_worker()
 
 
@@ -101,27 +105,32 @@ def stop_quickbooks_sync_worker() -> None:
     _quickbooks_sync_thread = None
 
 
-def _sync_quickbooks_items_once() -> None:
+def _sync_quickbooks_once() -> None:
     try:
         with deps.SessionLocal() as db:
             connection_status = QuickBooksConnectionService(db).get_status()
             if not bool(connection_status.get("connected")):
                 return
-            result = QuickBooksItemSyncService(db).sync_items()
+            item_result = QuickBooksItemSyncService(db).sync_items()
+            customer_result = QuickBooksCustomerSyncService(db).sync_customers()
             logger.info(
-                "QuickBooks item auto-sync completed: synced=%s created=%s updated=%s archived=%s",
-                result.synced_count,
-                result.created_count,
-                result.updated_count,
-                result.archived_count,
+                "QuickBooks auto-sync completed: items synced=%s created=%s updated=%s archived=%s; customers synced=%s created=%s updated=%s inactive=%s",
+                item_result.synced_count,
+                item_result.created_count,
+                item_result.updated_count,
+                item_result.archived_count,
+                customer_result.synced_count,
+                customer_result.created_count,
+                customer_result.updated_count,
+                customer_result.inactive_count,
             )
     except Exception:
-        logger.exception("QuickBooks item auto-sync failed.")
+        logger.exception("QuickBooks auto-sync failed.")
 
 
 def _quickbooks_sync_worker(stop_event: Event, interval_seconds: int) -> None:
     while not stop_event.wait(interval_seconds):
-        _sync_quickbooks_items_once()
+        _sync_quickbooks_once()
 
 
 def _start_quickbooks_sync_worker() -> None:

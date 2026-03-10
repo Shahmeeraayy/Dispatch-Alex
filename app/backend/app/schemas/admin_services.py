@@ -51,3 +51,10 @@ class AdminQuickBooksSyncResponse(BaseModel):
     created_count: int
     updated_count: int
     archived_count: int
+
+
+class AdminQuickBooksCustomerSyncResponse(BaseModel):
+    synced_count: int
+    created_count: int
+    updated_count: int
+    inactive_count: int

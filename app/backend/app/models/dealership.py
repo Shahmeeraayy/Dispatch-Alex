@@ -10,6 +10,7 @@ class Dealership(Base):
     __tablename__ = "dealerships"
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    qb_customer_id = Column(String(64), nullable=True, unique=True)
     code = Column(String(32), nullable=False, unique=True)
     name = Column(String(255), nullable=False)
     phone = Column(String(64), nullable=True)

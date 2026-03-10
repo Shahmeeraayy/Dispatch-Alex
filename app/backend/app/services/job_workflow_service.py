@@ -175,6 +175,7 @@ class JobWorkflowService:
         code = normalized_code or self.dealership_repo.generate_next_code()
         inferred_city = self._infer_city_from_dealership_name(normalized_name)
         return self.dealership_repo.create_dealership(
+            qb_customer_id=None,
             code=code,
             name=normalized_name,
             phone=phone,

@@ -17,6 +17,7 @@ class DealershipJobSummary(BaseModel):
 
 class DealershipResponse(BaseModel):
     id: UUID
+    qb_customer_id: Optional[str] = None
     code: str
     name: str
     phone: Optional[str] = None

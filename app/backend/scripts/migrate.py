@@ -165,6 +165,7 @@ def ensure_sqlite_technician_password_column(conn) -> None:
     ensure_column("service_catalog", "sku", "VARCHAR(128)")
     ensure_column("service_catalog", "description", "TEXT")
     ensure_column("service_catalog", "qb_type", "VARCHAR(64)")
+    ensure_column("dealerships", "qb_customer_id", "VARCHAR(64)")
 
 
 def backfill_job_services(engine) -> None:

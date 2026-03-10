@@ -132,7 +132,7 @@ class QuickBooksCustomerSyncApiTests(unittest.TestCase):
         self.assertEqual(body["synced_count"], 2)
         self.assertEqual(body["created_count"], 1)
         self.assertEqual(body["updated_count"], 1)
-        self.assertEqual(body["inactive_count"], 1)
+        self.assertEqual(body["inactive_count"], 0)
 
         db = SessionLocal()
         try:
@@ -145,7 +145,7 @@ class QuickBooksCustomerSyncApiTests(unittest.TestCase):
 
             self.assertIsNotNone(new_customer)
             self.assertEqual(new_customer.code, "D-002")
-            self.assertEqual(new_customer.status, "inactive")
+            self.assertEqual(new_customer.status, "active")
         finally:
             db.close()
 

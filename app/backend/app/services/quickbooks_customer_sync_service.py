@@ -143,7 +143,6 @@ class QuickBooksCustomerSyncService:
         phone = self._extract_phone(customer)
         email = self._extract_email(customer)
         address, city, postal_code = self._extract_address(customer)
-        status_value = "active" if bool(customer.get("Active", True)) else "inactive"
 
         if row is None:
             row = Dealership(
@@ -155,7 +154,7 @@ class QuickBooksCustomerSyncService:
                 address=address,
                 city=city,
                 postal_code=postal_code,
-                status=status_value,
+                status="active",
                 notes="Synced from QuickBooks",
             )
             self.db.add(row)
@@ -168,7 +167,6 @@ class QuickBooksCustomerSyncService:
             row.address = address
             row.city = city
             row.postal_code = postal_code
-            row.status = status_value
             if not (row.notes or "").strip():
                 row.notes = "Synced from QuickBooks"
 

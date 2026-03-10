@@ -9,6 +9,9 @@ import {
     Calendar,
     ArrowUpRight,
     CheckCircle2,
+    AlertTriangle,
+    Clock3,
+    Link2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -83,6 +86,29 @@ const extractJobCodeFromInvoice = (invoice: BackendInvoice): string => {
 };
 
 const resolveTechnician = (invoice: BackendInvoice): string => invoice.technician_name?.trim() || '-';
+
+const resolveQuickBooksSyncPresentation = (invoice: BackendInvoice) => {
+    const syncStatus = invoice.qb_sync_status || 'pending';
+    if (syncStatus === 'synced') {
+        return {
+            className: 'text-emerald-500',
+            icon: CheckCircle2,
+            label: invoice.qb_invoice_id ? `Synced to QuickBooks (${invoice.qb_invoice_id})` : 'Synced to QuickBooks',
+        };
+    }
+    if (syncStatus === 'failed') {
+        return {
+            className: 'text-red-400',
+            icon: AlertTriangle,
+            label: 'QuickBooks sync failed',
+        };
+    }
+    return {
+        className: 'text-amber-400',
+        icon: Clock3,
+        label: 'QuickBooks sync pending',
+    };
+};
 
 const toAddressLines = (party?: {
     name?: string | null;
@@ -570,9 +596,28 @@ export default function InvoiceHistoryPage() {
                                         </div>
                                         <div>
                                             <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">QB Sync Status</label>
-                                            <p className="text-emerald-500 text-sm font-medium flex items-center gap-1">
-                                                <RefreshCw className="w-3 h-3" /> Synced successfully
-                                            </p>
+                                            {(() => {
+                                                const syncPresentation = resolveQuickBooksSyncPresentation(selectedInvoice);
+                                                const SyncIcon = syncPresentation.icon;
+                                                return (
+                                                    <div className="space-y-1">
+                                                        <p className={cn('text-sm font-medium flex items-center gap-1', syncPresentation.className)}>
+                                                            <SyncIcon className="w-3 h-3" /> {syncPresentation.label}
+                                                        </p>
+                                                        {selectedInvoice.qb_sync_error ? (
+                                                            <p className="text-xs text-red-400">
+                                                                {selectedInvoice.qb_sync_error}
+                                                            </p>
+                                                        ) : null}
+                                                        {selectedInvoice.qb_customer_id ? (
+                                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                <Link2 className="w-3 h-3" />
+                                                                Customer ID: {selectedInvoice.qb_customer_id}
+                                                            </p>
+                                                        ) : null}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
 

@@ -247,6 +247,106 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(synced["qb_sync_status"], "synced")
         self.assertIsNone(synced["qb_sync_error"])
 
+    def test_update_invoice_resyncs_existing_quickbooks_invoice(self):
+        self._seed_qb_connection()
+        dealership = self._seed_dealership()
+        job_id = self._seed_job_with_service_catalog(dealership)
+
+        create_response = Mock()
+        create_response.ok = True
+        create_response.json.return_value = {"Invoice": {"Id": "QB-INV-500"}}
+
+        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=create_response):
+            create_res = self.client.post(
+                "/invoices",
+                json={
+                    "dispatch_job_ids": [job_id],
+                    "terms": "NET_15",
+                    "shipping": "0.00",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        invoice_id = create_res.json()["id"]
+
+        fetch_response = Mock()
+        fetch_response.ok = True
+        fetch_response.json.return_value = {"Invoice": {"Id": "QB-INV-500", "SyncToken": "3"}}
+        update_response = Mock()
+        update_response.ok = True
+        update_response.json.return_value = {"Invoice": {"Id": "QB-INV-500", "SyncToken": "4"}}
+
+        with patch("app.services.quickbooks_invoice_service.requests.get", return_value=fetch_response) as mocked_get, patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            return_value=update_response,
+        ) as mocked_post:
+            update_res = self.client.put(
+                f"/invoices/{invoice_id}",
+                json={
+                    "shipping": "25.00",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+
+        self.assertEqual(update_res.status_code, 200, update_res.text)
+        updated = update_res.json()
+        self.assertEqual(updated["qb_invoice_id"], "QB-INV-500")
+        self.assertEqual(updated["qb_sync_status"], "synced")
+        mocked_get.assert_called_once()
+        mocked_post.assert_called_once()
+        sent_payload = mocked_post.call_args.kwargs["json"]
+        self.assertEqual(sent_payload["Id"], "QB-INV-500")
+        self.assertEqual(sent_payload["SyncToken"], "3")
+        self.assertTrue(sent_payload["sparse"])
+
+    def test_update_invoice_retries_quickbooks_sync_for_failed_invoice(self):
+        self._seed_qb_connection()
+        dealership = self._seed_dealership()
+        job_id = self._seed_job_with_service_catalog(dealership)
+
+        failing_response = Mock()
+        failing_response.ok = False
+        failing_response.status_code = 400
+        failing_response.json.return_value = {"Fault": {"Error": [{"Message": "Bad request"}]}}
+
+        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=failing_response):
+            create_res = self.client.post(
+                "/invoices",
+                json={
+                    "dispatch_job_ids": [job_id],
+                    "terms": "NET_15",
+                    "shipping": "0.00",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        invoice_id = create_res.json()["id"]
+
+        success_response = Mock()
+        success_response.ok = True
+        success_response.json.return_value = {"Invoice": {"Id": "QB-INV-888"}}
+
+        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=success_response):
+            update_res = self.client.put(
+                f"/invoices/{invoice_id}",
+                json={
+                    "approval_note": "Retry after edit",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+
+        self.assertEqual(update_res.status_code, 200, update_res.text)
+        updated = update_res.json()
+        self.assertEqual(updated["qb_invoice_id"], "QB-INV-888")
+        self.assertEqual(updated["qb_sync_status"], "synced")
+        self.assertIsNone(updated["qb_sync_error"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -313,6 +313,8 @@ class InvoicePendingApprovalServiceResponse(BaseModel):
     quantity: Decimal
     price: Decimal
     total: Decimal
+    tax_code: str
+    tax_rate: Decimal
     source: Optional[str] = None
     notes: Optional[str] = None
 

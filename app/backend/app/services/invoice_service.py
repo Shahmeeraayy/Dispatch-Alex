@@ -119,13 +119,18 @@ class InvoiceService:
         for index, line in enumerate(payload.line_items):
             quantity = _to_money(line.quantity if line.quantity is not None else Decimal("1"))
             rate = _to_money(line.rate)
+            line_tax_code = (line.tax_code or job.tax_code or "EXEMPT").strip().upper()
+            line_tax_rate = self._resolve_tax_rate(
+                tax_code=line_tax_code,
+                payload_tax_rate=line.tax_rate if line.tax_rate is not None else job.tax_rate,
+            )
             if quantity <= ZERO or rate <= ZERO:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail="Draft line quantities and prices must be greater than 0",
                 )
             amount = compute_line_item_amount(quantity, rate)
-            line_tax_amount = _to_money(amount * tax_rate)
+            line_tax_amount = _to_money(amount * line_tax_rate)
             estimated_subtotal += amount
             estimated_sales_tax += line_tax_amount
             line_id = f"{job.id}:draft:{index}"
@@ -138,6 +143,8 @@ class InvoiceService:
                     quantity=quantity,
                     price=rate,
                     total=amount,
+                    tax_code=line_tax_code,
+                    tax_rate=line_tax_rate,
                     source="admin_draft",
                     notes=None,
                 )
@@ -157,6 +164,8 @@ class InvoiceService:
                     "qb_item_id": line.qb_item_id,
                     "quantity": str(quantity),
                     "rate": str(rate),
+                    "tax_code": line_tax_code,
+                    "tax_rate": str(line_tax_rate),
                 }
             )
 
@@ -681,9 +690,9 @@ class InvoiceService:
             return None
         return str(dealership.qb_customer_id or "").strip() or None
 
-    def _sync_invoice_to_quickbooks_non_blocking(self, invoice_id: UUID) -> Invoice:
+    def _sync_invoice_to_quickbooks_non_blocking(self, invoice_id: UUID, *, force: bool = False) -> Invoice:
         invoice = self._require_invoice(invoice_id)
-        if str(invoice.qb_invoice_id or "").strip() and invoice.qb_sync_status == "synced":
+        if not force and str(invoice.qb_invoice_id or "").strip() and invoice.qb_sync_status == "synced":
             return invoice
         try:
             result = QuickBooksInvoiceService(self.db).sync_invoice_row(invoice)
@@ -880,8 +889,12 @@ class InvoiceService:
                                 quantity=Decimal(str(line.get("quantity") or "0")),
                                 qty=Decimal(str(line.get("quantity") or "0")),
                                 rate=Decimal(str(line.get("rate") or "0")),
-                                tax_code=(job.tax_code or "EXEMPT"),
-                                tax_rate=job.tax_rate,
+                                tax_code=str(line.get("tax_code") or job.tax_code or "EXEMPT"),
+                                tax_rate=(
+                                    Decimal(str(line.get("tax_rate")))
+                                    if line.get("tax_rate") is not None
+                                    else job.tax_rate
+                                ),
                                 job_id=job.id,
                             )
                         )
@@ -937,6 +950,11 @@ class InvoiceService:
                         quantity=quantity,
                         price=rate,
                         total=amount,
+                        tax_code=line.tax_code,
+                        tax_rate=self._resolve_tax_rate(
+                            tax_code=line.tax_code,
+                            payload_tax_rate=line.tax_rate,
+                        ),
                         source=("admin_draft" if draft is not None else (service_row.source if service_row is not None else None)),
                         notes=None if draft is not None else (service_row.notes if service_row is not None else None),
                     )
@@ -1301,6 +1319,13 @@ class InvoiceService:
         invoice.total = total
         invoice.status = resolved_status.value
         invoice.payment_recorded_at = payment_recorded_at
+        current_job_ids = [row[0] for row in self.db.query(Job.id).filter(Job.invoice_id == invoice.id).all()]
+        invoice.qb_customer_id = self._resolve_invoice_qb_customer_id(
+            dispatch_job_ids=current_job_ids,
+            billing=billing,
+        )
+        invoice.qb_sync_status = "pending"
+        invoice.qb_sync_error = None
 
         try:
             self.repo.update(invoice)
@@ -1326,6 +1351,7 @@ class InvoiceService:
         )
         self.db.commit()
         self.db.refresh(invoice)
+        invoice = self._sync_invoice_to_quickbooks_non_blocking(invoice.id, force=True)
         return self._to_response(invoice)
 
     def mark_invoice_paid(self, invoice_id: UUID, payment_recorded_at: Optional[datetime] = None) -> InvoiceResponse:

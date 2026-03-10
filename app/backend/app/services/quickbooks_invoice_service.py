@@ -40,22 +40,31 @@ class QuickBooksInvoiceService:
     def sync_invoice_row(self, invoice: Invoice) -> QuickBooksInvoiceSyncResult:
         connection = self.connection_service.get_active_connection_or_raise(refresh_if_needed=True)
         payload = self.build_payload(invoice)
-        response_payload = self._post_invoice(
-            realm_id=connection.realm_id,
-            access_token=connection.access_token,
-            payload=payload,
-        )
+        qb_invoice_id = str(invoice.qb_invoice_id or "").strip()
+        if qb_invoice_id:
+            response_payload = self._update_invoice(
+                realm_id=connection.realm_id,
+                access_token=connection.access_token,
+                qb_invoice_id=qb_invoice_id,
+                payload=payload,
+            )
+        else:
+            response_payload = self._post_invoice(
+                realm_id=connection.realm_id,
+                access_token=connection.access_token,
+                payload=payload,
+            )
 
         invoice_payload = response_payload.get("Invoice") if isinstance(response_payload, dict) else None
-        qb_invoice_id = str((invoice_payload or {}).get("Id") or "").strip()
-        if not qb_invoice_id:
+        resolved_qb_invoice_id = str((invoice_payload or {}).get("Id") or qb_invoice_id).strip()
+        if not resolved_qb_invoice_id:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="QuickBooks invoice response did not include an invoice Id.",
             )
 
         return QuickBooksInvoiceSyncResult(
-            qb_invoice_id=qb_invoice_id,
+            qb_invoice_id=resolved_qb_invoice_id,
             payload=payload,
             provider_response=response_payload,
         )
@@ -134,6 +143,67 @@ class QuickBooksInvoiceService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail={
                     "message": "QuickBooks invoice creation failed.",
+                    "provider_status": response.status_code,
+                    "provider_response": response_payload,
+                },
+            )
+        return response_payload
+
+    def _update_invoice(
+        self,
+        *,
+        realm_id: str,
+        access_token: str,
+        qb_invoice_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        existing_invoice = self._get_existing_invoice(
+            realm_id=realm_id,
+            access_token=access_token,
+            qb_invoice_id=qb_invoice_id,
+        )
+        sync_token = str(((existing_invoice.get("Invoice") or {}).get("SyncToken")) or "").strip()
+        if not sync_token:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="QuickBooks invoice update response did not include SyncToken.",
+            )
+
+        update_payload = {
+            **payload,
+            "Id": qb_invoice_id,
+            "SyncToken": sync_token,
+            "sparse": True,
+        }
+        return self._post_invoice(
+            realm_id=realm_id,
+            access_token=access_token,
+            payload=update_payload,
+        )
+
+    def _get_existing_invoice(self, *, realm_id: str, access_token: str, qb_invoice_id: str) -> dict[str, Any]:
+        response = requests.get(
+            f"{self._company_api_base()}/company/{realm_id}/invoice/{qb_invoice_id}",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json",
+            },
+            params={"minorversion": 75},
+            timeout=30,
+        )
+        try:
+            response_payload = response.json()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="QuickBooks invoice fetch response was not valid JSON.",
+            ) from exc
+
+        if not response.ok:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "message": "QuickBooks invoice fetch failed.",
                     "provider_status": response.status_code,
                     "provider_response": response_payload,
                 },

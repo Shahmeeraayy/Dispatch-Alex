@@ -82,6 +82,8 @@ type EditableServiceLine = {
     qb_item_id?: string | null;
     quantity: number;
     price: number;
+    tax_code: string;
+    tax_rate: number;
 };
 type ServiceCatalogOption = {
     name: string;
@@ -246,6 +248,8 @@ export default function InvoiceApprovalsPage() {
             qb_item_id: service.qb_item_id,
             quantity: toNumber(service.quantity),
             price: toNumber(service.price),
+            tax_code: service.tax_code,
+            tax_rate: toNumber(service.tax_rate),
         }));
         const nextEditableServices = defaultEditableServices;
         setSelectedInvoice(invoice);
@@ -277,6 +281,8 @@ export default function InvoiceApprovalsPage() {
             qb_item_id: service.qb_item_id,
             quantity: toNumber(service.quantity),
             price: toNumber(service.price),
+            tax_code: service.tax_code,
+            tax_rate: toNumber(service.tax_rate),
         })));
     };
 
@@ -321,6 +327,8 @@ export default function InvoiceApprovalsPage() {
             name: 'New Service',
             quantity: 1,
             price: 0,
+            tax_code: editableServices[0]?.tax_code || selectedInvoice?.services[0]?.tax_code || 'EXEMPT',
+            tax_rate: toNumber(editableServices[0]?.tax_rate ?? selectedInvoice?.services[0]?.tax_rate ?? 0),
         };
         setEditableServices((prev) => [...prev, nextLine]);
     };
@@ -361,7 +369,8 @@ export default function InvoiceApprovalsPage() {
                         quantity: service.quantity,
                         qty: service.quantity,
                         rate: service.price,
-                        tax_code: 'GST_QST',
+                        tax_code: service.tax_code,
+                        tax_rate: service.tax_rate,
                     })),
                 });
 
@@ -375,6 +384,8 @@ export default function InvoiceApprovalsPage() {
                     qb_item_id: service.qb_item_id,
                     quantity: toNumber(service.quantity),
                     price: toNumber(service.price),
+                    tax_code: service.tax_code,
+                    tax_rate: toNumber(service.tax_rate),
                 })));
                 setIsEditingInvoice(false);
             } catch (error) {
@@ -425,7 +436,8 @@ export default function InvoiceApprovalsPage() {
                     quantity: service.quantity,
                     qty: service.quantity,
                     rate: service.price,
-                    tax_code: 'GST_QST',
+                    tax_code: service.tax_code,
+                    tax_rate: service.tax_rate,
                 })),
                 status: 'sent',
                 terms: 'NET_15',

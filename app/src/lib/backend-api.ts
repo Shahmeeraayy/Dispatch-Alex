@@ -343,6 +343,10 @@ export type BackendInvoice = {
   customer_message?: string | null;
   approval_note?: string | null;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  qb_invoice_id?: string | null;
+  qb_customer_id?: string | null;
+  qb_sync_status?: 'pending' | 'synced' | 'failed' | null;
+  qb_sync_error?: string | null;
   payment_recorded_at?: string | null;
   voided_at?: string | null;
   created_at: string;
@@ -370,6 +374,8 @@ export type BackendPendingInvoiceApproval = {
     quantity: string | number;
     price: string | number;
     total: string | number;
+    tax_code: string;
+    tax_rate: string | number;
     source?: string | null;
     notes?: string | null;
   }>;

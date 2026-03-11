@@ -54,11 +54,13 @@ import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
     createInvoice,
+    fetchPendingInvoiceApprovalDetail,
     fetchServicesCatalog,
     savePendingInvoiceApprovalDraft,
     fetchPendingInvoiceApprovalIssues,
     fetchPendingInvoiceApprovals,
     getStoredAdminToken,
+    type BackendPendingInvoiceApprovalDetail,
     type BackendPendingInvoiceApprovalIssue,
     type BackendPendingInvoiceApproval,
 } from '@/lib/backend-api';
@@ -76,6 +78,7 @@ const INVOICE_APPROVAL_EXPORT_COLUMNS = [
 
 type PendingInvoice = BackendPendingInvoiceApproval;
 type BlockedInvoice = BackendPendingInvoiceApprovalIssue;
+type ApprovalDrawerInvoice = BackendPendingInvoiceApprovalDetail;
 type EditableServiceLine = {
     id: string;
     name: string;
@@ -135,7 +138,7 @@ export default function InvoiceApprovalsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterDealership, setFilterDealership] = useState<string>('all');
     const [filterTechnician, setFilterTechnician] = useState<string>('all');
-    const [selectedInvoice, setSelectedInvoice] = useState<PendingInvoice | null>(null);
+    const [selectedInvoice, setSelectedInvoice] = useState<ApprovalDrawerInvoice | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
     const [isApproving, setIsApproving] = useState(false);
@@ -249,21 +252,34 @@ export default function InvoiceApprovalsPage() {
     );
     const hasQuickBooksMappingIssues = missingQuickBooksItemMappings.length > 0;
 
-    const handleOpenDrawer = (invoice: PendingInvoice) => {
-        const defaultEditableServices = invoice.services.map((service) => ({
-            id: service.id,
-            name: service.name,
-            qb_item_id: service.qb_item_id,
-            quantity: toNumber(service.quantity),
-            price: toNumber(service.price),
-            tax_code: service.tax_code,
-            tax_rate: toNumber(service.tax_rate),
-        }));
-        const nextEditableServices = defaultEditableServices;
-        setSelectedInvoice(invoice);
-        setEditableServices(nextEditableServices);
-        setIsEditingInvoice(false);
-        setDrawerOpen(true);
+    const toEditableServices = (
+        invoice: Pick<BackendPendingInvoiceApproval, 'services'>,
+    ): EditableServiceLine[] => invoice.services.map((service) => ({
+        id: service.id,
+        name: service.name,
+        qb_item_id: service.qb_item_id,
+        quantity: toNumber(service.quantity),
+        price: toNumber(service.price),
+        tax_code: service.tax_code,
+        tax_rate: toNumber(service.tax_rate),
+    }));
+
+    const handleOpenDrawer = async (invoice: PendingInvoice | BlockedInvoice) => {
+        const adminToken = getStoredAdminToken();
+        if (!adminToken) {
+            alert('Admin session missing. Please login again.');
+            return;
+        }
+        try {
+            const detail = await fetchPendingInvoiceApprovalDetail(adminToken, invoice.job_id);
+            setSelectedInvoice(detail);
+            setEditableServices(toEditableServices(detail));
+            setIsEditingInvoice(false);
+            setDrawerOpen(true);
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unable to load invoice approval detail.';
+            alert(detail);
+        }
     };
 
     const totals = useMemo(() => {
@@ -305,15 +321,7 @@ export default function InvoiceApprovalsPage() {
 
     const resetEditableServices = () => {
         if (!selectedInvoice) return;
-        setEditableServices(selectedInvoice.services.map((service) => ({
-            id: service.id,
-            name: service.name,
-            qb_item_id: service.qb_item_id,
-            quantity: toNumber(service.quantity),
-            price: toNumber(service.price),
-            tax_code: service.tax_code,
-            tax_rate: toNumber(service.tax_rate),
-        })));
+        setEditableServices(toEditableServices(selectedInvoice));
     };
 
     const handleUpdateService = (serviceId: string, field: 'quantity' | 'price', rawValue: string) => {
@@ -392,7 +400,7 @@ export default function InvoiceApprovalsPage() {
 
             setIsSavingDraft(true);
             try {
-                const updated = await savePendingInvoiceApprovalDraft(adminToken, selectedInvoice.job_id, {
+                await savePendingInvoiceApprovalDraft(adminToken, selectedInvoice.job_id, {
                     line_items: editableServices.map((service) => ({
                         product_service: service.name,
                         qb_item_id: service.qb_item_id,
@@ -403,20 +411,10 @@ export default function InvoiceApprovalsPage() {
                         tax_rate: service.tax_rate,
                     })),
                 });
-
-                setInvoices((prev) => prev.map((invoice) => (
-                    invoice.job_id === updated.job_id ? updated : invoice
-                )));
-                setSelectedInvoice(updated);
-                setEditableServices(updated.services.map((service) => ({
-                    id: service.id,
-                    name: service.name,
-                    qb_item_id: service.qb_item_id,
-                    quantity: toNumber(service.quantity),
-                    price: toNumber(service.price),
-                    tax_code: service.tax_code,
-                    tax_rate: toNumber(service.tax_rate),
-                })));
+                const detail = await fetchPendingInvoiceApprovalDetail(adminToken, selectedInvoice.job_id);
+                setSelectedInvoice(detail);
+                setEditableServices(toEditableServices(detail));
+                await fetchInvoicesData();
                 setIsEditingInvoice(false);
             } catch (error) {
                 const detail = error instanceof Error ? error.message : 'Unable to save invoice draft.';
@@ -630,7 +628,7 @@ export default function InvoiceApprovalsPage() {
                                 <TableRow
                                     key={inv.job_id}
                                     className="group cursor-pointer border-border/40 transition-colors hover:bg-muted/20"
-                                    onClick={() => handleOpenDrawer(inv)}
+                                    onClick={() => void handleOpenDrawer(inv)}
                                 >
                                     <TableCell className="pl-6 font-medium text-foreground group-hover:text-cyan-300">{inv.job_code}</TableCell>
                                     <TableCell className="text-muted-foreground">{inv.dealership_name}</TableCell>
@@ -697,6 +695,17 @@ export default function InvoiceApprovalsPage() {
                                         </Badge>
                                     ))}
                                 </div>
+                                <div className="mt-4 flex justify-end">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="gap-2 border-amber-500/30 bg-transparent text-amber-200 hover:bg-amber-500/10"
+                                        onClick={() => void handleOpenDrawer(invoice)}
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                        Review & Edit
+                                    </Button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -710,20 +719,54 @@ export default function InvoiceApprovalsPage() {
                             <div className="border-b border-border/60 bg-slate-950/80 p-6 backdrop-blur">
                                 <SheetHeader>
                                     <div className="flex items-center justify-between mb-2">
-                                        <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300">
-                                            Pending Approval
+                                        <Badge
+                                            variant="outline"
+                                            className={cn(
+                                                'border-amber-500/30 bg-amber-500/10 text-amber-300',
+                                                selectedInvoice.blocking_reasons.length > 0 && 'border-red-500/30 bg-red-500/10 text-red-200',
+                                            )}
+                                        >
+                                            {selectedInvoice.blocking_reasons.length > 0 ? 'Blocked Approval' : 'Pending Approval'}
                                         </Badge>
                                         <span className="text-xs font-mono text-muted-foreground">ID: {selectedInvoice.job_id}</span>
                                     </div>
                                     <SheetTitle className="text-xl font-bold text-foreground">Invoice Preview - {selectedInvoice.job_code}</SheetTitle>
                                     <SheetDescription className="text-sm text-muted-foreground">
-                                        Review and approve services for invoice generation.
+                                        {selectedInvoice.blocking_reasons.length > 0
+                                            ? 'Review blockers, fix service lines, and recheck invoice readiness.'
+                                            : 'Review and approve services for invoice generation.'}
                                     </SheetDescription>
                                 </SheetHeader>
                             </div>
 
                             <ScrollArea className="flex-1">
                                 <div className="p-6 space-y-8">
+                                    {selectedInvoice.blocking_reasons.length > 0 && (
+                                        <section className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                                            <div className="flex items-start gap-3">
+                                                <AlertTriangle className="mt-0.5 h-4 w-4 text-red-300" />
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <h3 className="text-sm font-semibold text-red-100">Approval blockers</h3>
+                                                        <p className="text-sm text-red-200/80">
+                                                            This job cannot be approved until the blocking issues below are resolved.
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {selectedInvoice.blocking_reasons.map((reason) => (
+                                                            <Badge
+                                                                key={`${selectedInvoice.job_id}-${reason}`}
+                                                                variant="outline"
+                                                                className="border-red-500/30 bg-red-500/10 text-red-200"
+                                                            >
+                                                                {reason}
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </section>
+                                    )}
                                     <section className="grid grid-cols-2 gap-4 rounded-xl border border-cyan-500/15 bg-slate-900/80 p-4 shadow-[0_0_0_1px_rgba(34,211,238,0.04)]">
                                         <div>
                                             <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Dealership</h4>
@@ -1029,7 +1072,7 @@ export default function InvoiceApprovalsPage() {
                                             <DialogTrigger asChild>
                                             <Button
                                                 className="flex-[2] bg-[#2F8E92] hover:bg-[#267276] text-white shadow-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-                                                disabled={hasQuickBooksMappingIssues}
+                                                disabled={hasQuickBooksMappingIssues || selectedInvoice.blocking_reasons.length > 0}
                                             >
                                                 <CheckCircle2 className="w-4 h-4 mr-2" />
                                                 Approve & Generate

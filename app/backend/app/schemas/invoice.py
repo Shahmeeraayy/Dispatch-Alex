@@ -351,6 +351,10 @@ class InvoicePendingApprovalIssueResponse(BaseModel):
     blocking_reasons: List[str] = Field(default_factory=list)
 
 
+class InvoicePendingApprovalDetailResponse(InvoicePendingApprovalResponse):
+    blocking_reasons: List[str] = Field(default_factory=list)
+
+
 class InvoiceResponse(BaseModel):
     id: UUID
     invoice_number: str

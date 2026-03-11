@@ -1101,6 +1101,17 @@ export async function fetchPendingInvoiceApprovalIssues(token: string): Promise<
   return requestJson<BackendPendingInvoiceApprovalIssue[]>('/invoices/pending-approval-issues', { token });
 }
 
+export type BackendPendingInvoiceApprovalDetail = BackendPendingInvoiceApproval & {
+  blocking_reasons: string[];
+};
+
+export async function fetchPendingInvoiceApprovalDetail(
+  token: string,
+  jobId: string,
+): Promise<BackendPendingInvoiceApprovalDetail> {
+  return requestJson<BackendPendingInvoiceApprovalDetail>(`/invoices/pending-approval-jobs/${jobId}`, { token });
+}
+
 export async function savePendingInvoiceApprovalDraft(
   token: string,
   jobId: string,

@@ -24,6 +24,7 @@ from ..schemas.invoice import (
     InvoiceBillingPayload,
     InvoiceCompanyPayload,
     InvoiceCreateRequest,
+    InvoicePendingApprovalDetailResponse,
     InvoicePendingApprovalIssueResponse,
     InvoicePendingApprovalLineItemResponse,
     InvoicePendingApprovalResponse,
@@ -107,8 +108,6 @@ class InvoiceService:
         bill_to_city = job.customer_city or (dealership.city if dealership else None)
         bill_to_state = job.customer_state or None
         bill_to_zip = job.customer_zip_code or (dealership.postal_code if dealership else None)
-        if not bill_to_name or not bill_to_street:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Job is missing bill-to data")
 
         line_items_payload: list[dict] = []
         services: list[InvoicePendingApprovalServiceResponse] = []
@@ -217,6 +216,130 @@ class InvoiceService:
             items=items,
             bill_to=bill_to,
             ship_to=ship_to,
+        )
+
+    def get_pending_approval_job_detail(self, job_id: UUID) -> InvoicePendingApprovalDetailResponse:
+        rows = self.repo.list_pending_approval_jobs()
+        target = next((row for row in rows if row[0].id == job_id), None)
+        if target is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pending approval job not found")
+
+        job, dealership, technician = target
+        draft = self.repo.get_pending_approval_draft(job.id)
+        dispatch_line_inputs = self._resolve_pending_approval_line_inputs(job, draft=draft)
+        if dispatch_line_inputs is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid dispatch service lines",
+            )
+
+        bill_to_name = (job.customer_name or (dealership.name if dealership else None) or "").strip()
+        bill_to_street = (job.customer_address or (dealership.address if dealership else None) or "").strip()
+        bill_to_city = job.customer_city or (dealership.city if dealership else None)
+        bill_to_state = job.customer_state or None
+        bill_to_zip = job.customer_zip_code or (dealership.postal_code if dealership else None)
+
+        services: list[InvoicePendingApprovalServiceResponse] = []
+        items: list[InvoicePendingApprovalLineItemResponse] = []
+        estimated_subtotal = ZERO
+        estimated_sales_tax = ZERO
+        service_rows = self._list_job_service_rows(job)
+
+        for index, line in enumerate(dispatch_line_inputs):
+            quantity = _to_money(line.quantity if line.quantity is not None else Decimal("1"))
+            rate = _to_money(line.rate)
+            if quantity <= ZERO or rate < ZERO:
+                continue
+            amount = compute_line_item_amount(quantity, rate)
+            line_tax_rate = self._resolve_tax_rate(
+                tax_code=(line.tax_code or job.tax_code or "EXEMPT"),
+                payload_tax_rate=line.tax_rate if line.tax_rate is not None else job.tax_rate,
+            )
+            line_tax_amount = _to_money(amount * line_tax_rate)
+            estimated_subtotal += amount
+            estimated_sales_tax += line_tax_amount
+
+            service_row = service_rows[index] if draft is None and index < len(service_rows) else None
+            service_catalog = self._resolve_service_catalog_for_row(service_row) if service_row is not None else None
+            service_id = (
+                str(service_row.id)
+                if service_row is not None and service_row.id is not None
+                else f"{job.id}:{'draft:' if draft is not None else ''}{index}"
+            )
+            service_name = line.product_service or "Dispatch Service"
+
+            services.append(
+                InvoicePendingApprovalServiceResponse(
+                    id=service_id,
+                    name=service_name,
+                    qb_item_id=(
+                        str(line.qb_item_id)
+                        if draft is not None and line.qb_item_id is not None
+                        else (service_catalog.qb_item_id if service_catalog is not None else None)
+                    ),
+                    quantity=quantity,
+                    price=rate,
+                    total=amount,
+                    tax_code=(line.tax_code or job.tax_code or "EXEMPT").strip().upper(),
+                    tax_rate=line_tax_rate,
+                    source=("admin_draft" if draft is not None else (service_row.source if service_row is not None else None)),
+                    notes=None if draft is not None else (service_row.notes if service_row is not None else None),
+                )
+            )
+            items.append(
+                InvoicePendingApprovalLineItemResponse(
+                    id=service_id,
+                    description=service_name,
+                    quantity=quantity,
+                    unit_price=rate,
+                    total=amount,
+                )
+            )
+
+        estimated_subtotal = _to_money(estimated_subtotal)
+        estimated_sales_tax = _to_money(estimated_sales_tax)
+        estimated_total = compute_total(estimated_subtotal, estimated_sales_tax, ZERO)
+
+        bill_to = (
+            InvoicePartyPayload(
+                name=bill_to_name or None,
+                street=bill_to_street or None,
+                city=bill_to_city,
+                state=bill_to_state,
+                zip_code=bill_to_zip,
+            )
+            if any([bill_to_name, bill_to_street, bill_to_city, bill_to_state, bill_to_zip])
+            else None
+        )
+        ship_to = (
+            InvoicePartyPayload(
+                name=job.ship_to_name,
+                street=job.ship_to_address,
+                city=job.ship_to_city,
+                state=job.ship_to_state,
+                zip_code=job.ship_to_zip_code,
+            )
+            if any([job.ship_to_name, job.ship_to_address, job.ship_to_city, job.ship_to_state, job.ship_to_zip_code])
+            else None
+        )
+        blockers, _ = self._collect_pending_approval_blockers(job=job, dealership=dealership, draft=draft)
+
+        return InvoicePendingApprovalDetailResponse(
+            job_id=job.id,
+            job_code=job.job_code,
+            dealership_name=(dealership.name if dealership else bill_to_name) or "Unknown Dealership",
+            technician_name=technician.name if technician else None,
+            service_summary=", ".join([service.name for service in services]) or (job.service_type or "Dispatch Service"),
+            vehicle_summary=job.vehicle or "-",
+            completed_at=job.completed_at,
+            estimated_subtotal=estimated_subtotal,
+            estimated_sales_tax=estimated_sales_tax,
+            estimated_total=estimated_total,
+            services=services,
+            items=items,
+            bill_to=bill_to,
+            ship_to=ship_to,
+            blocking_reasons=blockers,
         )
 
     def _require_invoice(self, invoice_id: UUID) -> Invoice:

@@ -11,6 +11,7 @@ from ...schemas.invoice import (
     InvoiceApprovalDraftSaveRequest,
     InvoiceCreateRequest,
     InvoiceMarkPaidRequest,
+    InvoicePendingApprovalDetailResponse,
     InvoicePendingApprovalIssueResponse,
     InvoicePendingApprovalResponse,
     InvoiceResponse,
@@ -44,6 +45,15 @@ def list_pending_invoice_approval_issues(
     current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
 ):
     return InvoiceService(db, current_user).list_pending_approval_issues()
+
+
+@router.get("/pending-approval-jobs/{job_id}", response_model=InvoicePendingApprovalDetailResponse)
+def get_pending_invoice_approval_job(
+    job_id: UUID,
+    db: Session = Depends(deps.get_db),
+    current_user: AuthenticatedUser = Depends(deps.require_roles(UserRole.ADMIN)),
+):
+    return InvoiceService(db, current_user).get_pending_approval_job_detail(job_id)
 
 
 @router.put("/pending-approvals/{job_id}/draft", response_model=InvoicePendingApprovalResponse)

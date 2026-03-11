@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ...api.deps import get_db
 from ...core.config import QB_CLIENT_ID, QB_CLIENT_SECRET, QB_REDIRECT_URI
 from ...services.quickbooks_connection_service import QuickBooksConnectionService
+from ...services.quickbooks_tax_code_sync_service import QuickBooksTaxCodeSyncService
 
 router = APIRouter(prefix="/integrations/quickbooks", tags=["integrations-quickbooks"])
 
@@ -100,8 +101,14 @@ def qb_callback(
 
     payload["realmId"] = realmId
     stored = QuickBooksConnectionService(db).upsert_connection(payload)
+    tax_code_sync_error = None
+    try:
+        QuickBooksTaxCodeSyncService(db).sync_tax_codes()
+    except HTTPException as exc:
+        detail = exc.detail
+        tax_code_sync_error = detail if isinstance(detail, str) else str(detail)
 
-    return {
+    response = {
         "status": "connected",
         "provider": "quickbooks",
         "environment": stored.environment,
@@ -113,3 +120,6 @@ def qb_callback(
         "refresh_token_expires_at": stored.refresh_expires_at.isoformat() if stored.refresh_expires_at else None,
         "is_active": stored.is_active,
     }
+    if tax_code_sync_error:
+        response["tax_code_sync_error"] = tax_code_sync_error
+    return response

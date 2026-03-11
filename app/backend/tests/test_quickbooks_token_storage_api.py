@@ -75,7 +75,9 @@ class QuickBooksTokenStorageApiTests(unittest.TestCase):
             "x_refresh_token_expires_in": 8726400,
         }
 
-        with patch("app.api.endpoints.integrations_quickbooks_oauth.requests.post", return_value=mocked_response):
+        with patch("app.api.endpoints.integrations_quickbooks_oauth.requests.post", return_value=mocked_response), patch(
+            "app.api.endpoints.integrations_quickbooks_oauth.QuickBooksTaxCodeSyncService.sync_tax_codes"
+        ):
             callback = self.client.get(
                 f"/integrations/quickbooks/callback?code=abc&realmId=12345&state={state}",
             )

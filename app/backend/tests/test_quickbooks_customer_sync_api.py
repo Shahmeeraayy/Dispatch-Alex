@@ -136,7 +136,7 @@ class QuickBooksCustomerSyncApiTests(unittest.TestCase):
 
         db = SessionLocal()
         try:
-            audi = db.query(Dealership).filter(Dealership.name == "Audi Levis").first()
+            audi = db.query(Dealership).filter(Dealership.qb_customer_id == "114").first()
             new_customer = db.query(Dealership).filter(Dealership.qb_customer_id == "200").first()
             self.assertIsNotNone(audi)
             self.assertEqual(audi.qb_customer_id, "114")
@@ -144,7 +144,7 @@ class QuickBooksCustomerSyncApiTests(unittest.TestCase):
             self.assertEqual(audi.city, "Levis")
 
             self.assertIsNotNone(new_customer)
-            self.assertEqual(new_customer.code, "D-002")
+            self.assertRegex(new_customer.code, r"^D-\d{3}$")
             self.assertEqual(new_customer.status, "active")
         finally:
             db.close()

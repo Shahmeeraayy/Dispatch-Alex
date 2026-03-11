@@ -27,6 +27,7 @@ from app.models.job import Job
 from app.models.job_service import JobService
 from app.models.priority_rule import PriorityRule
 from app.models.quickbooks_connection import QuickBooksConnection
+from app.models.quickbooks_tax_code import QuickBooksTaxCode
 from app.models.service_catalog import ServiceCatalog
 from app.models.technician import Technician
 
@@ -56,6 +57,7 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
             db.query(Job).update({"invoice_id": None}, synchronize_session=False)
             db.query(Invoice).delete()
             db.query(ServiceCatalog).delete()
+            db.query(QuickBooksTaxCode).delete()
             db.query(QuickBooksConnection).delete()
             db.query(PriorityRule).delete()
             db.query(Job).delete()
@@ -77,6 +79,28 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
                     environment="sandbox",
                     is_active=True,
                 )
+            )
+            db.commit()
+
+    def _seed_tax_codes(self) -> None:
+        with SessionLocal() as db:
+            db.add_all(
+                [
+                    QuickBooksTaxCode(
+                        realm_id="9341456520395836",
+                        qb_tax_code_id="QB-TAX-EXEMPT",
+                        name="Non taxable",
+                        active=True,
+                        internal_tax_code="EXEMPT",
+                    ),
+                    QuickBooksTaxCode(
+                        realm_id="9341456520395836",
+                        qb_tax_code_id="QB-TAX-GSTQST",
+                        name="TPS + TVQ",
+                        active=True,
+                        internal_tax_code="GST_QST",
+                    ),
+                ]
             )
             db.commit()
 
@@ -149,9 +173,13 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
     def test_create_invoice_syncs_to_quickbooks_and_stores_ids(self):
         self._seed_qb_connection()
+        self._seed_tax_codes()
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
+        preference_response = Mock()
+        preference_response.ok = True
+        preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
         mocked_response = Mock()
         mocked_response.ok = True
         mocked_response.json.return_value = {
@@ -161,7 +189,10 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
             }
         }
 
-        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=mocked_response):
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[preference_response, mocked_response],
+        ) as mocked_post:
             create_res = self.client.post(
                 "/invoices",
                 json={
@@ -180,18 +211,28 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(created["qb_sync_status"], "synced")
         self.assertIsNone(created["qb_sync_error"])
         self.assertEqual(created["line_items"][0]["qb_item_id"], "QB-ITEM-200")
+        sent_payload = mocked_post.call_args_list[-1].kwargs["json"]
+        self.assertEqual(sent_payload["Line"][0]["SalesItemLineDetail"]["TaxCodeRef"]["value"], "QB-TAX-GSTQST")
+        self.assertEqual(sent_payload["TxnTaxDetail"]["TxnTaxCodeRef"]["value"], "QB-TAX-GSTQST")
 
     def test_create_invoice_keeps_local_record_when_quickbooks_sync_fails(self):
         self._seed_qb_connection()
+        self._seed_tax_codes()
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
+        preference_response = Mock()
+        preference_response.ok = True
+        preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
         mocked_response = Mock()
         mocked_response.ok = False
         mocked_response.status_code = 400
         mocked_response.json.return_value = {"Fault": {"Error": [{"Message": "Bad request"}]}}
 
-        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=mocked_response):
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[preference_response, mocked_response],
+        ):
             create_res = self.client.post(
                 "/invoices",
                 json={
@@ -212,15 +253,22 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
     def test_manual_quickbooks_invoice_sync_endpoint_retries_failed_invoice(self):
         self._seed_qb_connection()
+        self._seed_tax_codes()
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
+        preference_response = Mock()
+        preference_response.ok = True
+        preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
         failing_response = Mock()
         failing_response.ok = False
         failing_response.status_code = 400
         failing_response.json.return_value = {"Fault": {"Error": [{"Message": "Bad request"}]}}
 
-        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=failing_response):
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[preference_response, failing_response],
+        ):
             create_res = self.client.post(
                 "/invoices",
                 json={
@@ -234,11 +282,17 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(create_res.status_code, 201, create_res.text)
         invoice_id = create_res.json()["id"]
 
+        retry_preference_response = Mock()
+        retry_preference_response.ok = True
+        retry_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
         success_response = Mock()
         success_response.ok = True
         success_response.json.return_value = {"Invoice": {"Id": "QB-INV-777"}}
 
-        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=success_response):
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[retry_preference_response, success_response],
+        ):
             sync_res = self.client.post(f"/quickbooks/invoices/{invoice_id}", headers=self.auth_header)
 
         self.assertEqual(sync_res.status_code, 200, sync_res.text)
@@ -249,14 +303,21 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
     def test_update_invoice_resyncs_existing_quickbooks_invoice(self):
         self._seed_qb_connection()
+        self._seed_tax_codes()
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
+        create_preference_response = Mock()
+        create_preference_response.ok = True
+        create_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
         create_response = Mock()
         create_response.ok = True
         create_response.json.return_value = {"Invoice": {"Id": "QB-INV-500"}}
 
-        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=create_response):
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[create_preference_response, create_response],
+        ):
             create_res = self.client.post(
                 "/invoices",
                 json={
@@ -274,13 +335,16 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         fetch_response = Mock()
         fetch_response.ok = True
         fetch_response.json.return_value = {"Invoice": {"Id": "QB-INV-500", "SyncToken": "3"}}
+        update_preference_response = Mock()
+        update_preference_response.ok = True
+        update_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
         update_response = Mock()
         update_response.ok = True
         update_response.json.return_value = {"Invoice": {"Id": "QB-INV-500", "SyncToken": "4"}}
 
         with patch("app.services.quickbooks_invoice_service.requests.get", return_value=fetch_response) as mocked_get, patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            return_value=update_response,
+            side_effect=[update_preference_response, update_response],
         ) as mocked_post:
             update_res = self.client.put(
                 f"/invoices/{invoice_id}",
@@ -296,23 +360,30 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(updated["qb_invoice_id"], "QB-INV-500")
         self.assertEqual(updated["qb_sync_status"], "synced")
         mocked_get.assert_called_once()
-        mocked_post.assert_called_once()
-        sent_payload = mocked_post.call_args.kwargs["json"]
+        self.assertEqual(mocked_post.call_count, 2)
+        sent_payload = mocked_post.call_args_list[-1].kwargs["json"]
         self.assertEqual(sent_payload["Id"], "QB-INV-500")
         self.assertEqual(sent_payload["SyncToken"], "3")
         self.assertTrue(sent_payload["sparse"])
 
     def test_update_invoice_retries_quickbooks_sync_for_failed_invoice(self):
         self._seed_qb_connection()
+        self._seed_tax_codes()
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
+        create_preference_response = Mock()
+        create_preference_response.ok = True
+        create_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
         failing_response = Mock()
         failing_response.ok = False
         failing_response.status_code = 400
         failing_response.json.return_value = {"Fault": {"Error": [{"Message": "Bad request"}]}}
 
-        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=failing_response):
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[create_preference_response, failing_response],
+        ):
             create_res = self.client.post(
                 "/invoices",
                 json={
@@ -327,11 +398,17 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(create_res.status_code, 201, create_res.text)
         invoice_id = create_res.json()["id"]
 
+        update_preference_response = Mock()
+        update_preference_response.ok = True
+        update_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
         success_response = Mock()
         success_response.ok = True
         success_response.json.return_value = {"Invoice": {"Id": "QB-INV-888"}}
 
-        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=success_response):
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[update_preference_response, success_response],
+        ):
             update_res = self.client.put(
                 f"/invoices/{invoice_id}",
                 json={
@@ -346,6 +423,33 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(updated["qb_invoice_id"], "QB-INV-888")
         self.assertEqual(updated["qb_sync_status"], "synced")
         self.assertIsNone(updated["qb_sync_error"])
+
+    def test_create_invoice_fails_quickbooks_sync_when_sales_tax_disabled(self):
+        self._seed_qb_connection()
+        self._seed_tax_codes()
+        dealership = self._seed_dealership()
+        job_id = self._seed_job_with_service_catalog(dealership)
+
+        preference_response = Mock()
+        preference_response.ok = True
+        preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": False}}}}
+
+        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=preference_response):
+            create_res = self.client.post(
+                "/invoices",
+                json={
+                    "dispatch_job_ids": [job_id],
+                    "terms": "NET_15",
+                    "shipping": "0.00",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        created = create_res.json()
+        self.assertEqual(created["qb_sync_status"], "failed")
+        self.assertIn("UsingSalesTax", created["qb_sync_error"])
 
 
 if __name__ == "__main__":

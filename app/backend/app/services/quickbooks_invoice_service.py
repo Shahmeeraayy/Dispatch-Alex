@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..core.config import QB_ENV
 from ..models.invoice import Invoice
 from ..services.quickbooks_connection_service import QuickBooksConnectionService
+from ..services.quickbooks_tax_code_sync_service import QuickBooksTaxCodeSyncService
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ class QuickBooksInvoiceService:
     def __init__(self, db: Session):
         self.db = db
         self.connection_service = QuickBooksConnectionService(db)
+        self.tax_code_service = QuickBooksTaxCodeSyncService(db)
 
     def sync_invoice(self, invoice_id: UUID) -> QuickBooksInvoiceSyncResult:
         invoice = (
@@ -39,7 +41,11 @@ class QuickBooksInvoiceService:
 
     def sync_invoice_row(self, invoice: Invoice) -> QuickBooksInvoiceSyncResult:
         connection = self.connection_service.get_active_connection_or_raise(refresh_if_needed=True)
-        payload = self.build_payload(invoice)
+        payload = self.build_payload(
+            invoice,
+            realm_id=connection.realm_id,
+            access_token=connection.access_token,
+        )
         qb_invoice_id = str(invoice.qb_invoice_id or "").strip()
         if qb_invoice_id:
             response_payload = self._update_invoice(
@@ -69,7 +75,7 @@ class QuickBooksInvoiceService:
             provider_response=response_payload,
         )
 
-    def build_payload(self, invoice: Invoice) -> dict[str, Any]:
+    def build_payload(self, invoice: Invoice, *, realm_id: str, access_token: str) -> dict[str, Any]:
         qb_customer_id = str(invoice.qb_customer_id or "").strip()
         if not qb_customer_id:
             raise HTTPException(
@@ -81,8 +87,14 @@ class QuickBooksInvoiceService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Invoice has no line items to sync to QuickBooks.",
             )
+        if not self.tax_code_service.verify_sales_tax_enabled(realm_id=realm_id, access_token=access_token):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="QuickBooks sales tax is disabled in Preferences.TaxPrefs.UsingSalesTax.",
+            )
 
         lines: list[dict[str, Any]] = []
+        tax_code_ids: set[str] = set()
         for item in invoice.line_items:
             qb_item_id = str(item.qb_item_id or "").strip()
             if not qb_item_id:
@@ -94,6 +106,12 @@ class QuickBooksInvoiceService:
             quantity = Decimal(str(item.quantity))
             rate = Decimal(str(item.rate))
             amount = Decimal(str(item.amount))
+            internal_tax_code = str(item.tax_code or "EXEMPT").strip().upper()
+            qb_tax_code_id = self.tax_code_service.get_tax_code_id_for_internal_code(
+                internal_tax_code,
+                realm_id=realm_id,
+            )
+            tax_code_ids.add(qb_tax_code_id)
             lines.append(
                 {
                     "Amount": float(amount),
@@ -103,6 +121,7 @@ class QuickBooksInvoiceService:
                         "ItemRef": {"value": qb_item_id},
                         "Qty": float(quantity),
                         "UnitPrice": float(rate),
+                        "TaxCodeRef": {"value": qb_tax_code_id},
                     },
                 }
             )
@@ -114,6 +133,8 @@ class QuickBooksInvoiceService:
             "CustomerRef": {"value": qb_customer_id},
             "Line": lines,
         }
+        if len(tax_code_ids) == 1:
+            payload["TxnTaxDetail"] = {"TxnTaxCodeRef": {"value": next(iter(tax_code_ids))}}
         if invoice.customer_message:
             payload["CustomerMemo"] = {"value": invoice.customer_message}
         return payload

@@ -11,6 +11,7 @@ from .job_service import JobService
 from .password_reset_token import PasswordResetToken
 from .priority_rule import PriorityRule
 from .quickbooks_connection import QuickBooksConnection
+from .quickbooks_tax_code import QuickBooksTaxCode
 from .service_catalog import ServiceCatalog
 from .skill import Skill, technician_skills
 from .signup_request import SignupRequest

@@ -58,3 +58,12 @@ class AdminQuickBooksCustomerSyncResponse(BaseModel):
     created_count: int
     updated_count: int
     inactive_count: int
+
+
+class AdminQuickBooksTaxCodeSyncResponse(BaseModel):
+    synced_count: int
+    created_count: int
+    updated_count: int
+    active_count: int
+    mapped_count: int
+    sales_tax_enabled: bool

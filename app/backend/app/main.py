@@ -32,6 +32,7 @@ from .services.job_services_service import JobServicesService
 from .services.quickbooks_connection_service import QuickBooksConnectionService
 from .services.quickbooks_customer_sync_service import QuickBooksCustomerSyncService
 from .services.quickbooks_item_sync_service import QuickBooksItemSyncService
+from .services.quickbooks_tax_code_sync_service import QuickBooksTaxCodeSyncService
 
 
 logger = logging.getLogger(__name__)
@@ -121,8 +122,9 @@ def _sync_quickbooks_once() -> None:
                 return
             item_result = QuickBooksItemSyncService(db).sync_items()
             customer_result = QuickBooksCustomerSyncService(db).sync_customers()
+            tax_code_result = QuickBooksTaxCodeSyncService(db).sync_tax_codes()
             logger.info(
-                "QuickBooks auto-sync completed: items synced=%s created=%s updated=%s archived=%s; customers synced=%s created=%s updated=%s inactive=%s",
+                "QuickBooks auto-sync completed: items synced=%s created=%s updated=%s archived=%s; customers synced=%s created=%s updated=%s inactive=%s; tax_codes synced=%s created=%s updated=%s active=%s mapped=%s sales_tax_enabled=%s",
                 item_result.synced_count,
                 item_result.created_count,
                 item_result.updated_count,
@@ -131,6 +133,12 @@ def _sync_quickbooks_once() -> None:
                 customer_result.created_count,
                 customer_result.updated_count,
                 customer_result.inactive_count,
+                tax_code_result.synced_count,
+                tax_code_result.created_count,
+                tax_code_result.updated_count,
+                tax_code_result.active_count,
+                tax_code_result.mapped_count,
+                tax_code_result.sales_tax_enabled,
             )
     except Exception:
         logger.exception("QuickBooks auto-sync failed.")

@@ -37,6 +37,7 @@ MIGRATIONS: list[Migration] = [
     Migration("009_technician_profile_email_change_requests.sql"),
     Migration("010_job_services.sql"),
     Migration("011_quickbooks_service_catalog.sql"),
+    Migration("012_quickbooks_tax_codes.sql"),
 ]
 
 

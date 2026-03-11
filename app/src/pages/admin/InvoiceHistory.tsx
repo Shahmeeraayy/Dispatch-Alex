@@ -4,6 +4,7 @@ import {
     Search,
     Download,
     RefreshCw,
+    Send,
     FileText,
     Building2,
     Calendar,
@@ -39,7 +40,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
-import { fetchInvoices, getStoredAdminToken, type BackendInvoice } from '@/lib/backend-api';
+import { fetchInvoices, getStoredAdminToken, syncInvoiceToQuickBooks, type BackendInvoice } from '@/lib/backend-api';
 
 const INVOICE_HISTORY_EXPORT_COLUMNS = [
     'InvoiceID',
@@ -135,6 +136,7 @@ export default function InvoiceHistoryPage() {
     const [selectedInvoice, setSelectedInvoice] = useState<BackendInvoice | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [retryingInvoiceId, setRetryingInvoiceId] = useState<string | null>(null);
 
     const fetchHistory = async () => {
         setLoading(true);
@@ -222,6 +224,24 @@ export default function InvoiceHistoryPage() {
     const handleViewInvoice = (invoice: BackendInvoice) => {
         setSelectedInvoice(invoice);
         setDrawerOpen(true);
+    };
+
+    const handleResendToQuickBooks = async (invoice: BackendInvoice) => {
+        const adminToken = getStoredAdminToken();
+        if (!adminToken) return;
+
+        setRetryingInvoiceId(invoice.id);
+        try {
+            const updated = await syncInvoiceToQuickBooks(adminToken, invoice.id);
+            setHistory((current) => current.map((row) => (row.id === updated.id ? updated : row)));
+            setSelectedInvoice((current) => (current?.id === updated.id ? updated : current));
+        } catch (error) {
+            console.error(error);
+            const message = error instanceof Error ? error.message : 'QuickBooks resend failed';
+            alert(message);
+        } finally {
+            setRetryingInvoiceId(null);
+        }
     };
 
     const getInvoiceHistoryExportRows = () => filteredHistory.map((invoice) => ({
@@ -647,6 +667,16 @@ export default function InvoiceHistoryPage() {
                                     </div>
 
                                     <div className="flex gap-3">
+                                        {selectedInvoice.qb_sync_status === 'failed' ? (
+                                            <Button
+                                                className="w-full gap-2"
+                                                onClick={() => void handleResendToQuickBooks(selectedInvoice)}
+                                                disabled={retryingInvoiceId === selectedInvoice.id}
+                                            >
+                                                <Send className="w-4 h-4" />
+                                                {retryingInvoiceId === selectedInvoice.id ? 'Resending...' : 'Resend to QuickBooks'}
+                                            </Button>
+                                        ) : null}
                                         <Button className="w-full gap-2" variant="outline" onClick={() => handleDownloadPdf(selectedInvoice)}>
                                             <Download className="w-4 h-4" /> Download PDF
                                         </Button>

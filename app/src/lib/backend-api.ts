@@ -1062,6 +1062,16 @@ export async function fetchInvoices(token: string): Promise<BackendInvoice[]> {
   return requestJson<BackendInvoice[]>('/invoices', { token });
 }
 
+export async function syncInvoiceToQuickBooks(
+  token: string,
+  invoiceId: string,
+): Promise<BackendInvoice> {
+  return requestJson<BackendInvoice>(`/quickbooks/invoices/${invoiceId}`, {
+    method: 'POST',
+    token,
+  });
+}
+
 export async function createInvoice(
   token: string,
   payload: {

@@ -1,9 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LockKeyhole, Mail, Wrench } from 'lucide-react';
+import { Eye, EyeOff, Wrench } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -20,13 +19,24 @@ type NavigationState = {
   from?: string;
 };
 
+const brandingGradientStyle: CSSProperties = {
+  backgroundImage:
+    'linear-gradient(135deg, #0f172a 0%, #1f2937 40%, #14532d 72%, #3b8d4f 100%)',
+};
+
+const brandingPatternStyle: CSSProperties = {
+  backgroundImage: 'radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px)',
+  backgroundSize: '28px 28px',
+};
+
 export default function TechnicianLoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('tech@mikechen.com');
-  const [password, setPassword] = useState('tech123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberSession, setRememberSession] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -49,30 +59,75 @@ export default function TechnicianLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,141,79,0.16),_transparent_28%),linear-gradient(135deg,#eff8f1_0%,#f8fbff_52%,#edf6f0_100%)] p-4 sm:p-6 flex items-center justify-center">
-      <Card className="w-full max-w-[480px] overflow-hidden border-white/70 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.14)] backdrop-blur">
-        <CardHeader className="space-y-4 border-b border-slate-100 bg-[linear-gradient(180deg,rgba(12,52,28,0.98)_0%,rgba(21,88,45,0.96)_100%)] px-6 py-7 text-white sm:px-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4caf63] to-[#3b8d4f] shadow-lg shadow-emerald-950/25">
-              <Wrench className="h-5 w-5 text-white" />
+    <div className="min-h-screen bg-white font-sans text-slate-900 antialiased">
+      <main className="min-h-screen lg:flex">
+        <section
+          className="relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex lg:w-[60%]"
+          style={brandingGradientStyle}
+        >
+          <div className="pointer-events-none absolute inset-0 opacity-20" style={brandingPatternStyle} />
+
+          <div className="relative z-10 max-w-2xl">
+            <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-emerald-50 backdrop-blur-sm">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
+                <Wrench className="h-4 w-4" />
+              </span>
+              Technician Operations Portal
             </div>
-            <div className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-100">
-              Technician Portal
+            <h1 className="mb-4 text-5xl font-bold tracking-tight">SM2 Dispatch</h1>
+            <h2 className="mb-6 text-2xl font-medium text-emerald-100">
+              Field Service Access for Technicians, Installers, and Mobile Teams
+            </h2>
+            <p className="max-w-xl text-lg leading-relaxed text-emerald-50/80">
+              Check assigned jobs, manage active work orders, review service history, and stay aligned with dealership and dispatch operations from one technician-ready workspace.
+            </p>
+          </div>
+
+          <div className="relative z-10 mt-12 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/70">Jobs</p>
+              <p className="mt-3 text-3xl font-bold text-white">Live</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Track incoming assignments and move jobs cleanly from accepted to completed.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/70">Service</p>
+              <p className="mt-3 text-3xl font-bold text-white">Mobile</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Built for field technicians handling PPF, tint, glass, and electronics installs.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/70">Profile</p>
+              <p className="mt-3 text-3xl font-bold text-white">Ready</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Keep schedules, availability, and account details current without leaving the workflow.</p>
             </div>
           </div>
-          <div className="space-y-2">
-            <CardTitle className="text-2xl font-semibold tracking-tight text-white">Technician Sign In</CardTitle>
-            <CardDescription className="max-w-sm text-sm leading-6 text-emerald-100/85">
-              Sign in to access assigned jobs, current work, history, schedule, and your technician profile.
-            </CardDescription>
+
+          <div className="relative z-10 text-sm text-emerald-200/55">
+            &copy; 2023 SM2 Dispatch Inc. All rights reserved.
           </div>
-        </CardHeader>
-        <CardContent className="px-6 py-6 sm:px-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="tech-email" className="text-sm font-semibold text-slate-800">Email</Label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        </section>
+
+        <section className="flex items-center justify-center bg-white p-6 sm:p-10 lg:w-[40%] lg:p-12">
+          <div className="w-full max-w-[520px] space-y-8">
+            <div className="mb-10 text-center lg:hidden">
+              <h1 className="text-3xl font-bold text-[#0f172a]">SM2 Dispatch</h1>
+              <p className="mt-2 text-sm text-slate-500">Technician operations portal</p>
+            </div>
+
+            <header>
+              <div className="mb-4 inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#2f7641]">
+                Technician Portal
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900">Technician Sign In</h2>
+              <p className="mt-2 text-slate-500">
+                Enter your technician credentials to access assigned jobs, service history, and your field profile.
+              </p>
+            </header>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="tech-email" className="block text-sm font-medium text-slate-700">
+                  Email Address
+                </Label>
                 <Input
                   id="tech-email"
                   type="email"
@@ -80,92 +135,120 @@ export default function TechnicianLoginPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   autoComplete="email"
                   required
-                  className="h-11 border-slate-200 bg-slate-50 pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:border-[#3b8d4f] focus-visible:ring-[#3b8d4f]"
+                  placeholder="tech@sm2dispatch.com"
+                  className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base outline-none transition-all focus-visible:border-[#3b8d4f] focus-visible:ring-2 focus-visible:ring-[#3b8d4f]/20"
                 />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="tech-password" className="text-sm font-semibold text-slate-800">Password</Label>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-[#3b8d4f] transition hover:text-[#2f7641] hover:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Forgot technician password</DialogTitle>
-                      <DialogDescription>
-                        Technician password reset is handled through the admin team right now.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3 text-sm text-muted-foreground">
-                      <p>If you still have access, sign in and update your password from your profile settings.</p>
-                      <p>If you are locked out, contact an admin so they can help you regain access.</p>
-                    </div>
-                    <DialogFooter className="sm:justify-between">
-                      <Button type="button" variant="outline" asChild>
-                        <Link to="/tech/signup">Create account</Link>
-                      </Button>
-                      <Button type="button" asChild className="bg-[#3b8d4f] hover:bg-[#2f7641]">
-                        <Link to="/admin/login">Contact admin</Link>
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="tech-password" className="block text-sm font-medium text-slate-700">
+                    Password
+                  </Label>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-[#3b8d4f] transition-colors hover:text-[#2f7641]"
+                      >
+                        Forgot password?
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Forgot technician password</DialogTitle>
+                        <DialogDescription>
+                          Technician password reset is currently handled through the admin team.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-3 text-sm text-muted-foreground">
+                        <p>If you still have access, sign in and update your password from your technician profile.</p>
+                        <p>If you are locked out, contact admin to restore access or approve a new technician account.</p>
+                      </div>
+                      <DialogFooter className="sm:justify-between">
+                        <Button type="button" variant="outline" asChild>
+                          <Link to="/tech/signup">Create account</Link>
+                        </Button>
+                        <Button type="button" asChild className="bg-[#3b8d4f] hover:bg-[#2f7641]">
+                          <Link to="/admin/login">Contact admin</Link>
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="relative">
+                  <Input
+                    id="tech-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    autoComplete="current-password"
+                    required
+                    placeholder="••••••••"
+                    className="w-full rounded-lg border border-slate-200 px-4 py-3 pr-12 text-base outline-none transition-all focus-visible:border-[#3b8d4f] focus-visible:ring-2 focus-visible:ring-[#3b8d4f]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-              <div className="relative">
-                <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  id="tech-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  autoComplete="current-password"
-                  required
-                  className="h-11 border-slate-200 bg-slate-50 pl-10 pr-11 text-slate-900 placeholder:text-slate-400 focus-visible:border-[#3b8d4f] focus-visible:ring-[#3b8d4f]"
+
+              <label className="flex items-center">
+                <input
+                  id="remember-tech-session"
+                  name="remember-tech-session"
+                  type="checkbox"
+                  checked={rememberSession}
+                  onChange={(event) => setRememberSession(event.target.checked)}
+                  className="h-4 w-4 cursor-pointer rounded border-slate-300 text-[#3b8d4f] focus:ring-[#3b8d4f]"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                <span className="ml-2 block cursor-pointer text-sm text-slate-600">Remember this session</span>
+              </label>
+
+              {errorMessage && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {errorMessage}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full rounded-lg bg-[#3b8d4f] px-4 py-3 text-base font-semibold text-white shadow-sm transition-all hover:bg-[#2f7641] hover:shadow-md active:scale-[0.98]"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Signing in...' : 'Sign in as Technician'}
+              </Button>
+            </form>
+
+            <footer className="space-y-4 border-t border-slate-100 pt-6 text-center">
+              <p className="text-sm text-slate-600">
+                New technician?{' '}
+                <Link
+                  to="/tech/signup"
+                  className="ml-1 font-semibold text-[#3b8d4f] transition-colors hover:text-[#2f7641]"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {errorMessage && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {errorMessage}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="h-11 w-full rounded-xl bg-[#3b8d4f] text-sm font-semibold shadow-sm transition hover:bg-[#2f7641]"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Signing in...' : 'Sign in as Technician'}
-            </Button>
-
-            <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
-              <p className="text-sm text-slate-600 text-center">
-                New technician? <Link to="/tech/signup" className="font-medium text-[#3b8d4f] hover:underline">Create account</Link>
+                  Create account
+                </Link>
               </p>
-              <p className="text-sm text-slate-600 text-center">
-                Admin account? <Link to="/admin/login" className="font-medium text-[#2F8E92] hover:underline">Go to admin login</Link>
+              <p className="text-sm text-slate-600">
+                Admin account?{' '}
+                <Link
+                  to="/admin/login"
+                  className="ml-1 font-semibold text-[#008080] transition-colors hover:text-[#006666]"
+                >
+                  Go to admin login →
+                </Link>
               </p>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            </footer>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

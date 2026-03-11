@@ -109,8 +109,11 @@ def create_dev_technician_token(
     if stored_password:
         if normalized_password != stored_password:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid technician credentials")
-    elif normalized_password != "tech123":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid technician credentials")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Technician password is not configured. Contact admin.",
+        )
 
     expires_at = datetime.now(timezone.utc) + timedelta(hours=8)
     token = create_access_token(

@@ -111,7 +111,7 @@ const DEFAULT_TECHNICIAN_ACCOUNTS: TechnicianAccount[] = [
     name: technicianUser.name,
     email: technicianUser.email.toLowerCase(),
     phone: technicianUser.phone,
-    password: 'tech123',
+    password: undefined,
     avatar: technicianUser.avatar,
     isActive: true,
     createdAt: technicianUser.createdAt,

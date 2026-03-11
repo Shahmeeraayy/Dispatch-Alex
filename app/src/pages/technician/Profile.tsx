@@ -444,7 +444,7 @@ export default function ProfilePage() {
                             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Profile
                         </Button>
 
-                        <Card className="p-6 border-gray-200">
+                        <Card className="p-6 border-gray-200 dark:border-gray-800 dark:bg-gray-900">
                             <div className="flex items-center gap-4 mb-6">
                                 {profilePictureUrl ? (
                                     <img src={profilePictureUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
@@ -460,20 +460,20 @@ export default function ProfilePage() {
                             </div>
 
                             {isPreviewMode ? (
-                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/70">
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500">Full Name</span>
-                                        <span className="font-medium text-gray-900">{fullName || userName}</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Full Name</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">{fullName || userName}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500">Email</span>
-                                        <span className="font-medium text-gray-900">{userEmail}</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Email</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">{userEmail}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500">Phone</span>
-                                        <span className="font-medium text-gray-900">{userPhone}</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Phone</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">{userPhone}</span>
                                     </div>
-                                    <p className="text-xs text-gray-500">Preview mode is read-only. Open technician portal to edit these values.</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Preview mode is read-only. Open technician portal to edit these values.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -493,40 +493,40 @@ export default function ProfilePage() {
                             )}
                         </Card>
 
-                        <Card className="p-6 border-gray-200">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Availability Settings</h3>
+                        <Card className="p-6 border-gray-200 dark:border-gray-800 dark:bg-gray-900">
+                            <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Availability Settings</h3>
                             {isPreviewMode ? (
-                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/70">
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500">Working Days</span>
-                                        <span className="font-medium text-gray-900">{workingDayLabels || 'Not configured'}</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Working Days</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">{workingDayLabels || 'Not configured'}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500">Working Hours</span>
-                                        <span className="font-medium text-gray-900">{workingHoursStart} - {workingHoursEnd}</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Working Hours</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">{workingHoursStart} - {workingHoursEnd}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500">After-hours Availability</span>
+                                        <span className="text-gray-500 dark:text-gray-400">After-hours Availability</span>
                                         <span className={cn('font-medium', afterHoursEnabled ? 'text-emerald-600' : 'text-gray-700')}>
                                             {afterHoursEnabled ? 'Enabled' : 'Disabled'}
                                         </span>
                                     </div>
-                                    <div className="pt-1 border-t border-gray-200">
-                                        <div className="text-xs font-medium text-gray-600 mb-2">Out-of-office ranges</div>
+                                    <div className="border-t border-gray-200 pt-1 dark:border-gray-700">
+                                        <div className="mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">Out-of-office ranges</div>
                                         {outOfOfficeRanges.length === 0 ? (
-                                            <div className="text-xs text-gray-500">No out-of-office ranges configured.</div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">No out-of-office ranges configured.</div>
                                         ) : (
                                             <div className="space-y-2">
                                                 {outOfOfficeRanges.map((range, index) => (
-                                                    <div key={`${range.start_date}-${range.end_date}-${index}`} className="rounded-md border border-gray-200 px-3 py-2">
-                                                        <div className="text-xs font-medium text-gray-800">{range.start_date} - {range.end_date}</div>
-                                                        <div className="text-xs text-gray-500">{range.note || 'Out of office'}</div>
+                                                    <div key={`${range.start_date}-${range.end_date}-${index}`} className="rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700">
+                                                        <div className="text-xs font-medium text-gray-800 dark:text-white">{range.start_date} - {range.end_date}</div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400">{range.note || 'Out of office'}</div>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-xs text-gray-500">Preview mode is read-only. Open technician portal to update availability.</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Preview mode is read-only. Open technician portal to update availability.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -608,13 +608,13 @@ export default function ProfilePage() {
                             )}
                         </Card>
 
-                        <Card className="p-6 border-gray-200">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <Card className="p-6 border-gray-200 dark:border-gray-800 dark:bg-gray-900">
+                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                                 <KeyRound className="w-4 h-4 text-[#2F8E92]" />
                                 Reset Password
                             </h3>
                             {isPreviewMode ? (
-                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-500">
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
                                     Preview mode is read-only. Open technician portal to update password.
                                 </div>
                             ) : (
@@ -664,7 +664,7 @@ export default function ProfilePage() {
                     </>
                 ) : (
                     <>
-                        <Card className="p-6 border-gray-200">
+                        <Card className="p-6 border-gray-200 dark:border-gray-800 dark:bg-gray-900">
                             <div className="flex items-center gap-4">
                                 {profilePictureUrl ? (
                                     <img src={profilePictureUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
@@ -679,29 +679,29 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
-                            <div className="mt-6 divide-y divide-gray-100">
+                            <div className="mt-6 divide-y divide-gray-100 dark:divide-gray-800">
                                 <div className="flex items-center justify-between py-3 text-sm">
-                                    <span className="text-gray-500">Email</span>
-                                    <span className="font-medium text-gray-900">{userEmail}</span>
+                                    <span className="text-gray-500 dark:text-gray-400">Email</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{userEmail}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-3 text-sm">
-                                    <span className="text-gray-500">Phone</span>
-                                    <span className="font-medium text-gray-900">{userPhone}</span>
+                                    <span className="text-gray-500 dark:text-gray-400">Phone</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{userPhone}</span>
                                 </div>
                             </div>
                         </Card>
 
-                        <Card className="p-0 overflow-hidden border-gray-200">
+                        <Card className="overflow-hidden border-gray-200 p-0 dark:border-gray-800 dark:bg-gray-900">
                             <button
                                 type="button"
-                                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-gray-50"
+                                className="flex w-full items-center justify-between px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800"
                                 onClick={openSettingsView}
                             >
-                                <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                    <Settings className="w-4 h-4 text-gray-500" />
+                                <span className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
+                                    <Settings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                     Settings
                                 </span>
-                                <ChevronRight className="w-4 h-4 text-gray-400" />
+                                <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                             </button>
                         </Card>
                     </>

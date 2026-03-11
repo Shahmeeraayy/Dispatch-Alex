@@ -240,8 +240,11 @@ class TechnicianProfileService:
         if stored_password:
             if current_password != stored_password:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
-        elif current_password != "tech123":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Current password is not configured. Contact admin.",
+            )
 
         if payload.new_password == current_password:
             raise HTTPException(

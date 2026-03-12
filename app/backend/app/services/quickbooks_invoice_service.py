@@ -41,6 +41,8 @@ class QuickBooksInvoiceService:
 
     def sync_invoice_row(self, invoice: Invoice) -> QuickBooksInvoiceSyncResult:
         connection = self.connection_service.get_active_connection_or_raise(refresh_if_needed=True)
+        # TaxCode has no QuickBooks webhook/CDC support, so refresh it before every invoice sync.
+        self.tax_code_service.sync_tax_codes()
         payload = self.build_payload(
             invoice,
             realm_id=connection.realm_id,

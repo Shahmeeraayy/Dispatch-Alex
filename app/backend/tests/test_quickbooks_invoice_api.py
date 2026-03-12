@@ -106,6 +106,25 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
             )
             db.commit()
 
+    def _preferences_response(self, enabled: bool = True) -> Mock:
+        response = Mock()
+        response.ok = True
+        response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": enabled}}}}
+        return response
+
+    def _tax_code_query_response(self) -> Mock:
+        response = Mock()
+        response.ok = True
+        response.json.return_value = {
+            "QueryResponse": {
+                "TaxCode": [
+                    {"Id": "QB-TAX-EXEMPT", "Name": "Non taxable", "Description": "No tax", "Active": True},
+                    {"Id": "QB-TAX-GSTQST", "Name": "TPS + TVQ", "Description": "TPS + TVQ", "Active": True},
+                ]
+            }
+        }
+        return response
+
     def _seed_dealership(self) -> Dealership:
         with SessionLocal() as db:
             row = Dealership(
@@ -179,9 +198,9 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
-        preference_response = Mock()
-        preference_response.ok = True
-        preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+        sync_preferences_response = self._preferences_response(True)
+        sync_tax_code_response = self._tax_code_query_response()
+        invoice_preferences_response = self._preferences_response(True)
         mocked_response = Mock()
         mocked_response.ok = True
         mocked_response.json.return_value = {
@@ -193,7 +212,7 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[preference_response, mocked_response],
+            side_effect=[sync_preferences_response, sync_tax_code_response, invoice_preferences_response, mocked_response],
         ) as mocked_post:
             create_res = self.client.post(
                 "/invoices",
@@ -223,9 +242,9 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
-        preference_response = Mock()
-        preference_response.ok = True
-        preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+        sync_preferences_response = self._preferences_response(True)
+        sync_tax_code_response = self._tax_code_query_response()
+        invoice_preferences_response = self._preferences_response(True)
         mocked_response = Mock()
         mocked_response.ok = False
         mocked_response.status_code = 400
@@ -233,7 +252,7 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[preference_response, mocked_response],
+            side_effect=[sync_preferences_response, sync_tax_code_response, invoice_preferences_response, mocked_response],
         ):
             create_res = self.client.post(
                 "/invoices",
@@ -259,9 +278,9 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
-        preference_response = Mock()
-        preference_response.ok = True
-        preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+        create_sync_preferences_response = self._preferences_response(True)
+        create_sync_tax_code_response = self._tax_code_query_response()
+        create_invoice_preferences_response = self._preferences_response(True)
         failing_response = Mock()
         failing_response.ok = False
         failing_response.status_code = 400
@@ -269,7 +288,7 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[preference_response, failing_response],
+            side_effect=[create_sync_preferences_response, create_sync_tax_code_response, create_invoice_preferences_response, failing_response],
         ):
             create_res = self.client.post(
                 "/invoices",
@@ -284,16 +303,16 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(create_res.status_code, 201, create_res.text)
         invoice_id = create_res.json()["id"]
 
-        retry_preference_response = Mock()
-        retry_preference_response.ok = True
-        retry_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+        retry_sync_preferences_response = self._preferences_response(True)
+        retry_sync_tax_code_response = self._tax_code_query_response()
+        retry_invoice_preferences_response = self._preferences_response(True)
         success_response = Mock()
         success_response.ok = True
         success_response.json.return_value = {"Invoice": {"Id": "QB-INV-777"}}
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[retry_preference_response, success_response],
+            side_effect=[retry_sync_preferences_response, retry_sync_tax_code_response, retry_invoice_preferences_response, success_response],
         ):
             sync_res = self.client.post(f"/quickbooks/invoices/{invoice_id}", headers=self.auth_header)
 
@@ -309,16 +328,16 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
-        create_preference_response = Mock()
-        create_preference_response.ok = True
-        create_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+        create_sync_preferences_response = self._preferences_response(True)
+        create_sync_tax_code_response = self._tax_code_query_response()
+        create_invoice_preferences_response = self._preferences_response(True)
         create_response = Mock()
         create_response.ok = True
         create_response.json.return_value = {"Invoice": {"Id": "QB-INV-500"}}
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[create_preference_response, create_response],
+            side_effect=[create_sync_preferences_response, create_sync_tax_code_response, create_invoice_preferences_response, create_response],
         ):
             create_res = self.client.post(
                 "/invoices",
@@ -337,16 +356,16 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         fetch_response = Mock()
         fetch_response.ok = True
         fetch_response.json.return_value = {"Invoice": {"Id": "QB-INV-500", "SyncToken": "3"}}
-        update_preference_response = Mock()
-        update_preference_response.ok = True
-        update_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+        update_sync_preferences_response = self._preferences_response(True)
+        update_sync_tax_code_response = self._tax_code_query_response()
+        update_invoice_preferences_response = self._preferences_response(True)
         update_response = Mock()
         update_response.ok = True
         update_response.json.return_value = {"Invoice": {"Id": "QB-INV-500", "SyncToken": "4"}}
 
         with patch("app.services.quickbooks_invoice_service.requests.get", return_value=fetch_response) as mocked_get, patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[update_preference_response, update_response],
+            side_effect=[update_sync_preferences_response, update_sync_tax_code_response, update_invoice_preferences_response, update_response],
         ) as mocked_post:
             update_res = self.client.put(
                 f"/invoices/{invoice_id}",
@@ -362,7 +381,7 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(updated["qb_invoice_id"], "QB-INV-500")
         self.assertEqual(updated["qb_sync_status"], "synced")
         mocked_get.assert_called_once()
-        self.assertEqual(mocked_post.call_count, 2)
+        self.assertEqual(mocked_post.call_count, 4)
         sent_payload = mocked_post.call_args_list[-1].kwargs["json"]
         self.assertEqual(sent_payload["Id"], "QB-INV-500")
         self.assertEqual(sent_payload["SyncToken"], "3")
@@ -374,9 +393,9 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
-        create_preference_response = Mock()
-        create_preference_response.ok = True
-        create_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+        create_sync_preferences_response = self._preferences_response(True)
+        create_sync_tax_code_response = self._tax_code_query_response()
+        create_invoice_preferences_response = self._preferences_response(True)
         failing_response = Mock()
         failing_response.ok = False
         failing_response.status_code = 400
@@ -384,7 +403,7 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[create_preference_response, failing_response],
+            side_effect=[create_sync_preferences_response, create_sync_tax_code_response, create_invoice_preferences_response, failing_response],
         ):
             create_res = self.client.post(
                 "/invoices",
@@ -400,16 +419,16 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(create_res.status_code, 201, create_res.text)
         invoice_id = create_res.json()["id"]
 
-        update_preference_response = Mock()
-        update_preference_response.ok = True
-        update_preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+        update_sync_preferences_response = self._preferences_response(True)
+        update_sync_tax_code_response = self._tax_code_query_response()
+        update_invoice_preferences_response = self._preferences_response(True)
         success_response = Mock()
         success_response.ok = True
         success_response.json.return_value = {"Invoice": {"Id": "QB-INV-888"}}
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[update_preference_response, success_response],
+            side_effect=[update_sync_preferences_response, update_sync_tax_code_response, update_invoice_preferences_response, success_response],
         ):
             update_res = self.client.put(
                 f"/invoices/{invoice_id}",
@@ -432,11 +451,14 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         dealership = self._seed_dealership()
         job_id = self._seed_job_with_service_catalog(dealership)
 
-        preference_response = Mock()
-        preference_response.ok = True
-        preference_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": False}}}}
+        sync_preferences_response = self._preferences_response(True)
+        sync_tax_code_response = self._tax_code_query_response()
+        invoice_preferences_response = self._preferences_response(False)
 
-        with patch("app.services.quickbooks_invoice_service.requests.post", return_value=preference_response):
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[sync_preferences_response, sync_tax_code_response, invoice_preferences_response],
+        ):
             create_res = self.client.post(
                 "/invoices",
                 json={

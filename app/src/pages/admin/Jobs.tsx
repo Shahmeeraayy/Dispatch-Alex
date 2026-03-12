@@ -31,7 +31,9 @@ import {
     LayoutDashboard,
     TrendingUp,
     ShieldCheck,
-    Trash2
+    Trash2,
+    Check,
+    ChevronsUpDown
 } from 'lucide-react';
 import { calculateJobRanking, sortJobsByRanking } from '@/lib/priority';
 import { exportArrayData, selectColumnsForExport, type ExportFormat } from '@/lib/export';
@@ -68,6 +70,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
 import {
     Dialog,
     DialogContent,
@@ -181,6 +196,11 @@ type DealershipOption = {
     code: string;
     name: string;
     city: string;
+};
+
+type SearchableSelectOption = {
+    value: string;
+    label: string;
 };
 
 // --- Reference Data ---
@@ -649,6 +669,70 @@ function StatusBadge({ status, type }: { status: string; type: 'job' | 'invoice'
     );
 }
 
+function SearchableSelect({
+    value,
+    onChange,
+    options,
+    placeholder,
+    searchPlaceholder,
+    emptyLabel,
+    disabled = false,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    options: SearchableSelectOption[];
+    placeholder: string;
+    searchPlaceholder: string;
+    emptyLabel: string;
+    disabled?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const selectedOption = options.find((option) => option.value === value) ?? null;
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    disabled={disabled}
+                    className="w-full justify-between font-normal"
+                >
+                    <span className="truncate text-left">
+                        {selectedOption?.label || placeholder}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                    <CommandInput placeholder={searchPlaceholder} />
+                    <CommandList>
+                        <CommandEmpty>{emptyLabel}</CommandEmpty>
+                        <CommandGroup>
+                            {options.map((option) => (
+                                <CommandItem
+                                    key={option.value}
+                                    value={`${option.label} ${option.value}`}
+                                    onSelect={() => {
+                                        onChange(option.value);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Check className={cn('h-4 w-4', value === option.value ? 'opacity-100' : 'opacity-0')} />
+                                    <span className="truncate">{option.label}</span>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export default function JobsPage() {
     const navigate = useNavigate();
     const { technicianAccounts } = useAuth();
@@ -686,6 +770,24 @@ export default function JobsPage() {
     const serviceNames = useMemo(
         () => serviceCatalog.map((entry) => entry.name),
         [serviceCatalog],
+    );
+    const dealershipSelectOptions = useMemo<SearchableSelectOption[]>(
+        () => dealershipNames.map((name) => ({ value: name, label: name })),
+        [dealershipNames],
+    );
+    const serviceSelectOptions = useMemo<SearchableSelectOption[]>(
+        () => serviceNames.map((name) => ({ value: name, label: name })),
+        [serviceNames],
+    );
+    const technicianSelectOptions = useMemo<SearchableSelectOption[]>(
+        () => [
+            { value: 'unassigned', label: 'Unassigned' },
+            ...technicianOptions.map((tech) => ({
+                value: tech.name,
+                label: tech.isActive ? tech.name : `${tech.name} (Inactive)`,
+            })),
+        ],
+        [technicianOptions],
     );
     const initialNewJobForm: NewJobFormState = {
         dealership_name: dealershipNames[0] ?? '',
@@ -1805,29 +1907,29 @@ export default function JobsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Dealership</Label>
-                                <Select
+                                <SearchableSelect
                                     value={newJobForm.dealership_name}
-                                    onValueChange={(value) => setNewJobForm((prev) => ({ ...prev, dealership_name: value }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select dealership" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {dealershipNames.map((dealership) => (
-                                            <SelectItem key={dealership} value={dealership}>{dealership}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    onChange={(value) => setNewJobForm((prev) => ({ ...prev, dealership_name: value }))}
+                                    options={dealershipSelectOptions}
+                                    placeholder="Select dealership"
+                                    searchPlaceholder="Search dealership..."
+                                    emptyLabel="No dealership found."
+                                    disabled={dealershipSelectOptions.length === 0}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Service</Label>
-                                <Input
+                                <SearchableSelect
                                     value={newJobForm.service_name}
-                                    onChange={(event) => setNewJobForm((prev) => ({ ...prev, service_name: event.target.value }))}
-                                    placeholder={serviceNames.length > 0 ? `${serviceNames[0]}, ${serviceNames[1] || 'Second service'}` : 'Enter one or more services, comma separated'}
+                                    onChange={(value) => setNewJobForm((prev) => ({ ...prev, service_name: value }))}
+                                    options={serviceSelectOptions}
+                                    placeholder={serviceNames.length > 0 ? 'Select service' : 'No services available'}
+                                    searchPlaceholder="Search service..."
+                                    emptyLabel="No service found."
+                                    disabled={serviceSelectOptions.length === 0}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Enter one or more services separated by commas.
+                                    Select a service from the backend service catalog.
                                 </p>
                             </div>
                         </div>
@@ -1859,20 +1961,14 @@ export default function JobsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Assigned Technician</Label>
-                                <Select
+                                <SearchableSelect
                                     value={newJobForm.assigned_technician_name}
-                                    onValueChange={(value) => setNewJobForm((prev) => ({ ...prev, assigned_technician_name: value }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                                        {technicianOptions.map((tech) => (
-                                            <SelectItem key={tech.id} value={tech.name}>{tech.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    onChange={(value) => setNewJobForm((prev) => ({ ...prev, assigned_technician_name: value }))}
+                                    options={technicianSelectOptions}
+                                    placeholder="Select technician"
+                                    searchPlaceholder="Search technician..."
+                                    emptyLabel="No technician found."
+                                />
                             </div>
                         </div>
                     </div>

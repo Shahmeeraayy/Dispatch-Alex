@@ -59,19 +59,19 @@ export default function AdminLoginPage() {
           <div className="pointer-events-none absolute inset-0 opacity-20" style={brandingPatternStyle} />
 
           <div className="relative z-10 max-w-2xl">
-            <h1 className="mb-4 text-5xl font-bold tracking-tight">SM2 Dispatch</h1>
+            <h1 className="mb-4 text-5xl font-bold tracking-tight">SM2 electronics</h1>
             <h2 className="mb-6 text-2xl font-medium text-teal-100">
               Technician Dispatch &amp; Service Management Platform
             </h2>
             <p className="max-w-xl text-lg leading-relaxed text-teal-50/80">
-              Streamline your operations. Manage technicians, track jobs in real-time, handle invoices, and process approvals all in one unified platform.
+              Streamline SM2 electronics operations. Manage technicians, track jobs in real-time, handle invoices, and process approvals all in one unified platform.
             </p>
           </div>
 
           <div className="relative z-10 mt-12 flex items-center justify-center">
             <div className="flex aspect-video w-full max-w-lg items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-sm">
               <img
-                alt="SM2 Dispatch Logistics Dashboard Preview"
+                alt="SM2 electronics operations dashboard preview"
                 className="h-full w-full object-cover opacity-80"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDG35ncXB25BVPgSH6CugIxactx4gf8pZ_0lNO3gqkFSfUFqvekujRbL-UblCvoFP0bd-rHpZ6PVxpPNZFDuhhFO099kHPfJeNVi6wFHdLtP43RLqskAaTKKkBe4m5-BFLQPLm6p7-dqfKDyghQuP243Um8TKHeq-qyap6GEDhlj0g48Rs15qTFZUeC0YEMnDnlaECQZKipqbaT5pFoV00mux_xfCacWv6GTSMFjHkID5G88UMlmBGjp6-j65OQF2wkB7kg2dIv7MGP"
               />
@@ -79,14 +79,14 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="relative z-10 text-sm text-teal-200/50">
-            &copy; 2023 SM2 Dispatch Inc. All rights reserved.
+            &copy; {new Date().getFullYear()} SM2 electronics. All rights reserved.
           </div>
         </section>
 
         <section className="flex items-center justify-center bg-white p-6 sm:p-12 lg:w-[40%]">
           <div className="w-full max-w-[520px] space-y-8">
             <div className="mb-10 text-center lg:hidden">
-              <h1 className="text-3xl font-bold text-[#0a192f]">SM2 Dispatch</h1>
+              <h1 className="text-3xl font-bold text-[#0a192f]">SM2 electronics</h1>
             </div>
 
             <header>

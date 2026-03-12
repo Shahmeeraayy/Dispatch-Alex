@@ -153,7 +153,7 @@ class InvoiceApiTests(unittest.TestCase):
             "terms": "NET_15",
             "shipping": "10.00",
             "status": "sent",
-            "customer_message": "Thank you for choosing SM2 Dispatch.",
+            "customer_message": "Thank you for choosing SM2 electronics.",
         }
         create_res = self.client.post("/invoices", json=create_payload, headers=self.auth_header)
         self.assertEqual(create_res.status_code, 201, create_res.text)
@@ -252,7 +252,7 @@ class InvoiceApiTests(unittest.TestCase):
             "terms": "CUSTOM",
             "custom_term_days": 10,
             "company_info": {
-                "name": "SM2 Dispatch",
+                "name": "SM2 electronics",
                 "street_address": "123 Dispatch Ave",
                 "city": "Quebec",
                 "state": "QC",
@@ -707,11 +707,11 @@ class InvoiceApiTests(unittest.TestCase):
         )
         self.assertEqual(get_default_res.status_code, 200, get_default_res.text)
         default_payload = get_default_res.json()
-        self.assertEqual(default_payload["name"], "SM2 Dispatch")
+        self.assertEqual(default_payload["name"], "SM2 electronics")
 
         update_payload = {
             "logo_url": "https://example.com/logo.png",
-            "name": "SM2 Dispatch QA",
+            "name": "SM2 electronics QA",
             "street_address": "500 Test Blvd",
             "city": "Quebec",
             "state": "QC",

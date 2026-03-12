@@ -1,4 +1,4 @@
-// SM2 Dispatch - Mock Data
+// SM2 electronics - Mock Data
 
 import type {
   User,

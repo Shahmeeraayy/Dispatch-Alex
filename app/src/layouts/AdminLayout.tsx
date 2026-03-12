@@ -78,7 +78,7 @@ function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
             <Shield className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-semibold text-foreground leading-tight">SM2 Dispatch</h1>
+            <h1 className="font-semibold text-foreground leading-tight">SM2 electronics</h1>
             <p className="text-xs text-muted-foreground font-medium">Operational Center</p>
           </div>
         </div>

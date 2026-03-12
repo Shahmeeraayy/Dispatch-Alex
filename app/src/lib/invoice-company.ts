@@ -13,7 +13,7 @@ export interface InvoiceCompanyProfile {
 export const INVOICE_COMPANY_PROFILE_STORAGE_KEY = 'sm_dispatch_invoice_company_profile';
 
 export const DEFAULT_INVOICE_COMPANY_PROFILE: InvoiceCompanyProfile = {
-  name: 'SM2 Dispatch',
+  name: 'SM2 electronics',
   street_address: '123 Dispatch Ave',
   city: 'Quebec',
   state: 'QC',

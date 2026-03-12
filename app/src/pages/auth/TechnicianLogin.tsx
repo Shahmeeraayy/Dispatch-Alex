@@ -72,14 +72,14 @@ export default function TechnicianLoginPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
                 <Wrench className="h-4 w-4" />
               </span>
-              Technician Operations Portal
+              SM2 Electronics Dispatch
             </div>
-            <h1 className="mb-4 text-5xl font-bold tracking-tight">SM2 Dispatch</h1>
+            <h1 className="mb-4 text-5xl font-bold tracking-tight">SM2 Electronics Dispatch</h1>
             <h2 className="mb-6 text-2xl font-medium text-emerald-100">
-              Field Service Access for Technicians, Installers, and Mobile Teams
+              Enterprise Field Service Platform for Technicians, Installers, and Mobile Service Teams
             </h2>
             <p className="max-w-xl text-lg leading-relaxed text-emerald-50/80">
-              Check assigned jobs, manage active work orders, review service history, and stay aligned with dealership and dispatch operations from one technician-ready workspace.
+              Efficiently manage assigned jobs, monitor active work orders, review service history, and stay aligned with dispatch and operational workflows through one centralized technician workspace.
             </p>
           </div>
 
@@ -102,14 +102,14 @@ export default function TechnicianLoginPage() {
           </div>
 
           <div className="relative z-10 text-sm text-emerald-200/55">
-            &copy; 2023 SM2 Dispatch Inc. All rights reserved.
+            &copy; {new Date().getFullYear()} SM2 electronics. All rights reserved.
           </div>
         </section>
 
         <section className="flex items-center justify-center bg-white p-6 sm:p-10 lg:w-[40%] lg:p-12">
           <div className="w-full max-w-[520px] space-y-8">
             <div className="mb-10 text-center lg:hidden">
-              <h1 className="text-3xl font-bold text-[#0f172a]">SM2 Dispatch</h1>
+              <h1 className="text-3xl font-bold text-[#0f172a]">SM2 electronics</h1>
               <p className="mt-2 text-sm text-slate-500">Technician operations portal</p>
             </div>
 

@@ -859,7 +859,7 @@ export default function SettingsPage() {
                                     id="invoice_company_name"
                                     value={invoiceCompany.name}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, name: e.target.value })}
-                                    placeholder="SM2 Dispatch"
+                                    placeholder="SM2 electronics"
                                 />
                             </div>
                             <div className="space-y-2">

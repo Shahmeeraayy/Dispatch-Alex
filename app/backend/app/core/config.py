@@ -88,7 +88,7 @@ CORS_ALLOW_ORIGINS = get_env_csv(
 )
 
 COMPANY_LOGO_URL = get_env("COMPANY_LOGO_URL", "")
-COMPANY_NAME = get_env("COMPANY_NAME", "SM2 Dispatch")
+COMPANY_NAME = get_env("COMPANY_NAME", "SM2 electronics")
 COMPANY_STREET_ADDRESS = get_env("COMPANY_STREET_ADDRESS", "123 Dispatch Ave")
 COMPANY_CITY = get_env("COMPANY_CITY", "Quebec")
 COMPANY_STATE = get_env("COMPANY_STATE", "QC")

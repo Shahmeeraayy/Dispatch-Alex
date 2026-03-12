@@ -1,4 +1,4 @@
-// SM2 Dispatch - Type Definitions
+// SM2 electronics - Type Definitions
 
 // User Roles
 export type UserRole = 'admin' | 'technician';

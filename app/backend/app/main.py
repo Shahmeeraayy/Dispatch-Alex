@@ -40,7 +40,7 @@ _quickbooks_sync_stop_event: Event | None = None
 _quickbooks_sync_thread: Thread | None = None
 
 app = FastAPI(
-    title="SM2 Dispatch Technician API",
+    title="SM2 electronics Technician API",
     description="Backend APIs for admin technician profile, scheduling, and availability.",
     version="2.0.0",
 )
@@ -198,4 +198,4 @@ def handle_database_operational_error(_: Request, __: OperationalError):
 
 @app.get("/")
 def root():
-    return {"message": "SM2 Dispatch technician profile APIs are active."}
+    return {"message": "SM2 electronics technician profile APIs are active."}

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, ShieldCheck, Wrench } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,35 +15,19 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  technicianBodyFontStyle,
+  technicianDisplayFontStyle,
+  technicianGridOverlayStyle,
+  technicianOrbitalGlowStyle,
+  technicianPageBackgroundStyle,
+} from './technicianAuthTheme';
 
 type NavigationState = {
   from?: string;
 };
 
-const pageBackgroundStyle: CSSProperties = {
-  backgroundImage:
-    'radial-gradient(circle at 18% 18%, rgba(74, 222, 128, 0.16), transparent 22%), radial-gradient(circle at 82% 14%, rgba(45, 212, 191, 0.14), transparent 24%), linear-gradient(145deg, #03101a 0%, #082033 50%, #0a2419 100%)',
-};
-
-const gridOverlayStyle: CSSProperties = {
-  backgroundImage:
-    'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
-  backgroundSize: '120px 120px',
-  backgroundPosition: '-1px -1px',
-};
-
-const orbitalGlowStyle: CSSProperties = {
-  background:
-    'radial-gradient(circle at 50% 0%, rgba(74,222,128,0.24), rgba(74,222,128,0) 52%), radial-gradient(circle at 78% 18%, rgba(45,212,191,0.18), rgba(45,212,191,0) 38%)',
-};
-
 const accessTags = ['Jobs', 'Assignments', 'Profile'] as const;
-const displayFontStyle: CSSProperties = {
-  fontFamily: '"Space Grotesk", "Sora", system-ui, sans-serif',
-};
-const bodyFontStyle: CSSProperties = {
-  fontFamily: '"Manrope", "Inter", system-ui, sans-serif',
-};
 
 export default function TechnicianLoginPage() {
   const { login } = useAuth();
@@ -111,18 +95,21 @@ export default function TechnicianLoginPage() {
   return (
     <div
       className="relative min-h-[100svh] overflow-hidden bg-[#04131f] text-white antialiased"
-      style={pageBackgroundStyle}
+      style={technicianPageBackgroundStyle}
     >
-      <div className="admin-login-grid pointer-events-none absolute inset-0 opacity-35" style={gridOverlayStyle} />
+      <div
+        className="admin-login-grid pointer-events-none absolute inset-0 opacity-35"
+        style={technicianGridOverlayStyle}
+      />
       <div className="pointer-events-none absolute left-[-6rem] top-[-7rem] h-72 w-72 rounded-full bg-emerald-400/12 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-8rem] right-[-6rem] h-80 w-80 rounded-full bg-teal-300/14 blur-3xl" />
 
       <main className="relative flex min-h-[100svh] items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="admin-login-card relative w-full max-w-[560px]" style={bodyFontStyle}>
+        <div className="admin-login-card relative w-full max-w-[560px]" style={technicianBodyFontStyle}>
           <div className="pointer-events-none absolute inset-x-5 top-4 h-full rounded-[40px] border border-white/8 bg-white/[0.03] blur-sm" />
           <div
             className="admin-login-halo pointer-events-none absolute -left-3 -right-3 -top-3 h-40 rounded-[38px] opacity-80 blur-2xl"
-            style={orbitalGlowStyle}
+            style={technicianOrbitalGlowStyle}
           />
 
           <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,31,48,0.96),rgba(6,23,38,0.96))] p-6 shadow-[0_34px_120px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:p-8">
@@ -135,7 +122,7 @@ export default function TechnicianLoginPage() {
                 <div>
                   <div
                     className="inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
-                    style={displayFontStyle}
+                    style={technicianDisplayFontStyle}
                   >
                     <Wrench className="h-3.5 w-3.5" />
                     SM2 Electronics
@@ -143,7 +130,7 @@ export default function TechnicianLoginPage() {
 
                   <h1
                     className="mt-5 text-[clamp(2.2rem,4vw,3.85rem)] font-semibold leading-[0.9] tracking-[-0.07em] text-white"
-                    style={displayFontStyle}
+                    style={technicianDisplayFontStyle}
                   >
                     Technician
                     <span className="block bg-gradient-to-r from-white via-emerald-100 to-teal-200 bg-clip-text text-transparent">
@@ -213,64 +200,107 @@ export default function TechnicianLoginPage() {
                             Forgot password?
                           </button>
                         </DialogTrigger>
-                        <DialogContent className="border border-white/10 bg-[linear-gradient(180deg,rgba(9,31,48,0.98),rgba(6,23,38,0.98))] text-white shadow-[0_34px_120px_rgba(0,0,0,0.55)] sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle className="text-xl text-white" style={displayFontStyle}>
-                              Need password help?
-                            </DialogTitle>
-                            <DialogDescription className="text-slate-300">
-                              Send a password reset request to the admin portal. If your technician account exists,
-                              the admin team will see it immediately.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="forgot-tech-email" className="text-slate-200">
-                                Technician Email
-                              </Label>
-                              <Input
-                                id="forgot-tech-email"
-                                type="email"
-                                value={forgotEmail}
-                                onChange={(event) => setForgotEmail(event.target.value)}
-                                autoComplete="email"
-                                placeholder="tech@sm2dispatch.com"
-                                className="h-[50px] rounded-2xl border-white/14 bg-white/[0.04] text-white placeholder:text-slate-500 focus-visible:border-emerald-300/45 focus-visible:ring-emerald-300/15"
-                              />
+                        <DialogContent className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,31,48,0.98),rgba(6,23,38,0.98))] p-0 text-white shadow-[0_34px_120px_rgba(0,0,0,0.55)] sm:max-w-[540px]">
+                          <div className="relative">
+                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),rgba(255,255,255,0)_54%)]" />
+                            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/70 to-transparent" />
+                            <div className="p-6 sm:p-7">
+                              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                  <div
+                                    className="inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-100"
+                                    style={technicianDisplayFontStyle}
+                                  >
+                                    Technician recovery
+                                  </div>
+                                  <DialogTitle
+                                    className="mt-4 text-[1.7rem] font-semibold tracking-[-0.05em] text-white"
+                                    style={technicianDisplayFontStyle}
+                                  >
+                                    Need password help?
+                                  </DialogTitle>
+                                  <DialogDescription className="mt-2 max-w-md text-sm leading-6 text-slate-300">
+                                    Send a password reset request to the admin portal. If your technician account
+                                    exists, the admin team will see it immediately.
+                                  </DialogDescription>
+                                </div>
+                                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-sm font-medium text-emerald-100">
+                                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                                  Admin queue
+                                </div>
+                              </div>
+
+                              <div className="mt-6 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,27,43,0.92),rgba(7,23,37,0.92))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:p-5">
+                                <div className="space-y-2">
+                                  <Label htmlFor="forgot-tech-email" className="text-slate-200">
+                                    Technician Email
+                                  </Label>
+                                  <Input
+                                    id="forgot-tech-email"
+                                    type="email"
+                                    value={forgotEmail}
+                                    onChange={(event) => setForgotEmail(event.target.value)}
+                                    autoComplete="email"
+                                    placeholder="tech@sm2dispatch.com"
+                                    className="h-[52px] rounded-2xl border-white/14 bg-white/[0.04] text-white placeholder:text-slate-500 focus-visible:border-emerald-300/45 focus-visible:ring-emerald-300/15"
+                                  />
+                                </div>
+                                <p className="mt-4 text-sm leading-6 text-slate-400">
+                                  Use the email tied to your technician account. The request will appear in the admin
+                                  technician account portal.
+                                </p>
+                              </div>
+
+                              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-[20px] border border-white/10 bg-white/[0.03] px-4 py-3">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/60">
+                                    Verified Flow
+                                  </p>
+                                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                                    Requests stay tied to the technician email already registered in the system.
+                                  </p>
+                                </div>
+                                <div className="rounded-[20px] border border-white/10 bg-white/[0.03] px-4 py-3">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100/60">
+                                    Admin Review
+                                  </p>
+                                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                                    The admin team sees the request in the technician account portal and can reset it.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {forgotMessage && (
+                                <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                                  {forgotMessage}
+                                </div>
+                              )}
+                              {forgotError && (
+                                <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                                  {forgotError}
+                                </div>
+                              )}
+
+                              <DialogFooter className="mt-6 gap-3 sm:justify-between">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  asChild
+                                  className="border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.08] hover:text-white"
+                                >
+                                  <Link to="/tech/signup">Create account</Link>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  onClick={handleForgotPasswordRequest}
+                                  disabled={isForgotSubmitting}
+                                  className="bg-gradient-to-r from-[#139c69] to-[#1bb2a5] text-white hover:from-[#18ab74] hover:to-[#20c2b5]"
+                                >
+                                  {isForgotSubmitting ? 'Sending...' : 'Notify admin'}
+                                </Button>
+                              </DialogFooter>
                             </div>
-                            <p className="text-sm leading-6 text-slate-400">
-                              Use the email tied to your technician account. The request will appear in the admin
-                              technician account portal.
-                            </p>
-                            {forgotMessage && (
-                              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-                                {forgotMessage}
-                              </div>
-                            )}
-                            {forgotError && (
-                              <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                                {forgotError}
-                              </div>
-                            )}
                           </div>
-                          <DialogFooter className="gap-3 sm:justify-between">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              asChild
-                              className="border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.08] hover:text-white"
-                            >
-                              <Link to="/tech/signup">Create account</Link>
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={handleForgotPasswordRequest}
-                              disabled={isForgotSubmitting}
-                              className="bg-gradient-to-r from-[#139c69] to-[#1bb2a5] text-white hover:from-[#18ab74] hover:to-[#20c2b5]"
-                            >
-                              {isForgotSubmitting ? 'Sending...' : 'Notify admin'}
-                            </Button>
-                          </DialogFooter>
                         </DialogContent>
                       </Dialog>
                     </div>

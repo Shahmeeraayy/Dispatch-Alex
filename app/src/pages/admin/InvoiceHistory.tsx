@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import jsPDF from 'jspdf';
 import {
+    Activity,
     Search,
     Download,
     RefreshCw,
@@ -13,6 +14,7 @@ import {
     AlertTriangle,
     Clock3,
     Link2,
+    Sparkles,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -20,7 +22,6 @@ import { exportArrayData, selectColumnsForExport, type ExportFormat } from '@/li
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -52,6 +53,54 @@ const INVOICE_HISTORY_EXPORT_COLUMNS = [
     'ApprovedBy',
     'Status',
 ];
+
+const displayFontStyle: CSSProperties = {
+    fontFamily: '"Space Grotesk", "Sora", system-ui, sans-serif',
+};
+
+const bodyFontStyle: CSSProperties = {
+    fontFamily: '"Manrope", "Inter", system-ui, sans-serif',
+};
+
+type InvoiceHistoryMetricTone = 'cyan' | 'amber' | 'emerald' | 'violet';
+
+function invoiceHistoryMetricCardClasses(tone: InvoiceHistoryMetricTone): string {
+    return cn(
+        'group relative overflow-hidden rounded-[26px] border px-5 py-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.28)]',
+        tone === 'cyan' && 'border-cyan-400/20 bg-[linear-gradient(180deg,rgba(8,31,45,0.96),rgba(7,23,34,0.96))] hover:border-cyan-300/35',
+        tone === 'amber' && 'border-amber-400/20 bg-[linear-gradient(180deg,rgba(47,28,13,0.96),rgba(27,18,8,0.96))] hover:border-amber-300/35',
+        tone === 'emerald' && 'border-emerald-400/20 bg-[linear-gradient(180deg,rgba(12,34,28,0.96),rgba(8,22,18,0.96))] hover:border-emerald-300/35',
+        tone === 'violet' && 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(28,20,49,0.96),rgba(19,17,34,0.96))] hover:border-violet-300/35',
+    );
+}
+
+function invoiceHistoryMetricTopLineClasses(tone: InvoiceHistoryMetricTone): string {
+    if (tone === 'amber') return 'via-amber-300/80';
+    if (tone === 'emerald') return 'via-emerald-300/80';
+    if (tone === 'violet') return 'via-violet-300/80';
+    return 'via-cyan-300/80';
+}
+
+function invoiceHistoryMetricIconClasses(tone: InvoiceHistoryMetricTone): string {
+    if (tone === 'amber') return 'border border-amber-300/20 bg-amber-300/12 text-amber-100';
+    if (tone === 'emerald') return 'border border-emerald-300/20 bg-emerald-300/12 text-emerald-100';
+    if (tone === 'violet') return 'border border-violet-300/20 bg-violet-300/12 text-violet-100';
+    return 'border border-cyan-300/20 bg-cyan-300/12 text-cyan-100';
+}
+
+const formatDateTimeSafe = (value?: string | null, pattern = 'MMM dd, yyyy - HH:mm') => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return format(date, pattern);
+};
+
+const formatDateSafe = (value?: string | null, pattern = 'MMM dd, yyyy') => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return format(date, pattern);
+};
 
 type InvoiceStatusFilter = 'all' | 'draft' | 'sent' | 'sync_failed' | 'paid' | 'overdue' | 'cancelled';
 type InvoicePeriodFilter = 'all' | 'today' | '7d' | '30d' | '90d' | 'year';
@@ -100,41 +149,41 @@ const resolveInvoiceDisplayStatus = (
         return {
             value: 'sync_failed',
             label: 'Sync Failed',
-            badgeClassName: 'bg-red-500/10 text-red-500 border-red-500/20',
+            badgeClassName: 'border-red-300/20 bg-red-300/12 text-red-100',
         };
     }
     if (invoice.status === 'paid') {
         return {
             value: 'paid',
             label: 'Paid',
-            badgeClassName: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+            badgeClassName: 'border-emerald-300/20 bg-emerald-300/12 text-emerald-100',
         };
     }
     if (invoice.status === 'sent') {
         return {
             value: 'sent',
             label: 'Sent',
-            badgeClassName: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+            badgeClassName: 'border-blue-300/20 bg-blue-300/12 text-blue-100',
         };
     }
     if (invoice.status === 'overdue') {
         return {
             value: 'overdue',
             label: 'Overdue',
-            badgeClassName: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+            badgeClassName: 'border-orange-300/20 bg-orange-300/12 text-orange-100',
         };
     }
     if (invoice.status === 'cancelled') {
         return {
             value: 'cancelled',
             label: 'Cancelled',
-            badgeClassName: 'bg-red-500/10 text-red-500 border-red-500/20',
+            badgeClassName: 'border-red-300/20 bg-red-300/12 text-red-100',
         };
     }
     return {
         value: 'draft',
         label: 'Draft',
-        badgeClassName: 'bg-gray-500/10 text-muted-foreground border-border',
+        badgeClassName: 'border-slate-300/20 bg-slate-300/10 text-slate-300',
     };
 };
 
@@ -271,6 +320,32 @@ export default function InvoiceHistoryPage() {
 
         return matchesSearch && matchesStatus && matchesPeriod;
     }), [filterPeriod, filterStatus, history, searchQuery]);
+
+    const archiveValue = useMemo(
+        () => filteredHistory.reduce((sum, inv) => sum + toNumber(inv.total), 0),
+        [filteredHistory],
+    );
+
+    const sentCount = useMemo(
+        () => filteredHistory.filter((inv) => resolveInvoiceDisplayStatus(inv).value === 'sent').length,
+        [filteredHistory],
+    );
+
+    const syncFailedCount = useMemo(
+        () => filteredHistory.filter((inv) => resolveInvoiceDisplayStatus(inv).value === 'sync_failed').length,
+        [filteredHistory],
+    );
+
+    const paidCount = useMemo(
+        () => filteredHistory.filter((inv) => resolveInvoiceDisplayStatus(inv).value === 'paid').length,
+        [filteredHistory],
+    );
+
+    const clearFilters = () => {
+        setSearchQuery('');
+        setFilterStatus('all');
+        setFilterPeriod('all');
+    };
 
     const handleViewInvoice = (invoice: BackendInvoice) => {
         setSelectedInvoice(invoice);
@@ -482,22 +557,101 @@ export default function InvoiceHistoryPage() {
         doc.save(`${invoice.invoice_number}.pdf`);
     };
 
+    const summaryCards = [
+        {
+            key: 'archive',
+            label: 'Archive records',
+            value: filteredHistory.length.toString(),
+            description: 'Invoices visible in the current archive view.',
+            icon: FileText,
+            tone: 'cyan' as const,
+        },
+        {
+            key: 'value',
+            label: 'Archive value',
+            value: `$${archiveValue.toFixed(2)}`,
+            description: 'Total invoice amount across the current filtered history.',
+            icon: Download,
+            tone: 'amber' as const,
+        },
+        {
+            key: 'sent',
+            label: 'Sent to client',
+            value: sentCount.toString(),
+            description: 'Invoices already issued and awaiting final settlement.',
+            icon: Send,
+            tone: 'emerald' as const,
+        },
+        {
+            key: 'sync',
+            label: 'Sync issues',
+            value: syncFailedCount.toString(),
+            description: paidCount > 0
+                ? `${paidCount} invoice${paidCount === 1 ? '' : 's'} already marked paid in this view.`
+                : 'QuickBooks resend candidates surfaced for follow-up.',
+            icon: AlertTriangle,
+            tone: 'violet' as const,
+        },
+    ];
+
     return (
-        <div className="flex flex-col h-full space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Invoice History</h1>
-                    <p className="text-sm text-muted-foreground font-medium">Archive of all approved and processed invoices</p>
+        <div className="flex h-full flex-col gap-6">
+            <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,24,41,0.98),rgba(5,15,29,0.98))] px-6 py-6 shadow-[0_32px_110px_rgba(0,0,0,0.32)]">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(47,142,146,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.12),transparent_26%)]" />
+                <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                    <div className="max-w-3xl space-y-4">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
+                            <Sparkles className="h-3.5 w-3.5 text-cyan-200" />
+                            Archive Surface
+                        </div>
+                        <div className="space-y-3">
+                            <h1 className="text-[2.35rem] font-semibold leading-none tracking-[-0.06em] text-white md:text-[2.8rem]" style={displayFontStyle}>
+                                Invoice history
+                                <br />
+                                with audit depth.
+                            </h1>
+                            <p className="max-w-2xl text-sm leading-7 text-slate-300 md:text-[15px]" style={bodyFontStyle}>
+                                Audit processed invoices, monitor QuickBooks sync state, and reopen archived records from one premium command surface instead of a plain archive table.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="h-9 rounded-full border-cyan-300/20 bg-cyan-300/10 px-3 text-cyan-100">
+                                <Activity className="mr-1.5 h-3.5 w-3.5" />
+                                {filteredHistory.length} archive records
+                            </Badge>
+                            <Badge variant="outline" className="h-9 rounded-full border-amber-300/20 bg-amber-300/10 px-3 text-amber-100">
+                                <AlertTriangle className="mr-1.5 h-3.5 w-3.5" />
+                                {syncFailedCount} sync issue{syncFailedCount === 1 ? '' : 's'}
+                            </Badge>
+                            <Badge variant="outline" className="h-9 rounded-full border-white/10 bg-white/[0.04] px-3 text-slate-300">
+                                <Send className="mr-1.5 h-3.5 w-3.5 text-emerald-200" />
+                                {sentCount} sent
+                            </Badge>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void fetchHistory()}
+                            className="h-11 gap-2 rounded-2xl border-white/10 bg-white/[0.04] px-4 text-slate-100 hover:bg-white/[0.08] hover:text-white"
+                        >
+                            <RefreshCw className={cn('h-4 w-4 text-slate-300', loading && 'animate-spin')} />
+                            Refresh
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-11 gap-2 rounded-2xl border-white/10 bg-white/[0.04] px-4 text-slate-100 hover:bg-white/[0.08] hover:text-white"
+                            onClick={() => setExportModalOpen(true)}
+                        >
+                            <Download className="h-4 w-4 text-slate-300" />
+                            Export Archive
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                    <Button variant="outline" size="sm" onClick={() => void fetchHistory()} className="h-9 gap-2">
-                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /> Refresh
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => setExportModalOpen(true)}>
-                        <Download className="w-4 h-4" /> Export Archive
-                    </Button>
-                </div>
-            </div>
+            </section>
 
             <ColumnExportDialog
                 open={exportModalOpen}
@@ -508,235 +662,440 @@ export default function InvoiceHistoryPage() {
                 onConfirm={handleExport}
             />
 
-            <Card className="p-4 border-border shadow-sm">
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by invoice, job code, dealership..."
-                            className="pl-9 bg-muted/30 border-border focus:bg-background transition-all h-10"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex gap-2">
-                        <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as InvoiceStatusFilter)}>
-                            <SelectTrigger className="w-[150px] h-10">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="sent">Sent</SelectItem>
-                                <SelectItem value="sync_failed">Sync Failed</SelectItem>
-                                <SelectItem value="paid">Paid</SelectItem>
-                                <SelectItem value="overdue">Overdue</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={filterPeriod} onValueChange={(value) => setFilterPeriod(value as InvoicePeriodFilter)}>
-                            <SelectTrigger className="w-[150px] h-10">
-                                <div className="flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" />
-                                    <SelectValue placeholder="Period" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {summaryCards.map((card) => {
+                    const Icon = card.icon;
+                    return (
+                        <div key={card.key} className={invoiceHistoryMetricCardClasses(card.tone)}>
+                            <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent', invoiceHistoryMetricTopLineClasses(card.tone))} />
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                                        {card.label}
+                                    </div>
+                                    <div className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white" style={displayFontStyle}>
+                                        {card.value}
+                                    </div>
+                                    <p className="mt-4 text-sm leading-6 text-slate-400">{card.description}</p>
                                 </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Periods</SelectItem>
-                                <SelectItem value="today">Today</SelectItem>
-                                <SelectItem value="7d">Last 7 days</SelectItem>
-                                <SelectItem value="30d">Last 30 days</SelectItem>
-                                <SelectItem value="90d">Last 90 days</SelectItem>
-                                <SelectItem value="year">This year</SelectItem>
-                            </SelectContent>
-                        </Select>
+                                <div className={cn('flex h-11 w-11 items-center justify-center rounded-2xl', invoiceHistoryMetricIconClasses(card.tone))}>
+                                    <Icon className="h-5 w-5" />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,23,38,0.98),rgba(7,18,31,0.98))] shadow-[0_28px_90px_rgba(0,0,0,0.3)]">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/60 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-r from-[#2F8E92]/6 via-transparent to-blue-500/5" />
+                <div className="relative p-4 md:p-5">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
+                        <div className="relative min-w-0 flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                            <Input
+                                placeholder="Search by invoice, job code, dealership, or technician..."
+                                className="h-11 rounded-2xl border-white/10 bg-white/[0.04] pl-9 text-white placeholder:text-slate-500 shadow-none focus-visible:border-cyan-300/35 focus-visible:ring-cyan-300/15"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as InvoiceStatusFilter)}>
+                                <SelectTrigger className="h-11 w-full rounded-2xl border-white/10 bg-white/[0.04] text-white shadow-none sm:w-[170px]">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    <SelectItem value="draft">Draft</SelectItem>
+                                    <SelectItem value="sent">Sent</SelectItem>
+                                    <SelectItem value="sync_failed">Sync Failed</SelectItem>
+                                    <SelectItem value="paid">Paid</SelectItem>
+                                    <SelectItem value="overdue">Overdue</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={filterPeriod} onValueChange={(value) => setFilterPeriod(value as InvoicePeriodFilter)}>
+                                <SelectTrigger className="h-11 w-full rounded-2xl border-white/10 bg-white/[0.04] text-white shadow-none sm:w-[170px]">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-slate-400" />
+                                        <SelectValue placeholder="Period" />
+                                    </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Periods</SelectItem>
+                                    <SelectItem value="today">Today</SelectItem>
+                                    <SelectItem value="7d">Last 7 days</SelectItem>
+                                    <SelectItem value="30d">Last 30 days</SelectItem>
+                                    <SelectItem value="90d">Last 90 days</SelectItem>
+                                    <SelectItem value="year">This year</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {(searchQuery || filterStatus !== 'all' || filterPeriod !== 'all') ? (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearFilters}
+                                    className="h-11 rounded-2xl px-3 text-rose-200 hover:bg-rose-400/10 hover:text-rose-100"
+                                >
+                                    <AlertTriangle className="mr-1 h-4 w-4" />
+                                    Clear
+                                </Button>
+                            ) : null}
+                        </div>
                     </div>
                 </div>
-            </Card>
+            </div>
 
-            <div className="flex-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden min-h-[500px]">
+            <div className="relative flex min-h-[540px] flex-1 flex-col overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,22,39,0.98),rgba(5,15,28,0.99))] shadow-[0_34px_110px_rgba(0,0,0,0.34)]">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(47,142,146,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(96,165,250,0.08),transparent_26%)]" />
+                <div className="relative flex items-center justify-between border-b border-white/10 px-5 py-4">
+                    <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Archive board</div>
+                        <div className="mt-1 text-sm text-slate-300">Processed invoices with status, sync health, and downloadable detail.</div>
+                    </div>
+                    <Badge variant="outline" className="h-9 rounded-full border-white/10 bg-white/[0.04] px-3 text-slate-300">
+                        {filteredHistory.length} visible
+                    </Badge>
+                </div>
                 {loading ? (
-                    <div className="p-6 space-y-4">
-                        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+                    <div className="p-5 space-y-3">
+                        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full rounded-[20px] bg-white/[0.05]" />)}
                     </div>
                 ) : filteredHistory.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-                        <FileText className="w-12 h-12 mb-4 opacity-20" />
-                        <p className="font-medium text-foreground">No invoices found</p>
-                        <p className="text-sm">Try adjusting your search filters</p>
+                    <div className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-center">
+                        <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                            <FileText className="h-8 w-8 text-cyan-200/80" />
+                        </div>
+                        <h3 className="text-2xl font-semibold tracking-[-0.03em] text-white" style={displayFontStyle}>
+                            No archive records in this view
+                        </h3>
+                        <p className="mt-3 max-w-md text-sm leading-6 text-slate-400" style={bodyFontStyle}>
+                            Adjust the archive filters or refresh the dataset to widen the visible invoice history.
+                        </p>
+                        <Button
+                            variant="outline"
+                            className="mt-6 h-11 rounded-2xl border-white/10 bg-white/[0.03] px-5 text-slate-100 hover:bg-white/[0.08] hover:text-white"
+                            onClick={clearFilters}
+                        >
+                            Reset filters
+                        </Button>
                     </div>
                 ) : (
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead className="pl-6">Invoice / Job</TableHead>
-                                <TableHead>Dealership</TableHead>
-                                <TableHead>Technician</TableHead>
-                                <TableHead>Created Date</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
-                                <TableHead className="text-center">Status</TableHead>
-                                <TableHead className="w-[80px] pr-6"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredHistory.map((inv) => (
-                                (() => {
+                    <div className="overflow-auto">
+                        <Table className="min-w-[1120px]">
+                            <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+                                <TableRow className="border-white/0 hover:bg-transparent">
+                                    <TableHead className="pl-6 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Invoice / Job</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Dealership</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Created Date</TableHead>
+                                    <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Amount</TableHead>
+                                    <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Status</TableHead>
+                                    <TableHead className="w-[90px] pr-6 text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Open</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredHistory.map((inv, index) => {
                                     const displayStatus = resolveInvoiceDisplayStatus(inv);
                                     return (
-                                <TableRow key={inv.id} className="hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => handleViewInvoice(inv)}>
-                                    <TableCell className="pl-6 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-foreground text-sm">{inv.invoice_number}</span>
-                                            <span className="text-xs text-muted-foreground font-mono">{extractJobCodeFromInvoice(inv)}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                                            <span className="text-foreground font-medium text-sm">{inv.dealership_name || inv.bill_to?.name || '-'}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-[#2F8E92]/10 flex items-center justify-center text-[10px] font-bold text-[#2F8E92]">
-                                                {resolveTechnician(inv).substring(0, 2)}
-                                            </div>
-                                            <span className="text-foreground text-sm">{resolveTechnician(inv)}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-muted-foreground text-xs">{format(new Date(inv.created_at), 'MMM dd, yyyy - HH:mm')}</span>
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono font-bold text-foreground">
-                                        ${toNumber(inv.total).toFixed(2)}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <Badge
-                                            variant="outline"
-                                            className={cn('text-[10px] px-2 py-0.5', displayStatus.badgeClassName)}
+                                        <TableRow
+                                            key={inv.id}
+                                            className={cn(
+                                                'group cursor-pointer border-b border-white/6 transition-colors hover:bg-white/[0.045]',
+                                                index % 2 === 1 && 'bg-white/[0.015]',
+                                            )}
+                                            onClick={() => handleViewInvoice(inv)}
                                         >
-                                            {displayStatus.label}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="pr-6 text-right">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <ArrowUpRight className="w-4 h-4 text-[#2F8E92]" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
+                                            <TableCell className="pl-6 py-4">
+                                                <div className="space-y-1.5">
+                                                    <div className="text-base font-semibold tracking-[-0.03em] text-white transition-colors group-hover:text-cyan-100" style={displayFontStyle}>
+                                                        {inv.invoice_number}
+                                                    </div>
+                                                    <div className="text-xs font-mono text-slate-500">{extractJobCodeFromInvoice(inv)}</div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-100">
+                                                        <Building2 className="h-4 w-4" />
+                                                    </div>
+                                                    <span className="text-sm font-medium text-slate-100">{inv.dealership_name || inv.bill_to?.name || '-'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="inline-flex items-center gap-3 rounded-2xl border border-emerald-300/18 bg-emerald-300/[0.08] px-3 py-2">
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-300/20 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100">
+                                                        {resolveTechnician(inv).substring(0, 2)}
+                                                    </div>
+                                                    <span className="text-sm text-emerald-50">{resolveTechnician(inv)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="text-sm text-slate-300">
+                                                    {format(new Date(inv.created_at), 'MMM dd, yyyy - HH:mm')}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4 text-right">
+                                                <div className="text-lg font-semibold tracking-[-0.04em] text-amber-100" style={displayFontStyle}>
+                                                    ${toNumber(inv.total).toFixed(2)}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4 text-center">
+                                                <Badge
+                                                    variant="outline"
+                                                    className={cn('rounded-full px-3 py-1 text-[10px] backdrop-blur-sm', displayStatus.badgeClassName)}
+                                                >
+                                                    {displayStatus.label}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="pr-6 text-right">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 rounded-2xl border border-white/10 bg-white/[0.03] text-slate-300 opacity-0 transition-all hover:bg-white/[0.08] hover:text-white group-hover:opacity-100"
+                                                >
+                                                    <ArrowUpRight className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
                                     );
-                                })()
-                            ))}
-                        </TableBody>
-                    </Table>
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
                 )}
             </div>
 
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                <SheetContent className="sm:max-w-xl w-full flex flex-col p-0">
+                <SheetContent className="flex w-full flex-col border-l border-white/10 bg-[linear-gradient(180deg,rgba(7,21,37,0.99),rgba(4,13,24,1))] p-0 text-white sm:max-w-2xl">
                     {selectedInvoice && (
                         (() => {
                             const displayStatus = resolveInvoiceDisplayStatus(selectedInvoice);
+                            const syncPresentation = resolveQuickBooksSyncPresentation(selectedInvoice);
+                            const SyncIcon = syncPresentation.icon;
+                            const summaryTiles = [
+                                { label: 'Dealership', value: selectedInvoice.dealership_name || selectedInvoice.bill_to?.name || '-' },
+                                { label: 'Technician', value: resolveTechnician(selectedInvoice) },
+                                { label: 'Created', value: formatDateTimeSafe(selectedInvoice.created_at) },
+                                { label: 'Invoice total', value: `$${toNumber(selectedInvoice.total).toFixed(2)}` },
+                            ];
                             return (
                         <>
-                            <div className="p-6 bg-muted/30 border-b border-border">
-                                <SheetHeader>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <Badge className={cn('border', displayStatus.badgeClassName)}>
-                                            {displayStatus.value === 'sync_failed' ? (
-                                                <AlertTriangle className="w-3 h-3 mr-1" />
-                                            ) : (
-                                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                            )}
-                                            {displayStatus.label}
-                                        </Badge>
-                                        <span className="text-xs text-muted-foreground">Source: Backend</span>
+                            <div className="relative overflow-hidden border-b border-white/10 px-6 py-6">
+                                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/75 to-transparent" />
+                                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(47,142,146,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.12),transparent_28%)]" />
+                                <div className="relative space-y-5">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div className="space-y-3">
+                                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
+                                                <Sparkles className="h-3.5 w-3.5 text-cyan-200" />
+                                                Archive Detail
+                                            </div>
+                                            <SheetHeader className="space-y-2 text-left">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={cn(
+                                                            'rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] backdrop-blur-sm',
+                                                            displayStatus.badgeClassName,
+                                                        )}
+                                                    >
+                                                        {displayStatus.value === 'sync_failed' ? (
+                                                            <AlertTriangle className="mr-1.5 h-3 w-3" />
+                                                        ) : (
+                                                            <CheckCircle2 className="mr-1.5 h-3 w-3" />
+                                                        )}
+                                                        {displayStatus.label}
+                                                    </Badge>
+                                                    <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                                        Source: Backend
+                                                    </Badge>
+                                                </div>
+                                                <SheetTitle className="text-[2rem] font-semibold leading-none tracking-[-0.06em] text-white" style={displayFontStyle}>
+                                                    {selectedInvoice.invoice_number}
+                                                </SheetTitle>
+                                                <SheetDescription className="max-w-xl text-sm leading-6 text-slate-300" style={bodyFontStyle}>
+                                                    Archived invoice for job {extractJobCodeFromInvoice(selectedInvoice)} with sync state, bill-to detail, and downloadable records.
+                                                </SheetDescription>
+                                            </SheetHeader>
+                                        </div>
+                                        <div className="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-3 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                                            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">QuickBooks</div>
+                                            <div className={cn('mt-2 flex items-center justify-end gap-2 text-sm font-medium', syncPresentation.className)}>
+                                                <SyncIcon className="h-4 w-4" />
+                                                {selectedInvoice.qb_sync_status === 'synced' ? 'Synced' : selectedInvoice.qb_sync_status === 'failed' ? 'Retry needed' : 'Pending'}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <SheetTitle className="text-2xl font-bold text-foreground">{selectedInvoice.invoice_number}</SheetTitle>
-                                    <SheetDescription>Invoice details for job {extractJobCodeFromInvoice(selectedInvoice)}</SheetDescription>
-                                </SheetHeader>
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        {summaryTiles.map((tile) => (
+                                            <div key={tile.label} className="rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                                                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">{tile.label}</div>
+                                                <div className="mt-2 text-sm font-medium text-white md:text-[15px]">{tile.value}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
 
                             <ScrollArea className="flex-1">
-                                <div className="p-6 space-y-8">
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Dealership</label>
-                                            <p className="text-foreground font-semibold">{selectedInvoice.dealership_name || selectedInvoice.bill_to?.name || '-'}</p>
+                                <div className="space-y-6 p-6">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Created At</div>
+                                            <div className="mt-2 text-sm text-white">{formatDateTimeSafe(selectedInvoice.created_at, 'PPPP - HH:mm')}</div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Technician</label>
-                                            <p className="text-foreground font-semibold">{resolveTechnician(selectedInvoice)}</p>
+                                        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">QB Sync Status</div>
+                                            <div className={cn('mt-2 flex items-center gap-2 text-sm font-medium', syncPresentation.className)}>
+                                                <SyncIcon className="h-4 w-4" />
+                                                {syncPresentation.label}
+                                            </div>
+                                            {selectedInvoice.qb_customer_id ? (
+                                                <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                                                    <Link2 className="h-3.5 w-3.5" />
+                                                    Customer ID: {selectedInvoice.qb_customer_id}
+                                                </div>
+                                            ) : null}
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Created At</label>
-                                            <p className="text-foreground text-sm">{format(new Date(selectedInvoice.created_at), 'PPPP - HH:mm')}</p>
+                                        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Invoice Date</div>
+                                            <div className="mt-2 text-sm text-white">{formatDateSafe(selectedInvoice.invoice_date)}</div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">QB Sync Status</label>
-                                            {(() => {
-                                                const syncPresentation = resolveQuickBooksSyncPresentation(selectedInvoice);
-                                                const SyncIcon = syncPresentation.icon;
-                                                return (
-                                                    <div className="space-y-1">
-                                                        <p className={cn('text-sm font-medium flex items-center gap-1', syncPresentation.className)}>
-                                                            <SyncIcon className="w-3 h-3" /> {syncPresentation.label}
-                                                        </p>
-                                                        {selectedInvoice.qb_sync_error ? (
-                                                            <p className="text-xs text-red-400">
-                                                                {selectedInvoice.qb_sync_error}
-                                                            </p>
-                                                        ) : null}
-                                                        {selectedInvoice.qb_customer_id ? (
-                                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                                <Link2 className="w-3 h-3" />
-                                                                Customer ID: {selectedInvoice.qb_customer_id}
-                                                            </p>
-                                                        ) : null}
-                                                    </div>
-                                                );
-                                            })()}
+                                        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Due Date / Terms</div>
+                                            <div className="mt-2 text-sm text-white">{formatDateSafe(selectedInvoice.due_date)}</div>
+                                            <div className="mt-1 text-xs text-slate-400">{formatTermsLabel(selectedInvoice.terms, selectedInvoice.custom_term_days)}</div>
                                         </div>
                                     </div>
 
-                                    <div className="rounded-xl border border-border overflow-hidden">
-                                        <Table>
-                                            <TableHeader className="bg-muted/50">
-                                                <TableRow>
-                                                    <TableHead className="text-[10px] uppercase font-bold">Line Description</TableHead>
-                                                    <TableHead className="text-[10px] uppercase font-bold text-center w-[60px]">Qty</TableHead>
-                                                    <TableHead className="text-[10px] uppercase font-bold text-right w-[100px]">Total</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {selectedInvoice.line_items.map((item) => (
-                                                    <TableRow key={item.id}>
-                                                        <TableCell className="text-sm text-foreground py-3">{item.description || item.product_service}</TableCell>
-                                                        <TableCell className="text-sm text-center py-3">{toNumber(item.qty ?? item.quantity).toFixed(2)}</TableCell>
-                                                        <TableCell className="text-sm text-right font-mono py-3">${toNumber(item.amount).toFixed(2)}</TableCell>
+                                    <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+                                        <div className="mb-4 flex items-center justify-between gap-3">
+                                            <div>
+                                                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Line items</div>
+                                                <div className="mt-1 text-sm text-slate-300">Archived work logged to this invoice.</div>
+                                            </div>
+                                            <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-slate-300">
+                                                {selectedInvoice.line_items.length} item{selectedInvoice.line_items.length === 1 ? '' : 's'}
+                                            </Badge>
+                                        </div>
+                                        <div className="overflow-hidden rounded-[22px] border border-white/10 bg-black/10">
+                                            <Table>
+                                                <TableHeader className="bg-white/[0.04]">
+                                                    <TableRow className="border-white/10 hover:bg-transparent">
+                                                        <TableHead className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Description</TableHead>
+                                                        <TableHead className="w-[84px] text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Qty</TableHead>
+                                                        <TableHead className="w-[108px] text-right text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Total</TableHead>
                                                     </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                        <div className="p-4 bg-muted/20 border-t border-border flex justify-between items-center">
-                                            <span className="text-sm font-bold text-foreground">Invoice Total</span>
-                                            <span className="text-xl font-bold text-[#2F8E92] font-mono">${toNumber(selectedInvoice.total).toFixed(2)}</span>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {selectedInvoice.line_items.map((item, index) => (
+                                                        <TableRow key={item.id} className={cn('border-white/8 hover:bg-white/[0.03]', index % 2 === 1 && 'bg-white/[0.015]')}>
+                                                            <TableCell className="py-4 text-sm text-white">
+                                                                <div className="space-y-1">
+                                                                    <div className="font-medium">{item.description || item.product_service}</div>
+                                                                    {item.product_service && item.description && item.product_service !== item.description ? (
+                                                                        <div className="text-xs text-slate-500">{item.product_service}</div>
+                                                                    ) : null}
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell className="py-4 text-center text-sm text-slate-300">{toNumber(item.qty ?? item.quantity).toFixed(2)}</TableCell>
+                                                            <TableCell className="py-4 text-right text-sm font-semibold text-amber-100">${toNumber(item.amount).toFixed(2)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                            <div className="flex items-center justify-between border-t border-white/10 bg-white/[0.03] px-4 py-4">
+                                                <span className="text-sm font-semibold text-slate-200">Invoice Total</span>
+                                                <span className="text-xl font-semibold tracking-[-0.04em] text-cyan-200" style={displayFontStyle}>
+                                                    ${toNumber(selectedInvoice.total).toFixed(2)}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-3">
+                                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                        <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+                                            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Billing snapshot</div>
+                                            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                <div className="rounded-[20px] border border-white/10 bg-black/10 p-4">
+                                                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Bill To</div>
+                                                    <div className="mt-3 space-y-1 text-sm text-slate-200">
+                                                        {toAddressLines(selectedInvoice.bill_to || undefined).length > 0 ? (
+                                                            toAddressLines(selectedInvoice.bill_to || undefined).map((line) => (
+                                                                <div key={`bill-${line}`}>{line}</div>
+                                                            ))
+                                                        ) : (
+                                                            <div>-</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="rounded-[20px] border border-white/10 bg-black/10 p-4">
+                                                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Ship To</div>
+                                                    <div className="mt-3 space-y-1 text-sm text-slate-200">
+                                                        {toAddressLines(selectedInvoice.ship_to || undefined).length > 0 ? (
+                                                            toAddressLines(selectedInvoice.ship_to || undefined).map((line) => (
+                                                                <div key={`ship-${line}`}>{line}</div>
+                                                            ))
+                                                        ) : (
+                                                            <div>-</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+                                            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Archive notes</div>
+                                            <div className="mt-4 space-y-4">
+                                                <div className="rounded-[20px] border border-white/10 bg-black/10 p-4">
+                                                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">QuickBooks State</div>
+                                                    <div className={cn('mt-3 flex items-start gap-3 text-sm font-medium', syncPresentation.className)}>
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                                                            <SyncIcon className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <div>{syncPresentation.label}</div>
+                                                            {selectedInvoice.qb_sync_error ? (
+                                                                <div className="rounded-2xl border border-red-300/18 bg-red-300/8 px-3 py-2 text-xs leading-5 text-red-100">
+                                                                    {selectedInvoice.qb_sync_error}
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="rounded-[20px] border border-cyan-300/16 bg-cyan-300/[0.06] p-4">
+                                                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100/75">Customer Message</div>
+                                                    <p className="mt-2 text-sm leading-6 text-cyan-50/90">
+                                                        {selectedInvoice.customer_message?.trim() || 'No customer message was attached to this archived invoice.'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-3 border-t border-white/10 pt-2 sm:flex-row">
                                         {selectedInvoice.qb_sync_status === 'failed' ? (
                                             <Button
-                                                className="w-full gap-2"
+                                                className="h-12 flex-1 gap-2 rounded-2xl bg-[linear-gradient(90deg,#d97706,#f59e0b)] text-slate-950 hover:opacity-95"
                                                 onClick={() => void handleResendToQuickBooks(selectedInvoice)}
                                                 disabled={retryingInvoiceId === selectedInvoice.id}
                                             >
-                                                <Send className="w-4 h-4" />
-                                                {retryingInvoiceId === selectedInvoice.id ? 'Resending...' : 'Resend to QuickBooks'}
+                                                <Send className="h-4 w-4" />
+                                                {retryingInvoiceId === selectedInvoice.id ? 'Resending to QuickBooks...' : 'Resend to QuickBooks'}
                                             </Button>
                                         ) : null}
-                                        <Button className="w-full gap-2" variant="outline" onClick={() => handleDownloadPdf(selectedInvoice)}>
-                                            <Download className="w-4 h-4" /> Download PDF
+                                        <Button
+                                            className="h-12 flex-1 gap-2 rounded-2xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08] hover:text-white"
+                                            variant="outline"
+                                            onClick={() => handleDownloadPdf(selectedInvoice)}
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            Download PDF
                                         </Button>
                                     </div>
                                 </div>

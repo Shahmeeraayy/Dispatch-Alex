@@ -332,6 +332,62 @@ class QuickBooksInvoiceService:
             return invoices
         return None
 
+    @classmethod
+    def humanize_sync_error(cls, detail: Any) -> str:
+        if isinstance(detail, str):
+            normalized = detail.strip()
+            if normalized:
+                return normalized
+            return "QuickBooks sync failed. Please try again."
+
+        if not isinstance(detail, dict):
+            return "QuickBooks sync failed. Please try again."
+
+        provider_response = detail.get("provider_response")
+        fault = provider_response.get("Fault") if isinstance(provider_response, dict) else None
+        errors = fault.get("Error") if isinstance(fault, dict) else None
+        if isinstance(errors, dict):
+            errors = [errors]
+
+        provider_status = detail.get("provider_status")
+        if isinstance(errors, list):
+            for error in errors:
+                if not isinstance(error, dict):
+                    continue
+                code = str(error.get("code") or "").strip()
+                message = str(error.get("Message") or "").strip()
+                detail_text = str(error.get("Detail") or "").strip()
+                combined = f"{message} {detail_text}".lower()
+
+                if code == "6140" or "document en double" in combined or "duplicate" in combined:
+                    return (
+                        "QuickBooks rejected this invoice because the invoice number is already in use. "
+                        "Use a different invoice number and try again."
+                    )
+                if code == "6000" or "tps/tvh" in combined or "tax code" in combined:
+                    return (
+                        "QuickBooks rejected this invoice because a required tax code is missing or not mapped. "
+                        "Sync QuickBooks tax codes and verify the invoice tax setup."
+                    )
+                if "validation" in combined:
+                    return (
+                        "QuickBooks rejected this invoice because some required invoice details are invalid or missing. "
+                        "Review the invoice details and try again."
+                    )
+
+        raw_message = str(detail.get("message") or "").strip().lower()
+        if "creation failed" in raw_message:
+            return (
+                f"QuickBooks could not create the invoice{f' (HTTP {provider_status})' if provider_status else ''}. "
+                "Please review the invoice details and try again."
+            )
+        if "lookup failed" in raw_message:
+            return "QuickBooks lookup failed while preparing the invoice sync. Please try again."
+        if "fetch failed" in raw_message:
+            return "QuickBooks could not load the existing invoice during sync. Please try again."
+
+        return "QuickBooks sync failed. Please review the invoice setup and try again."
+
     @staticmethod
     def _is_duplicate_doc_number_error(exc: HTTPException) -> bool:
         detail = exc.detail

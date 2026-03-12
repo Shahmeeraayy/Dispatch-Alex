@@ -698,15 +698,15 @@ function SearchableSelect({
                     role="combobox"
                     aria-expanded={open}
                     disabled={disabled}
-                    className="w-full justify-between font-normal"
+                    className="w-full min-w-0 justify-between overflow-hidden font-normal"
                 >
-                    <span className="truncate text-left">
+                    <span className="min-w-0 flex-1 truncate pr-2 text-left" title={selectedOption?.label || placeholder}>
                         {selectedOption?.label || placeholder}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+            <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[min(32rem,calc(100vw-2rem))] p-0" align="start">
                 <Command>
                     <CommandInput placeholder={searchPlaceholder} />
                     <CommandList>
@@ -716,13 +716,14 @@ function SearchableSelect({
                                 <CommandItem
                                     key={option.value}
                                     value={`${option.label} ${option.value}`}
+                                    className="gap-2"
                                     onSelect={() => {
                                         onChange(option.value);
                                         setOpen(false);
                                     }}
                                 >
-                                    <Check className={cn('h-4 w-4', value === option.value ? 'opacity-100' : 'opacity-0')} />
-                                    <span className="truncate">{option.label}</span>
+                                    <Check className={cn('h-4 w-4 shrink-0', value === option.value ? 'opacity-100' : 'opacity-0')} />
+                                    <span className="min-w-0 flex-1 truncate" title={option.label}>{option.label}</span>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
@@ -1904,7 +1905,7 @@ export default function JobsPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Dealership</Label>
                                 <SearchableSelect

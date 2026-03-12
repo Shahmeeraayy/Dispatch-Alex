@@ -31,6 +31,7 @@ from app.models.quickbooks_tax_code import QuickBooksTaxCode
 from app.models.service_catalog import ServiceCatalog
 from app.models.technician import Technician
 from app.models.technician_password_reset_request import TechnicianPasswordResetRequest
+from app.services.quickbooks_invoice_service import QuickBooksInvoiceService
 
 
 class QuickBooksInvoiceApiTests(unittest.TestCase):
@@ -247,6 +248,64 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         sent_payload = mocked_post.call_args_list[-1].kwargs["json"]
         self.assertEqual(sent_payload["Line"][0]["SalesItemLineDetail"]["TaxCodeRef"]["value"], "QB-TAX-GSTQST")
         self.assertEqual(sent_payload["TxnTaxDetail"]["TxnTaxCodeRef"]["value"], "QB-TAX-GSTQST")
+
+    def test_humanize_sync_error_for_duplicate_doc_number(self):
+        message = QuickBooksInvoiceService.humanize_sync_error(
+            {
+                "message": "QuickBooks invoice creation failed.",
+                "provider_status": 400,
+                "provider_response": {
+                    "Fault": {
+                        "Error": [
+                            {
+                                "Message": "Numéro de document en double",
+                                "Detail": (
+                                    "Numéro de document en double : Vous devez indiquer un nombre différent. "
+                                    "Ce numéro a déjà été utilisé. DocNumber=INV-0002 is assigned to TxnType=Facture with TxnId=2137"
+                                ),
+                                "code": "6140",
+                                "element": "",
+                            }
+                        ],
+                        "type": "ValidationFault",
+                    },
+                    "time": "2026-03-12T07:19:05.137-07:00",
+                },
+            }
+        )
+
+        self.assertEqual(
+            message,
+            "QuickBooks rejected this invoice because the invoice number is already in use. "
+            "Use a different invoice number and try again.",
+        )
+
+    def test_humanize_sync_error_for_tax_mapping_problem(self):
+        message = QuickBooksInvoiceService.humanize_sync_error(
+            {
+                "message": "QuickBooks invoice creation failed.",
+                "provider_status": 400,
+                "provider_response": {
+                    "Fault": {
+                        "Error": [
+                            {
+                                "Message": "Validation de l'entreprise",
+                                "Detail": "Assurez-vous que toutes vos opérations comprennent un taux de TPS/TVH avant d'enregistrer.",
+                                "code": "6000",
+                                "element": "",
+                            }
+                        ],
+                        "type": "ValidationFault",
+                    },
+                },
+            }
+        )
+
+        self.assertEqual(
+            message,
+            "QuickBooks rejected this invoice because a required tax code is missing or not mapped. "
+            "Sync QuickBooks tax codes and verify the invoice tax setup.",
+        )
 
     def test_create_invoice_keeps_local_record_when_quickbooks_sync_fails(self):
         self._seed_qb_connection()

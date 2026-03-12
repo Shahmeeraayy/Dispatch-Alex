@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     addTechnicianMyJobService,
+    acceptTechnicianMyJob,
     completeTechnicianMyJob,
     delayTechnicianMyJob,
     fetchAdminServices,
@@ -61,7 +62,7 @@ import {
 
 // --- Types ---
 
-type JobStatus = 'scheduled' | 'in_progress' | 'delayed' | 'completed' | 'unknown';
+type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'delayed' | 'completed' | 'unknown';
 type Urgency = 'low' | 'normal' | 'high' | 'critical';
 
 interface MyJob {
@@ -76,7 +77,7 @@ interface MyJob {
     urgency?: Urgency;
     scheduled_time?: string;
     zone: string;
-    allowed_actions: ('start' | 'done' | 'delay' | 'refuse')[];
+    allowed_actions: ('accept' | 'start' | 'done' | 'delay' | 'refuse')[];
 }
 
 type AddedServiceEntry = {
@@ -99,14 +100,17 @@ const mapBackendFeedItemToMyJob = (item: BackendTechnicianJobFeedItem): MyJob | 
     }
 
     const mappedStatus: JobStatus =
-        status === DISPATCH_JOB_STATUS.SCHEDULED ? 'scheduled'
+        status === DISPATCH_JOB_STATUS.PENDING ? 'pending'
+            : status === DISPATCH_JOB_STATUS.SCHEDULED ? 'scheduled'
             : status === DISPATCH_JOB_STATUS.IN_PROGRESS ? 'in_progress'
                 : status === DISPATCH_JOB_STATUS.DELAYED ? 'delayed'
                     : status === DISPATCH_JOB_STATUS.COMPLETED ? 'completed'
                         : 'unknown';
 
     const allowedActions: MyJob['allowed_actions'] =
-        mappedStatus === 'in_progress'
+        mappedStatus === 'pending'
+            ? ['accept', 'refuse']
+            : mappedStatus === 'in_progress'
             ? ['done', 'delay']
             : mappedStatus === 'delayed'
                 ? ['start', 'refuse']
@@ -154,6 +158,7 @@ const mapBackendFeedItemToMyJob = (item: BackendTechnicianJobFeedItem): MyJob | 
 
 function StatusBadge({ status }: { status: JobStatus }) {
     const styles: Record<JobStatus, string> = {
+        pending: 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700',
         scheduled: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700',
         in_progress: 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700',
         delayed: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700',
@@ -162,6 +167,7 @@ function StatusBadge({ status }: { status: JobStatus }) {
     };
 
     const labels: Record<JobStatus, string> = {
+        pending: 'Pending',
         scheduled: 'Scheduled',
         in_progress: 'In Progress',
         delayed: 'Delayed',
@@ -216,6 +222,7 @@ function JobCard({
     onOpenAddService,
     onEditAddedService,
     onRemoveAddedService,
+    onAccept,
     onStart,
     onDone,
     onDelay,
@@ -231,6 +238,7 @@ function JobCard({
     onOpenAddService: (jobId: string) => void;
     onEditAddedService: (jobId: string, service: AddedServiceEntry) => void;
     onRemoveAddedService: (jobId: string, service: AddedServiceEntry) => void;
+    onAccept: (jobId: string) => void;
     onStart: (jobId: string) => void;
     onDone: (jobId: string) => void;
     onDelay: (jobId: string) => void;
@@ -431,6 +439,25 @@ function JobCard({
                                     <Play className="w-4 h-4 mr-2" />
                                 )}
                                 START
+                            </Button>
+                        )}
+
+                        {job.allowed_actions.includes('accept') && (
+                            <Button
+                                onClick={() => handleAction('accept', onAccept)}
+                                disabled={!!actionLoading}
+                                className={cn(
+                                    "flex-1 h-11 text-sm font-semibold rounded-xl",
+                                    "bg-[#2F8E92] hover:bg-[#267276] text-white",
+                                    "disabled:opacity-50"
+                                )}
+                            >
+                                {actionLoading === 'accept' ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                )}
+                                ACCEPT
                             </Button>
                         )}
 
@@ -645,7 +672,7 @@ export default function MyJobsPage({
             }
             try {
                 const feed = await fetchAdminTechnicianJobsFeed(adminToken, previewTechId);
-                const mapped = feed.my_jobs
+                const mapped = [...feed.available_jobs, ...feed.my_jobs]
                     .map(mapBackendFeedItemToMyJob)
                     .filter((job): job is MyJob => job !== null);
                 setJobs(mapped);
@@ -674,7 +701,7 @@ export default function MyJobsPage({
 
         try {
             const feed = await fetchTechnicianJobsFeed(token);
-            const mapped = feed.my_jobs
+            const mapped = [...feed.available_jobs, ...feed.my_jobs]
                 .map(mapBackendFeedItemToMyJob)
                 .filter((job): job is MyJob => job !== null);
             setJobs(mapped);
@@ -900,10 +927,32 @@ export default function MyJobsPage({
             });
     };
 
-    const activeJobs = jobs.filter(j => ['scheduled', 'in_progress', 'delayed', 'unknown'].includes(j.job_status));
+    const activeJobs = jobs.filter(j => ['pending', 'scheduled', 'in_progress', 'delayed', 'unknown'].includes(j.job_status));
     const completedJobs = jobs.filter(j => j.job_status === 'completed');
 
     // Handlers
+    const handleAccept = async (jobId: string) => {
+        if (previewTechId) {
+            setJobs(prev => prev.map(j =>
+                j.job_id === jobId
+                    ? { ...j, job_status: 'scheduled' as JobStatus, allowed_actions: ['start', 'delay', 'refuse'] }
+                    : j
+            ));
+            return;
+        }
+
+        const token = getStoredTechnicianToken();
+        if (!token || user?.role !== 'technician') return;
+
+        try {
+            await acceptTechnicianMyJob(token, jobId);
+            await fetchJobs();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to accept job.';
+            toast.error(message);
+        }
+    };
+
     const handleStart = async (jobId: string) => {
         if (previewTechId) {
             setJobs(prev => prev.map(j =>
@@ -1106,6 +1155,7 @@ export default function MyJobsPage({
                                                 onOpenAddService={handleOpenAddService}
                                                 onEditAddedService={handleOpenEditService}
                                                 onRemoveAddedService={handleRemoveAddedService}
+                                                onAccept={handleAccept}
                                                 onStart={handleStart}
                                                 onDone={handleDone}
                                                 onDelay={handleDelay}
@@ -1145,11 +1195,12 @@ export default function MyJobsPage({
                                                 selectedServiceName={getJobSelectedService(job)}
                                                 selectedServices={getSelectedServices(job)}
                                                 addedServices={job.service_entries.filter((entry) => entry.source === 'technician')}
-                                                canManageServices={true}
+                                                canManageServices={job.job_status !== 'pending'}
                                                 onSelectService={handleSelectService}
                                                 onOpenAddService={handleOpenAddService}
                                                 onEditAddedService={handleOpenEditService}
                                                 onRemoveAddedService={handleRemoveAddedService}
+                                                onAccept={handleAccept}
                                                 onStart={handleStart}
                                                 onDone={handleDone}
                                                 onDelay={handleDelay}

@@ -867,7 +867,7 @@ class InvoiceService:
         except HTTPException as exc:
             detail = exc.detail
             invoice.qb_sync_status = "failed"
-            invoice.qb_sync_error = detail if isinstance(detail, str) else str(detail)
+            invoice.qb_sync_error = QuickBooksInvoiceService.humanize_sync_error(detail)
         except Exception as exc:
             invoice.qb_sync_status = "failed"
             invoice.qb_sync_error = str(exc)

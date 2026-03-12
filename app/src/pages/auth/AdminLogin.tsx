@@ -59,12 +59,12 @@ export default function AdminLoginPage() {
           <div className="pointer-events-none absolute inset-0 opacity-20" style={brandingPatternStyle} />
 
           <div className="relative z-10 max-w-2xl">
-            <h1 className="mb-4 text-5xl font-bold tracking-tight">SM2 electronics</h1>
+            <h1 className="mb-4 text-5xl font-bold tracking-tight">SM2 Electronics</h1>
             <h2 className="mb-6 text-2xl font-medium text-teal-100">
-              Technician Dispatch &amp; Service Management Platform
+              Technician Dispatch &amp; Field Service Platform
             </h2>
             <p className="max-w-xl text-lg leading-relaxed text-teal-50/80">
-              Streamline SM2 electronics operations. Manage technicians, track jobs in real-time, handle invoices, and process approvals all in one unified platform.
+              Manage technicians, track live jobs, monitor approvals, and keep dispatch operations running from one centralized system.
             </p>
           </div>
 
@@ -86,7 +86,7 @@ export default function AdminLoginPage() {
         <section className="flex items-center justify-center bg-white p-6 sm:p-12 lg:w-[40%]">
           <div className="w-full max-w-[520px] space-y-8">
             <div className="mb-10 text-center lg:hidden">
-              <h1 className="text-3xl font-bold text-[#0a192f]">SM2 electronics</h1>
+              <h1 className="text-3xl font-bold text-[#0a192f]">SM2 Electronics</h1>
             </div>
 
             <header>

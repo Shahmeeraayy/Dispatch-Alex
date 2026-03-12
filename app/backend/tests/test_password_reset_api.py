@@ -60,6 +60,7 @@ class PasswordResetApiTests(unittest.TestCase):
         self.assertEqual(forgot_response.status_code, 200, forgot_response.text)
         self.assertEqual(captured["recipient_email"], "admin@sm2dispatch.com")
         self.assertEqual(len(captured["otp_code"]), 6)
+        self.assertEqual(forgot_response.json()["delivery_email_hint"], "ad***@sm2dispatch.com")
 
         verify_response = self.client.post(
             "/auth/verify-otp",
@@ -92,6 +93,19 @@ class PasswordResetApiTests(unittest.TestCase):
 
         limited_response = self.client.post("/auth/verify-otp", json=wrong_payload)
         self.assertEqual(limited_response.status_code, 429, limited_response.text)
+
+    def test_forgot_password_returns_error_when_email_delivery_fails(self):
+        with patch(
+            "app.services.email_service.EmailService.send_password_reset_otp",
+            side_effect=RuntimeError("SMTP unavailable"),
+        ):
+            response = self.client.post("/auth/forgot-password", json={"email": "admin@sm2dispatch.com"})
+
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(
+            response.json()["detail"],
+            "Password reset email could not be sent. Verify the recovery email and SMTP configuration.",
+        )
 
 
 if __name__ == "__main__":

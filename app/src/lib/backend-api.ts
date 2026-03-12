@@ -255,6 +255,7 @@ export type BackendAdminCredentialSettings = {
 
 export type BackendForgotPasswordResponse = {
   message: string;
+  delivery_email_hint?: string | null;
 };
 
 export type BackendVerifyOtpResponse = {

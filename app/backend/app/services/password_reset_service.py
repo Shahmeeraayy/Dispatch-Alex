@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -19,6 +20,7 @@ from .admin_credential_settings_service import AdminCredentialSettingsService, h
 from .email_service import EmailService
 
 GENERIC_RESET_MESSAGE = "If an account exists for that email, a verification code has been sent."
+logger = logging.getLogger(__name__)
 
 
 def hash_otp(otp_code: str) -> str:
@@ -33,6 +35,19 @@ def ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def mask_email(email: str) -> str | None:
+    local_part, separator, domain = email.strip().partition("@")
+    if not separator or not local_part or not domain:
+        return None
+
+    if len(local_part) <= 2:
+        visible = local_part[:1]
+    else:
+        visible = local_part[:2]
+
+    return f"{visible}***@{domain}"
 
 
 class PasswordResetService:
@@ -63,10 +78,11 @@ class PasswordResetService:
         if normalized_email != settings["admin_email"].strip().lower():
             return {"message": GENERIC_RESET_MESSAGE}
 
+        delivery_email = settings["recovery_email"].strip().lower()
         otp_code = f"{secrets.randbelow(1_000_000):06d}"
         row = PasswordResetToken(
             email=normalized_email,
-            delivery_email=settings["recovery_email"].strip().lower(),
+            delivery_email=delivery_email,
             otp_hash=hash_otp(otp_code),
             expires_at=now_utc + timedelta(minutes=PASSWORD_RESET_OTP_TTL_MINUTES),
         )
@@ -80,11 +96,25 @@ class PasswordResetService:
                 otp_code=otp_code,
             )
         except Exception:
+            logger.exception(
+                "Failed to send password reset OTP for admin account.",
+                extra={
+                    "admin_email": normalized_email,
+                    "delivery_email": row.delivery_email,
+                },
+            )
             self.db.delete(row)
             self.db.commit()
-            return {"message": GENERIC_RESET_MESSAGE}
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Password reset email could not be sent. Verify the recovery email and SMTP configuration.",
+            )
 
-        return {"message": GENERIC_RESET_MESSAGE}
+        response: dict[str, str] = {"message": GENERIC_RESET_MESSAGE}
+        delivery_hint = mask_email(delivery_email)
+        if delivery_hint:
+            response["delivery_email_hint"] = delivery_hint
+        return response
 
     def verify_otp(self, email: str, otp_code: str) -> dict[str, str]:
         normalized_email = email.strip().lower()

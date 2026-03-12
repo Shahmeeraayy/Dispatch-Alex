@@ -91,7 +91,11 @@ export default function AdminLoginPage() {
     setIsForgotSubmitting(true);
     try {
       const response = await requestForgotPasswordOtp({ email: forgotEmail });
-      setForgotMessage(response.message);
+      if (response.delivery_email_hint) {
+        setForgotMessage(`OTP sent to the recovery email ${response.delivery_email_hint}.`);
+      } else {
+        setForgotMessage(response.message);
+      }
       setForgotStep('verify');
     } catch (error) {
       setForgotError(error instanceof Error ? error.message : 'Unable to send reset code.');
@@ -233,7 +237,7 @@ export default function AdminLoginPage() {
                       <DialogHeader>
                         <DialogTitle>Forgot admin password</DialogTitle>
                         <DialogDescription>
-                          Reset the admin password by email OTP.
+                          Enter the admin sign-in email. The OTP will be delivered to the recovery email configured for that account.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
@@ -247,6 +251,9 @@ export default function AdminLoginPage() {
                             disabled={forgotStep !== 'request'}
                             autoComplete="email"
                           />
+                          <p className="text-xs text-slate-500">
+                            The verification code is sent to the configured recovery email, not necessarily this sign-in email.
+                          </p>
                         </div>
 
                         {forgotStep !== 'request' && (

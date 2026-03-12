@@ -15,6 +15,7 @@ class ForgotPasswordRequest(BaseModel):
 
 class ForgotPasswordResponse(BaseModel):
     message: str
+    delivery_email_hint: str | None = None
 
 
 class VerifyOtpRequest(BaseModel):

@@ -119,6 +119,67 @@ class QuickBooksTaxCodeSyncApiTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_sync_tax_codes_maps_french_exempt_labels(self):
+        self._seed_connection()
+
+        preferences_response = Mock()
+        preferences_response.ok = True
+        preferences_response.json.return_value = {"QueryResponse": {"Preferences": {"TaxPrefs": {"UsingSalesTax": True}}}}
+
+        tax_code_response = Mock()
+        tax_code_response.ok = True
+        tax_code_response.json.return_value = {
+            "QueryResponse": {
+                "TaxCode": [
+                    {"Id": "10", "Name": "Détaxé", "Description": "Sans taxe", "Active": True},
+                    {"Id": "11", "Name": "TPS + TVQ", "Description": "Taxe combinée", "Active": True},
+                ]
+            }
+        }
+
+        with patch(
+            "app.services.quickbooks_tax_code_sync_service.requests.post",
+            side_effect=[preferences_response, tax_code_response],
+        ):
+            response = self.client.post("/admin/quickbooks/sync-tax-codes")
+
+        self.assertEqual(response.status_code, 200, response.text)
+
+        db = SessionLocal()
+        try:
+            exempt = db.query(QuickBooksTaxCode).filter(QuickBooksTaxCode.qb_tax_code_id == "10").first()
+            self.assertEqual(exempt.internal_tax_code, "EXEMPT")
+        finally:
+            db.close()
+
+    def test_missing_exempt_mapping_self_repairs_from_existing_synced_row(self):
+        self._seed_connection()
+
+        db = SessionLocal()
+        try:
+            db.add(
+                QuickBooksTaxCode(
+                    realm_id="9341456520395836",
+                    qb_tax_code_id="QB-TAX-NONTAX",
+                    name="Non taxable",
+                    description="No tax",
+                    active=True,
+                    internal_tax_code=None,
+                )
+            )
+            db.commit()
+
+            from app.services.quickbooks_tax_code_sync_service import QuickBooksTaxCodeSyncService
+
+            service = QuickBooksTaxCodeSyncService(db)
+            resolved_id = service.get_tax_code_id_for_internal_code("EXEMPT", realm_id="9341456520395836")
+            self.assertEqual(resolved_id, "QB-TAX-NONTAX")
+
+            row = db.query(QuickBooksTaxCode).filter(QuickBooksTaxCode.qb_tax_code_id == "QB-TAX-NONTAX").first()
+            self.assertEqual(row.internal_tax_code, "EXEMPT")
+        finally:
+            db.close()
+
 
 if __name__ == "__main__":
     unittest.main()

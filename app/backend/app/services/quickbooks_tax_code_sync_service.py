@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
@@ -97,6 +98,11 @@ class QuickBooksTaxCodeSyncService:
             .first()
         )
         if row is None:
+            row = self._repair_missing_internal_mapping(
+                realm_id=resolved_realm_id,
+                internal_tax_code=normalized,
+            )
+        if row is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
@@ -105,6 +111,41 @@ class QuickBooksTaxCodeSyncService:
                 ),
             )
         return str(row.qb_tax_code_id)
+
+    def _repair_missing_internal_mapping(
+        self,
+        *,
+        realm_id: str,
+        internal_tax_code: str,
+    ) -> QuickBooksTaxCode | None:
+        active_rows = (
+            self.db.query(QuickBooksTaxCode)
+            .filter(
+                QuickBooksTaxCode.realm_id == realm_id,
+                QuickBooksTaxCode.active.is_(True),
+            )
+            .order_by(QuickBooksTaxCode.updated_at.desc())
+            .all()
+        )
+        candidates: list[QuickBooksTaxCode] = []
+        for row in active_rows:
+            inferred = self._infer_internal_tax_code(
+                name=row.name,
+                description=row.description,
+                tax_code={},
+            )
+            if inferred == internal_tax_code:
+                candidates.append(row)
+
+        if len(candidates) != 1:
+            return None
+
+        row = candidates[0]
+        if row.internal_tax_code != internal_tax_code:
+            row.internal_tax_code = internal_tax_code
+            self.db.commit()
+            self.db.refresh(row)
+        return row
 
     def _fetch_all_tax_codes(self, *, realm_id: str, access_token: str) -> list[dict[str, Any]]:
         base_url = self._company_api_base()
@@ -268,13 +309,23 @@ class QuickBooksTaxCodeSyncService:
             token in value
             for token in (
                 "exempt",
+                "exempte",
+                "exonere",
+                "exoneration",
                 "zero rated",
                 "zero rate",
                 "zero-rated",
+                "detaxe",
+                "detaxe",
+                "sans taxe",
+                "hors taxe",
                 "notax",
                 "no tax",
                 "non taxable",
                 "non-taxable",
+                "non imposable",
+                "non tax",
+                "tax exempt",
                 "out of scope",
             )
         )
@@ -314,7 +365,8 @@ class QuickBooksTaxCodeSyncService:
 
     @staticmethod
     def _normalize_text(value: str) -> str:
-        lowered = value.strip().lower()
+        lowered = unicodedata.normalize("NFKD", value.strip().lower())
+        lowered = "".join(char for char in lowered if not unicodedata.combining(char))
         return re.sub(r"[^a-z0-9]+", " ", lowered).strip()
 
     @staticmethod

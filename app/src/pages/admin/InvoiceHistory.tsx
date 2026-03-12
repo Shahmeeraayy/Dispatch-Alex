@@ -41,6 +41,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
+import OverflowText from '@/components/common/overflow-text';
 import { fetchInvoices, getStoredAdminToken, syncInvoiceToQuickBooks, type BackendInvoice } from '@/lib/backend-api';
 
 const INVOICE_HISTORY_EXPORT_COLUMNS = [
@@ -822,7 +823,10 @@ export default function InvoiceHistoryPage() {
                                                     <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-100">
                                                         <Building2 className="h-4 w-4" />
                                                     </div>
-                                                    <span className="text-sm font-medium text-slate-100">{inv.dealership_name || inv.bill_to?.name || '-'}</span>
+                                                    <OverflowText
+                                                        text={inv.dealership_name || inv.bill_to?.name || '-'}
+                                                        className="max-w-[14rem] text-sm font-medium text-slate-100"
+                                                    />
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4">
@@ -997,9 +1001,15 @@ export default function InvoiceHistoryPage() {
                                                         <TableRow key={item.id} className={cn('border-white/8 hover:bg-white/[0.03]', index % 2 === 1 && 'bg-white/[0.015]')}>
                                                             <TableCell className="py-4 text-sm text-white">
                                                                 <div className="space-y-1">
-                                                                    <div className="font-medium">{item.description || item.product_service}</div>
+                                                                    <OverflowText
+                                                                        text={item.description || item.product_service}
+                                                                        className="max-w-[18rem] font-medium"
+                                                                    />
                                                                     {item.product_service && item.description && item.product_service !== item.description ? (
-                                                                        <div className="text-xs text-slate-500">{item.product_service}</div>
+                                                                        <OverflowText
+                                                                            text={item.product_service}
+                                                                            className="max-w-[18rem] text-xs text-slate-500"
+                                                                        />
                                                                     ) : null}
                                                                 </div>
                                                             </TableCell>

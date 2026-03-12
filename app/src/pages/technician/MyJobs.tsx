@@ -41,6 +41,7 @@ import { DISPATCH_JOB_STATUS, normalizeDispatchJobStatus } from '@/lib/job-statu
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import OverflowText from '@/components/common/overflow-text';
 import {
     Dialog,
     DialogContent,
@@ -277,9 +278,7 @@ function JobCard({
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
                             {job.job_code}
                         </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 font-medium mt-0.5">
-                            {job.service_name}
-                        </p>
+                        <OverflowText text={job.service_name} as="p" className="mt-0.5 max-w-[18rem] text-sm font-medium text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
                         <StatusBadge status={job.job_status} />
@@ -290,9 +289,7 @@ function JobCard({
                 {/* Dealership */}
                 <div className="flex items-center gap-2">
                     <Briefcase className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                    <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                        {job.dealership_name}
-                    </span>
+                    <OverflowText text={job.dealership_name} className="max-w-[16rem] text-base font-semibold text-gray-900 dark:text-gray-100" />
                 </div>
 
                 {/* Zone & Scheduled Time */}
@@ -342,7 +339,7 @@ function JobCard({
                         </div>
                     )}
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        Dealership requested: <span className="font-medium text-gray-700 dark:text-gray-200">{job.original_service_name}</span>
+                        Dealership requested: <OverflowText text={job.original_service_name} className="inline max-w-[16rem] font-medium text-gray-700 dark:text-gray-200" />
                     </p>
                     {canManageServices && (
                         <Button
@@ -363,7 +360,7 @@ function JobCard({
                             {selectedServices.map((serviceName) => (
                                 <div key={`${job.job_id}-selected-${serviceName}`} className="flex gap-2">
                                     <span className="text-[#2F8E92] dark:text-teal-400">•</span>
-                                    <span>{serviceName}</span>
+                                    <OverflowText text={serviceName} className="max-w-[16rem]" />
                                 </div>
                             ))}
                         </div>
@@ -380,13 +377,9 @@ function JobCard({
                                             <p className="text-xs text-gray-500 dark:text-gray-400">
                                                 Technician added
                                             </p>
-                                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                                                {service.service_name}
-                                            </p>
+                                            <OverflowText text={service.service_name} as="p" className="max-w-[15rem] text-sm font-medium text-gray-800 dark:text-gray-100" />
                                             {service.notes && (
-                                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                    {service.notes}
-                                                </p>
+                                                <OverflowText text={service.notes} as="p" lines={2} className="mt-1 max-w-[15rem] text-xs text-gray-500 dark:text-gray-400" />
                                             )}
                                         </div>
                                         {canManageServices && (

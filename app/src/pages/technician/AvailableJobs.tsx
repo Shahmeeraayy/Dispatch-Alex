@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import OverflowText from '@/components/common/overflow-text';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -146,9 +147,7 @@ function JobCard({
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
                             {job.job_code}
                         </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 font-medium mt-0.5">
-                            {job.service_name}
-                        </p>
+                        <OverflowText text={job.service_name} as="p" className="mt-0.5 max-w-[18rem] text-sm font-medium text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex flex-col items-end gap-2">
                         <Badge variant="outline" className={cn('text-xs font-semibold border', statusStyles[job.status])}>
@@ -161,9 +160,7 @@ function JobCard({
                 {/* Dealership */}
                 <div className="flex items-center gap-2">
                     <Briefcase className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                    <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                        {job.dealership_name}
-                    </span>
+                    <OverflowText text={job.dealership_name} className="max-w-[16rem] text-base font-semibold text-gray-900 dark:text-gray-100" />
                 </div>
 
                 {/* Zone & Time */}
@@ -178,12 +175,12 @@ function JobCard({
                 {/* Note Preview (if exists) */}
                 {job.note_preview && (
                     <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                        <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                             <span className="inline-flex items-center gap-1.5">
                                 <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 flex-shrink-0" />
                                 <span className="font-medium">Note:</span>
                             </span>{' '}
-                            {job.note_preview}
+                            <OverflowText text={job.note_preview} lines={2} className="inline max-w-[16rem]" />
                         </p>
                     </div>
                 )}

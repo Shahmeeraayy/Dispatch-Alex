@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import OverflowText from '@/components/common/overflow-text';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
@@ -2075,8 +2076,8 @@ export default function JobsPage() {
                     <div className="px-5 py-4 border-b bg-muted/20">
                         {jobToAssign ? (
                             <div className="space-y-1.5 text-sm">
-                                <div className="font-semibold text-foreground">{jobToAssign.service_name}</div>
-                                <div className="text-muted-foreground">{jobToAssign.dealership_name}</div>
+                                <OverflowText text={jobToAssign.service_name} className="max-w-[28rem] font-semibold text-foreground" />
+                                <OverflowText text={jobToAssign.dealership_name} className="max-w-[28rem] text-muted-foreground" />
                                 <div className="text-muted-foreground">{jobToAssign.vehicle_summary}</div>
                                 <div className="text-xs font-medium text-[#2F8E92]">
                                     Required zone: {assignJobZone || 'Unknown'} | Required skill: {jobToAssign.service_name}
@@ -2480,7 +2481,7 @@ export default function JobsPage() {
                                                     >
                                                         {job.job_code}
                                                     </span>
-                                                    <span className="text-sm text-slate-300">{job.service_name}</span>
+                                                    <OverflowText text={job.service_name} className="max-w-[16rem] text-sm text-slate-300" />
                                                     {job.attention_flag ? (
                                                         <span className="inline-flex w-fit items-center gap-1 rounded-full border border-red-300/20 bg-red-300/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-100">
                                                             <AlertCircle className="h-3 w-3" />
@@ -2499,7 +2500,7 @@ export default function JobsPage() {
                                                         <Building2Icon className="h-4 w-4" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="truncate text-sm font-semibold text-white">{job.dealership_name}</div>
+                                                        <OverflowText text={job.dealership_name} className="max-w-[12rem] text-sm font-semibold text-white" />
                                                         <div className="mt-1 text-xs text-slate-500">Live partner destination</div>
                                                     </div>
                                                 </div>

@@ -52,6 +52,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
+import OverflowText from '@/components/common/overflow-text';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
     createInvoice,
@@ -822,7 +823,7 @@ export default function InvoiceApprovalsPage() {
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <div className="space-y-1">
-                                                <div className="text-sm font-medium text-slate-100">{inv.dealership_name}</div>
+                                                <OverflowText text={inv.dealership_name} className="max-w-[14rem] text-sm font-medium text-slate-100" />
                                                 <div className="text-xs text-slate-500">{inv.vehicle_summary}</div>
                                             </div>
                                         </TableCell>
@@ -846,9 +847,7 @@ export default function InvoiceApprovalsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="py-4">
-                                            <div className="max-w-[240px] truncate text-sm text-slate-300" title={inv.service_summary}>
-                                                {inv.service_summary}
-                                            </div>
+                                            <OverflowText text={inv.service_summary} className="max-w-[240px] text-sm text-slate-300" />
                                         </TableCell>
                                         <TableCell className="py-4 text-right">
                                             <div className="text-lg font-semibold tracking-[-0.04em] text-amber-100" style={displayFontStyle}>
@@ -909,10 +908,8 @@ export default function InvoiceApprovalsPage() {
                                                 Blocked
                                             </Badge>
                                         </div>
-                                        <p className="text-sm text-amber-50/85">
-                                            {invoice.dealership_name} {invoice.technician_name ? `• ${invoice.technician_name}` : ''}
-                                        </p>
-                                        <p className="text-sm text-amber-100/70">{invoice.service_summary}</p>
+                                        <OverflowText text={`${invoice.dealership_name}${invoice.technician_name ? ` • ${invoice.technician_name}` : ''}`} as="p" className="max-w-[32rem] text-sm text-amber-50/85" />
+                                        <OverflowText text={invoice.service_summary} as="p" className="max-w-[32rem] text-sm text-amber-100/70" />
                                     </div>
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
@@ -997,7 +994,7 @@ export default function InvoiceApprovalsPage() {
                                     <section className="grid grid-cols-2 gap-4 rounded-xl border border-cyan-500/15 bg-slate-900/80 p-4 shadow-[0_0_0_1px_rgba(34,211,238,0.04)]">
                                         <div>
                                             <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Dealership</h4>
-                                            <div className="font-medium text-slate-100">{selectedInvoice.dealership_name}</div>
+                                            <OverflowText text={selectedInvoice.dealership_name} className="max-w-[15rem] font-medium text-slate-100" />
                                         </div>
                                         <div>
                                             <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Vehicle</h4>
@@ -1191,7 +1188,7 @@ export default function InvoiceApprovalsPage() {
                                                                         />
                                                                     ) : (
                                                                         <div className="space-y-1">
-                                                                            <div>{item.name}</div>
+                                                                            <OverflowText text={item.name} className="max-w-[16rem]" />
                                                                             {item.qb_item_id ? (
                                                                                 <div className="text-xs text-cyan-300">QB Item ID: {item.qb_item_id}</div>
                                                                             ) : (

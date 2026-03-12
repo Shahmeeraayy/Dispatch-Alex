@@ -58,6 +58,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
+import OverflowText from '@/components/common/overflow-text';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     createAdminService,
@@ -178,6 +179,28 @@ const getEffectiveQuickBooksType = (service: ServiceItem): string => {
 };
 
 const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
+const sectionCardClass = 'overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]';
+const sectionHeaderClass = 'border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] p-6';
+
+function metricCardClass(tone: 'cyan' | 'emerald' | 'amber' | 'violet'): string {
+    return cn(
+        'overflow-hidden rounded-[24px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+        tone === 'cyan' && 'border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))]',
+        tone === 'emerald' && 'border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))]',
+        tone === 'amber' && 'border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))]',
+        tone === 'violet' && 'border-violet-400/15 bg-[linear-gradient(180deg,rgba(30,23,49,0.96),rgba(18,16,33,0.96))]',
+    );
+}
+
+function metricIconClass(tone: 'cyan' | 'emerald' | 'amber' | 'violet'): string {
+    return cn(
+        'rounded-2xl border p-3',
+        tone === 'cyan' && 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+        tone === 'emerald' && 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
+        tone === 'amber' && 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+        tone === 'violet' && 'border-violet-300/20 bg-violet-300/10 text-violet-100',
+    );
+}
 
 // --- Mock Data ---
 
@@ -260,13 +283,13 @@ export const MOCK_SERVICES: ServiceItem[] = [
 // --- Components ---
 
 function ApprovalBadge({ required }: { required: boolean }) {
-    if (required) return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Yes</Badge>;
-    return <Badge variant="outline" className="text-gray-500 border-gray-200">No</Badge>;
+    if (required) return <Badge variant="outline" className="border-amber-300/20 bg-amber-300/10 text-amber-100">Yes</Badge>;
+    return <Badge variant="outline" className="border-white/10 bg-white/[0.04] text-slate-300">No</Badge>;
 }
 
 function StatusBadge({ status }: { status: 'active' | 'archived' }) {
-    if (status === 'active') return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 shadow-none">Active</Badge>;
-    return <Badge variant="outline" className="text-gray-500 border-gray-200">Archived</Badge>;
+    if (status === 'active') return <Badge className="border-cyan-300/20 bg-cyan-300/12 text-cyan-100 shadow-none hover:bg-cyan-300/12">Active</Badge>;
+    return <Badge variant="outline" className="border-white/10 bg-white/[0.04] text-slate-300">Archived</Badge>;
 }
 
 const SERVICE_EXPORT_COLUMNS = [
@@ -443,6 +466,10 @@ export default function ServicesPage() {
         return matchesSearch && matchesQuickBooksType && matchesCategory && matchesMin && matchesMax;
     });
 
+    const activeServicesCount = services.filter((service) => service.status === 'active').length;
+    const archivedServicesCount = services.filter((service) => service.status === 'archived').length;
+    const approvalRequiredCount = services.filter((service) => service.approval_required).length;
+
     // Handlers
     const handleOpenDrawer = (s: ServiceItem) => {
         setSelectedService(s);
@@ -583,50 +610,129 @@ export default function ServicesPage() {
     };
 
     return (
-        <div className="flex flex-col h-full space-y-6">
-            {/* 1. Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Services & Pricing</h1>
-                    <p className="text-sm text-muted-foreground font-medium">Manage service catalog, default pricing, and approval flags</p>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                    <Button variant="outline" size="sm" onClick={() => void fetchServices()} className="h-9 gap-2" disabled={loading}>
-                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /> Refresh
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => void handleSyncQuickBooks()} className="h-9 gap-2" disabled={isSyncingQuickBooks}>
-                        <RefreshCw className={cn('w-4 h-4', isSyncingQuickBooks && 'animate-spin')} /> Sync QuickBooks Services
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-9 gap-2">
-                        <FileDown className="w-4 h-4" /> Export
-                    </Button>
-                    <Button size="sm" onClick={handleOpenAddModal} className="h-9 gap-2 bg-[#2F8E92] hover:bg-[#267276]">
-                        <Plus className="w-4 h-4" /> Add Service
-                    </Button>
-                </div>
-            </div>
+        <div className="relative mx-auto max-w-[1700px] pb-10">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-[380px] rounded-[34px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_34%),radial-gradient(circle_at_top_right,rgba(52,211,153,0.08),rgba(52,211,153,0)_30%)]" />
+            <div className="pointer-events-none absolute left-8 top-8 h-40 w-40 rounded-full bg-cyan-400/8 blur-3xl" />
+            <div className="pointer-events-none absolute right-10 top-20 h-48 w-48 rounded-full bg-emerald-400/8 blur-3xl" />
 
-            {/* 2. Info Banner */}
-            <div className="bg-card border border-blue-200/50 rounded-lg p-3 flex items-start sm:items-center gap-3 text-sm text-blue-700 dark:text-blue-300">
-                <Info className="w-4 h-4 mt-0.5 sm:mt-0 flex-shrink-0 text-blue-600 dark:text-blue-300" />
-                <p>Price changes affect future jobs only. Previously approved invoices remain unchanged.</p>
-            </div>
+            <div className="relative space-y-6">
+                <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                    <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
+                        <div className="max-w-3xl">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                                <FileText className="h-3.5 w-3.5" />
+                                Catalog Controls
+                            </div>
+                            <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                                Services
+                                <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
+                                    pricing console
+                                </span>
+                            </h1>
+                            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                                Manage your service catalog, QuickBooks-linked items, default pricing, and approval controls from one operational workspace.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                            <Button variant="outline" size="sm" onClick={() => void fetchServices()} className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" disabled={loading}>
+                                <RefreshCw className={cn('w-4 h-4 text-cyan-200', loading && 'animate-spin')} /> Refresh
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => void handleSyncQuickBooks()} className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" disabled={isSyncingQuickBooks}>
+                                <RefreshCw className={cn('w-4 h-4 text-cyan-200', isSyncingQuickBooks && 'animate-spin')} /> Sync QuickBooks Services
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]">
+                                <FileDown className="w-4 h-4" /> Export
+                            </Button>
+                            <Button size="sm" onClick={handleOpenAddModal} className="h-10 gap-2 rounded-full bg-[#2F8E92] px-5 text-white shadow-[0_12px_30px_rgba(47,142,146,0.28)] hover:bg-[#267276]">
+                                <Plus className="w-4 h-4" /> Add Service
+                            </Button>
+                        </div>
+                    </div>
+                </section>
 
-            {/* 3. Filter Bar */}
-            <Card className="p-4 border-border shadow-sm space-y-4 bg-card">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <Card className={metricCardClass('cyan')}>
+                        <div className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Catalog Items</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{services.length}</p>
+                                    <p className="text-sm text-slate-300">Services available in catalog</p>
+                                </div>
+                                <div className={metricIconClass('cyan')}>
+                                    <FileText className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                    <Card className={metricCardClass('emerald')}>
+                        <div className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active Services</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{activeServicesCount}</p>
+                                    <p className="text-sm text-slate-300">Live items available for jobs</p>
+                                </div>
+                                <div className={metricIconClass('emerald')}>
+                                    <CheckCircle2 className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                    <Card className={metricCardClass('amber')}>
+                        <div className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approval Flags</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{approvalRequiredCount}</p>
+                                    <p className="text-sm text-slate-300">Services requiring invoice review</p>
+                                </div>
+                                <div className={metricIconClass('amber')}>
+                                    <Info className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                    <Card className={metricCardClass('violet')}>
+                        <div className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Archived</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{archivedServicesCount}</p>
+                                    <p className="text-sm text-slate-300">Inactive catalog entries retained</p>
+                                </div>
+                                <div className={metricIconClass('violet')}>
+                                    <Archive className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <div className="rounded-[22px] border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-100">
+                    <div className="flex items-start gap-3">
+                        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-cyan-200" />
+                        <p>Price changes affect future jobs only. Previously approved invoices remain unchanged.</p>
+                    </div>
+                </div>
+
+                <Card className={sectionCardClass}>
+                    <div className={sectionHeaderClass}>
                 <div className="flex flex-col lg:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full lg:w-auto min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
                             placeholder="Search by service code or name..."
-                            className="pl-9 bg-muted/30 border-border focus:bg-background transition-all"
+                            className="h-11 rounded-full border-white/10 bg-white/[0.04] pl-9 text-slate-100 placeholder:text-slate-500 transition-all focus:bg-white/[0.06]"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
                     </div>
                     <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto">
                         <Select value={filterQuickBooksType} onValueChange={setFilterQuickBooksType}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="h-11 w-[180px] border-white/10 bg-white/[0.04] text-slate-100">
                                 <SelectValue placeholder="QuickBooks Type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -640,7 +746,7 @@ export default function ServicesPage() {
                         </Select>
 
                         <Select value={filterCategory} onValueChange={(value) => setFilterCategory(value as BusinessCategoryFilter)}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="h-11 w-[180px] border-white/10 bg-white/[0.04] text-slate-100">
                                 <SelectValue placeholder="Business Category" />
                             </SelectTrigger>
                             <SelectContent>
@@ -657,13 +763,13 @@ export default function ServicesPage() {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="w-[180px] justify-start border-border bg-background">
+                                <Button variant="outline" className="h-11 w-[180px] justify-start border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]">
                                     Prices
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-[260px] p-3">
+                            <DropdownMenuContent align="start" className="w-[260px] border-white/10 bg-[#091827] p-3 text-slate-100">
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-gray-500">Min Price</Label>
+                                    <Label className="text-xs text-slate-400">Min Price</Label>
                                     <Input
                                         type="number"
                                         min="0"
@@ -674,7 +780,7 @@ export default function ServicesPage() {
                                     />
                                 </div>
                                 <div className="space-y-2 mt-3">
-                                    <Label className="text-xs text-gray-500">Max Price</Label>
+                                    <Label className="text-xs text-slate-400">Max Price</Label>
                                     <Input
                                         type="number"
                                         min="0"
@@ -688,37 +794,37 @@ export default function ServicesPage() {
                         </DropdownMenu>
                     </div>
                 </div>
-            </Card>
+                    </div>
+                </Card>
 
-            {/* 4. Services Table */}
-            <div className="flex-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+                <div className={cn(sectionCardClass, 'flex-1 flex flex-col')}>
                 {loading ? (
                     <div className="p-4 space-y-4">
                         {Array.from({ length: 5 }).map((_, i) => (
-                            <Skeleton key={i} className="h-12 w-full" />
+                            <Skeleton key={i} className="h-12 w-full bg-white/10" />
                         ))}
                     </div>
                 ) : filteredServices.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-muted-foreground">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                            <FileText className="w-8 h-8 text-muted-foreground" />
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-400">
+                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.05]">
+                            <FileText className="w-8 h-8 text-slate-400" />
                         </div>
-                        <h3 className="text-lg font-semibold text-foreground">No services found</h3>
+                        <h3 className="text-lg font-semibold text-white">No services found</h3>
                         <p className="text-sm mt-1">Try adjusting your filters or search query.</p>
-                        <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterQuickBooksType('all'); setFilterCategory('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</Button>
+                        <Button variant="outline" className="mt-4 border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => { setSearchQuery(''); setFilterQuickBooksType('all'); setFilterCategory('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</Button>
                     </div>
                 ) : (
                     <Table>
-                        <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                        <TableHeader className="sticky top-0 z-10 bg-white/[0.04]">
                             <TableRow>
-                                <TableHead className="pl-6 w-[150px]">Service Code</TableHead>
-                                <TableHead className="min-w-[260px]">Service Name</TableHead>
-                                <TableHead className="w-[150px]">QB ID</TableHead>
-                                <TableHead className="w-[140px]">SKU</TableHead>
-                                <TableHead className="w-[120px]">Category</TableHead>
-                                <TableHead className="w-[120px] text-right pr-6">Default Price</TableHead>
-                                <TableHead className="w-[100px] text-center">Status</TableHead>
-                                <TableHead className="w-[180px] text-right">Last Updated</TableHead>
+                                <TableHead className="pl-6 w-[150px] text-slate-400">Service Code</TableHead>
+                                <TableHead className="min-w-[260px] text-slate-400">Service Name</TableHead>
+                                <TableHead className="w-[150px] text-slate-400">QB ID</TableHead>
+                                <TableHead className="w-[140px] text-slate-400">SKU</TableHead>
+                                <TableHead className="w-[120px] text-slate-400">Category</TableHead>
+                                <TableHead className="w-[120px] text-right pr-6 text-slate-400">Default Price</TableHead>
+                                <TableHead className="w-[100px] text-center text-slate-400">Status</TableHead>
+                                <TableHead className="w-[180px] text-right text-slate-400">Last Updated</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -726,21 +832,23 @@ export default function ServicesPage() {
                             {filteredServices.map((service) => (
                                 <TableRow
                                     key={service.id}
-                                    className="group hover:bg-gray-50 cursor-pointer transition-colors"
+                                    className="group cursor-pointer border-white/6 transition-colors hover:bg-white/[0.03]"
                                     onClick={() => handleOpenDrawer(service)}
                                 >
-                                    <TableCell className="pl-6 font-semibold text-gray-900">{service.code}</TableCell>
-                                    <TableCell className="text-gray-700 font-medium">{service.name}</TableCell>
-                                    <TableCell className="font-mono text-xs text-gray-500">{service.qb_item_id || '-'}</TableCell>
-                                    <TableCell className="font-mono text-xs text-gray-500">{service.sku || '-'}</TableCell>
-                                    <TableCell className="text-gray-600">{service.category}</TableCell>
-                                    <TableCell className="text-right pr-6 font-mono text-gray-600">
+                                    <TableCell className="pl-6 font-semibold text-white">{service.code}</TableCell>
+                                    <TableCell className="font-medium text-slate-200">
+                                        <OverflowText text={service.name} className="max-w-[28rem]" />
+                                    </TableCell>
+                                    <TableCell className="font-mono text-xs text-slate-400">{service.qb_item_id || '-'}</TableCell>
+                                    <TableCell className="font-mono text-xs text-slate-400">{service.sku || '-'}</TableCell>
+                                    <TableCell className="text-slate-300">{service.category}</TableCell>
+                                    <TableCell className="text-right pr-6 font-mono text-slate-300">
                                         ${service.default_price.toFixed(2)}
                                     </TableCell>
                                     <TableCell className="text-center">
                                         <StatusBadge status={service.status} />
                                     </TableCell>
-                                    <TableCell className="text-right text-xs text-gray-400 font-mono">
+                                    <TableCell className="text-right text-xs text-slate-400 font-mono">
                                         {new Date(service.updated_at).toLocaleDateString()}
                                     </TableCell>
                                     <TableCell>
@@ -748,15 +856,15 @@ export default function ServicesPage() {
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="w-4 h-4 text-gray-400" />
+                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
+                                                <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
                                                     <DropdownMenuItem onClick={() => handleOpenEditModal(service)}>
                                                         <Edit2 className="w-4 h-4 mr-2" /> Edit Service
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => handleArchiveToggle(service)} className={service.status === 'active' ? "text-red-600" : ""}>
+                                                    <DropdownMenuItem onClick={() => handleArchiveToggle(service)} className={service.status === 'active' ? "text-rose-200" : ""}>
                                                         {service.status === 'active' ? (
                                                             <><Archive className="w-4 h-4 mr-2" /> Archive</>
                                                         ) : (
@@ -772,33 +880,34 @@ export default function ServicesPage() {
                         </TableBody>
                     </Table>
                 )}
-            </div>
+                </div>
 
             {/* 6. Add/Edit Service Modal */}
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.98),rgba(6,17,29,0.98))] text-slate-100">
                     <DialogHeader>
-                        <DialogTitle>{modalMode === 'add' ? 'Add New Service' : 'Edit Service'}</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-white">{modalMode === 'add' ? 'Add New Service' : 'Edit Service'}</DialogTitle>
+                        <DialogDescription className="text-slate-300">
                             Configure service details and default pricing. <br />
-                            <span className="text-xs text-amber-600 font-medium">Changes affect future jobs only.</span>
+                            <span className="text-xs font-medium text-amber-200">Changes affect future jobs only.</span>
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Service Code <span className="text-red-500">*</span></Label>
+                                <Label className="text-slate-200">Service Code <span className="text-rose-300">*</span></Label>
                                 <Input
                                     placeholder="e.g. SRV-001"
                                     value={formData.code}
                                     onChange={e => setFormData({ ...formData, code: e.target.value })}
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     disabled={modalMode === 'edit'} // Lock code on edit usually desirable
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Default Price ($) <span className="text-red-500">*</span></Label>
+                                <Label className="text-slate-200">Default Price ($) <span className="text-rose-300">*</span></Label>
                                 <div className="relative">
-                                    <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                     <Input
                                         type="number"
                                         min="0"
@@ -806,28 +915,29 @@ export default function ServicesPage() {
                                         placeholder="0.00"
                                         value={formData.default_price}
                                         onChange={e => setFormData({ ...formData, default_price: e.target.value })}
-                                        className="pl-9"
+                                        className="border-white/10 bg-white/[0.04] pl-9 text-white placeholder:text-slate-500"
                                     />
                                 </div>
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Service Name <span className="text-red-500">*</span></Label>
-                            <Input placeholder="e.g. Standard Inspection" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                            <Label className="text-slate-200">Service Name <span className="text-rose-300">*</span></Label>
+                            <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" placeholder="e.g. Standard Inspection" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label>Category <span className="text-red-500">*</span></Label>
+                            <Label className="text-slate-200">Category <span className="text-rose-300">*</span></Label>
                             <Input
+                                className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                 placeholder="e.g. PPF"
                                 value={formData.category}
                                 onChange={e => setFormData({ ...formData, category: e.target.value })}
                             />
                         </div>
 
-                        <div className="flex items-center justify-between p-3 border border-gray-100 rounded-lg bg-gray-50">
+                        <div className="flex items-center justify-between rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
                             <div className="space-y-0.5">
-                                <Label className="text-base">Approval Required</Label>
-                                <p className="text-xs text-gray-500">Flag invoices containing this service for review.</p>
+                                <Label className="text-base text-white">Approval Required</Label>
+                                <p className="text-xs text-slate-400">Flag invoices containing this service for review.</p>
                             </div>
                             <Switch
                                 checked={formData.approval_required}
@@ -836,8 +946,9 @@ export default function ServicesPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Notes (Optional)</Label>
+                            <Label className="text-slate-200">Notes (Optional)</Label>
                             <Textarea
+                                className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                 placeholder="Internal notes about pricing logic or restrictions..."
                                 value={formData.notes}
                                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
@@ -845,7 +956,7 @@ export default function ServicesPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
+                        <Button variant="outline" className="border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => setModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleSaveService} className="bg-[#2F8E92] hover:bg-[#267276]">{modalMode === 'add' ? 'Create Service' : 'Save Changes'}</Button>
                     </DialogFooter>
                 </DialogContent>
@@ -862,20 +973,20 @@ export default function ServicesPage() {
 
             {/* 7. Service Drawer */}
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                <SheetContent className="sm:max-w-md w-full p-0 flex flex-col gap-0 bg-gray-50/50">
+                <SheetContent className="sm:max-w-md w-full p-0 flex flex-col gap-0 border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.98),rgba(6,17,29,0.98))] text-slate-100">
                     {selectedService && (
                         <>
-                            <div className="bg-white px-6 py-4 border-b border-gray-200">
+                            <div className="border-b border-white/10 bg-white/[0.03] px-6 py-4">
                                 <div className="flex items-start justify-between">
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
-                                            <h2 className="text-xl font-bold text-gray-900">{selectedService.name}</h2>
+                                            <OverflowText text={selectedService.name} as="h2" className="max-w-[18rem] text-xl font-bold text-white" />
                                         </div>
-                                        <div className="text-sm font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded inline-block">
+                                        <div className="inline-block rounded bg-white/[0.05] px-2 py-0.5 text-sm font-mono text-slate-400">
                                             {selectedService.code}
                                         </div>
                                     </div>
-                                    <Button variant="outline" size="sm" onClick={() => { setDrawerOpen(false); handleOpenEditModal(selectedService); }}>
+                                    <Button variant="outline" size="sm" className="border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => { setDrawerOpen(false); handleOpenEditModal(selectedService); }}>
                                         <Edit2 className="w-3 h-3 mr-2" /> Edit
                                     </Button>
                                 </div>
@@ -883,49 +994,52 @@ export default function ServicesPage() {
 
                             <ScrollArea className="flex-1">
                                 <div className="p-6 space-y-6">
-                                    <Card className="p-4 border-gray-200 shadow-sm space-y-4">
-                                        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                    <Card className="space-y-4 border-white/10 bg-white/[0.03] p-4 shadow-none">
+                                        <h3 className="flex items-center gap-2 text-sm font-bold text-white">
                                             <FileText className="w-4 h-4" /> Service Details
                                         </h3>
                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                             <div>
-                                                <span className="text-gray-500 block">QuickBooks Item ID</span>
-                                                <span className="font-mono text-gray-900">{selectedService.qb_item_id || 'Not mapped'}</span>
+                                                <span className="block text-slate-400">QuickBooks Item ID</span>
+                                                <span className="font-mono text-white">{selectedService.qb_item_id || 'Not mapped'}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-500 block">SKU</span>
-                                                <span className="font-mono text-gray-900">{selectedService.sku || '-'}</span>
+                                                <span className="block text-slate-400">SKU</span>
+                                                <span className="font-mono text-white">{selectedService.sku || '-'}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-500 block">Default Price</span>
-                                                <span className="font-mono font-medium text-gray-900">${selectedService.default_price.toFixed(2)}</span>
+                                                <span className="block text-slate-400">Default Price</span>
+                                                <span className="font-mono font-medium text-white">${selectedService.default_price.toFixed(2)}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-500 block">Status</span>
+                                                <span className="block text-slate-400">Status</span>
                                                 <StatusBadge status={selectedService.status} />
                                             </div>
                                             <div>
-                                                <span className="text-gray-500 block">QuickBooks Type</span>
-                                                <span className="text-gray-900">{selectedService.qb_type || '-'}</span>
+                                                <span className="block text-slate-400">QuickBooks Type</span>
+                                                <span className="text-white">{selectedService.qb_type || '-'}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-500 block">Approval Required</span>
+                                                <span className="block text-slate-400">Approval Required</span>
                                                 <ApprovalBadge required={selectedService.approval_required} />
                                             </div>
                                             <div>
-                                                <span className="text-gray-500 block">Last Updated</span>
-                                                <span className="text-gray-900">{new Date(selectedService.updated_at).toLocaleDateString()}</span>
+                                                <span className="block text-slate-400">Last Updated</span>
+                                                <span className="text-white">{new Date(selectedService.updated_at).toLocaleDateString()}</span>
                                             </div>
                                         </div>
 
                                         {selectedService.description && (
-                                            <div className="pt-4 border-t border-gray-100">
+                                            <div className="border-t border-white/10 pt-4">
                                                 {selectedService.description && (
                                                     <>
-                                                        <span className="text-gray-500 block text-xs mb-1">QuickBooks Description</span>
-                                                        <p className="text-sm text-gray-700 bg-blue-50 p-2 rounded border border-blue-100">
-                                                            {selectedService.description}
-                                                        </p>
+                                                        <span className="mb-1 block text-xs text-slate-400">QuickBooks Description</span>
+                                                        <OverflowText
+                                                            text={selectedService.description}
+                                                            as="p"
+                                                            lines={3}
+                                                            className="rounded border border-cyan-300/20 bg-cyan-300/10 p-2 text-sm text-cyan-50"
+                                                        />
                                                     </>
                                                 )}
                                             </div>
@@ -939,6 +1053,7 @@ export default function ServicesPage() {
                 </SheetContent>
             </Sheet>
 
+            </div>
         </div>
     );
 }

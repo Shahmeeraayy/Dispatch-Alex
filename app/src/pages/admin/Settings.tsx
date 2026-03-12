@@ -133,6 +133,10 @@ const getDefaultAdminCredentialValues = () => ({
     adminEmail: DEFAULT_ADMIN_EMAIL,
 });
 
+const sectionCardClass = 'overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]';
+const sectionHeaderClass = 'border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] pb-5';
+const sectionFooterClass = 'border-t border-white/8 bg-white/[0.03] py-4';
+
 
 
 export default function SettingsPage() {
@@ -570,101 +574,121 @@ export default function SettingsPage() {
 
 
     return (
-        <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
+        <div className="relative mx-auto max-w-[1700px] pb-10">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-[380px] rounded-[34px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_34%),radial-gradient(circle_at_top_right,rgba(52,211,153,0.08),rgba(52,211,153,0)_30%)]" />
+            <div className="pointer-events-none absolute left-8 top-8 h-40 w-40 rounded-full bg-cyan-400/8 blur-3xl" />
+            <div className="pointer-events-none absolute right-10 top-20 h-48 w-48 rounded-full bg-emerald-400/8 blur-3xl" />
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
-                    <p className="text-sm text-muted-foreground font-medium">
-                        System configuration, dispatch ranking, invoice branding, and access controls.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 gap-2 rounded-xl border-border bg-card px-4 shadow-sm hover:bg-muted"
-                        onClick={() => setRefreshSeed((current) => current + 1)}
-                    >
-                        <RefreshCw className="w-4 h-4 text-muted-foreground" />
-                        Refresh
-                    </Button>
-                </div>
-            </div>
+            <div className="relative space-y-6">
+                <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                    <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
+                        <div className="max-w-3xl">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                                <Monitor className="h-3.5 w-3.5" />
+                                Admin Controls
+                            </div>
+                            <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                                Settings
+                                <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
+                                    command center
+                                </span>
+                            </h1>
+                            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                                Configure dispatch ranking, invoice branding, admin access, and interface preferences from one operational control surface.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-10 gap-2 rounded-full border-white/12 bg-white/[0.04] px-4 text-slate-100 shadow-none hover:bg-white/[0.08] hover:text-white"
+                                onClick={() => setRefreshSeed((current) => current + 1)}
+                            >
+                                <RefreshCw className="w-4 h-4 text-cyan-200" />
+                                Refresh
+                            </Button>
+                        </div>
+                    </div>
+                </section>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-blue-200 bg-card shadow-sm">
-                    <CardContent className="p-5">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dispatch Rules</p>
-                                <p className="text-3xl font-bold text-foreground">{priorityRules.length}</p>
-                                <p className="text-sm text-muted-foreground">Ranking rules configured</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <Card className="overflow-hidden rounded-[24px] border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                        <CardContent className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Dispatch Rules</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{priorityRules.length}</p>
+                                    <p className="text-sm text-slate-300">Ranking rules configured</p>
+                                </div>
+                                <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
+                                    <ListFilter className="w-5 h-5" />
+                                </div>
                             </div>
-                            <div className="rounded-xl bg-blue-100 p-3 text-blue-700">
-                                <ListFilter className="w-5 h-5" />
+                        </CardContent>
+                    </Card>
+                    <Card className="overflow-hidden rounded-[24px] border border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                        <CardContent className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active Rules</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{priorityRules.filter((rule) => rule.isActive).length}</p>
+                                    <p className="text-sm text-slate-300">Rules affecting queue ranking</p>
+                                </div>
+                                <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3 text-emerald-100">
+                                    <ShieldCheck className="w-5 h-5" />
+                                </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-emerald-200 bg-card shadow-sm">
-                    <CardContent className="p-5">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active Rules</p>
-                                <p className="text-3xl font-bold text-foreground">{priorityRules.filter((rule) => rule.isActive).length}</p>
-                                <p className="text-sm text-muted-foreground">Rules currently affecting queue ranking</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="overflow-hidden rounded-[24px] border border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                        <CardContent className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Dealership Coverage</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{dealershipOptions.length}</p>
+                                    <p className="text-sm text-slate-300">Partners available for rule targeting</p>
+                                </div>
+                                <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-3 text-amber-100">
+                                    <Building2 className="w-5 h-5" />
+                                </div>
                             </div>
-                            <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
-                                <ShieldCheck className="w-5 h-5" />
+                        </CardContent>
+                    </Card>
+                    <Card className="overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(13,24,38,0.96),rgba(8,17,29,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                        <CardContent className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">CRM Theme</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">
+                                        {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'}
+                                    </p>
+                                    <p className="text-sm text-slate-300">Current interface appearance</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-slate-200">
+                                    <Monitor className="w-5 h-5" />
+                                </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-orange-200 bg-card shadow-sm">
-                    <CardContent className="p-5">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dealership Coverage</p>
-                                <p className="text-3xl font-bold text-foreground">{dealershipOptions.length}</p>
-                                <p className="text-sm text-muted-foreground">Dealerships available for rule targeting</p>
-                            </div>
-                            <div className="rounded-xl bg-orange-100 p-3 text-orange-700">
-                                <Building2 className="w-5 h-5" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-slate-200 bg-card shadow-sm">
-                    <CardContent className="p-5">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">CRM Theme</p>
-                                <p className="text-3xl font-bold text-foreground">
-                                    {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'}
-                                </p>
-                                <p className="text-sm text-muted-foreground">Current interface appearance</p>
-                            </div>
-                            <div className="rounded-xl bg-slate-100 p-3 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                <Monitor className="w-5 h-5" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
 
-                <Card className="border-border shadow-sm bg-card xl:row-span-2">
-                    <CardHeader className="pb-4">
+                <Card className={cn(sectionCardClass, 'xl:row-span-2')}>
+                    <CardHeader className={sectionHeaderClass}>
                         <div className="flex items-center justify-between">
-                            <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                                <ListFilter className="w-4 h-4 text-[#2F8E92]" /> Dispatch Ranking Rules
+                            <CardTitle className="text-base font-semibold flex items-center gap-2 text-white">
+                                <span className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-cyan-100">
+                                    <ListFilter className="w-4 h-4" />
+                                </span>
+                                Dispatch Ranking Rules
                             </CardTitle>
 
                             <Dialog open={isAddingRule} onOpenChange={setIsAddingRule}>
                                 <DialogTrigger asChild>
-                                    <Button size="sm" className="h-8 bg-[#2F8E92] text-white hover:bg-[#267276]">
+                                    <Button size="sm" className="h-9 rounded-full bg-[#2F8E92] px-4 text-white shadow-[0_12px_30px_rgba(47,142,146,0.28)] hover:bg-[#267276]">
                                         <PlusCircle className="w-3.5 h-3.5 mr-2" /> Add Rule
                                     </Button>
                                 </DialogTrigger>
@@ -840,18 +864,18 @@ export default function SettingsPage() {
                                 </DialogContent>
                             </Dialog>
                         </div>
-                        <CardDescription className="text-muted-foreground">Manage rule-based escalation and sorting for inbound jobs</CardDescription>
+                        <CardDescription className="text-slate-300">Manage rule-based escalation and sorting for inbound jobs.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="rounded-md border border-border overflow-hidden">
+                    <CardContent className="pt-0">
+                        <div className="overflow-hidden rounded-[22px] border border-white/8 bg-black/10">
                             <Table>
-                                <TableHeader className="bg-muted/50">
+                                <TableHeader className="bg-white/[0.04]">
                                     <TableRow>
-                                        <TableHead className="w-[300px]">Rule & Description</TableHead>
-                                        <TableHead>Target</TableHead>
-                                        <TableHead>Ranking</TableHead>
-                                        <TableHead className="text-center">Active</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead className="w-[300px] text-slate-400">Rule & Description</TableHead>
+                                        <TableHead className="text-slate-400">Target</TableHead>
+                                        <TableHead className="text-slate-400">Ranking</TableHead>
+                                        <TableHead className="text-center text-slate-400">Active</TableHead>
+                                        <TableHead className="text-right text-slate-400">Actions</TableHead>
                                     </TableRow>
 
                                 </TableHeader>
@@ -859,11 +883,11 @@ export default function SettingsPage() {
                                     {priorityRules.map(rule => {
                                         const dealer = MOCK_DEALERSHIPS.find(d => d.id === rule.dealershipId);
                                         return (
-                                            <TableRow key={rule.id}>
+                                            <TableRow key={rule.id} className="border-white/6">
                                                 <TableCell className="py-3">
                                                     <div className="flex flex-col">
-                                                        <span className="font-semibold text-sm text-foreground">{rule.description}</span>
-                                                        <span className="text-[10px] text-muted-foreground uppercase">{dealer?.name || 'Global'}</span>
+                                                        <span className="font-semibold text-sm text-white">{rule.description}</span>
+                                                        <span className="text-[10px] uppercase text-slate-400">{dealer?.name || 'Global'}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
@@ -877,7 +901,7 @@ export default function SettingsPage() {
                                                     </Badge>
                                                 </TableCell>
 
-                                                <TableCell className="font-mono text-sm">+{rule.rankingScore}</TableCell>
+                                                <TableCell className="font-mono text-sm text-slate-100">+{rule.rankingScore}</TableCell>
 
                                                 <TableCell className="text-center">
                                                     <Switch
@@ -889,7 +913,7 @@ export default function SettingsPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-[#2F8E92]"
+                                                        className="h-8 w-8 text-slate-400 hover:bg-cyan-400/10 hover:text-cyan-200"
                                                         onClick={() => handleOpenEditRule(rule)}
                                                     >
                                                         <Pencil className="w-4 h-4" />
@@ -897,7 +921,7 @@ export default function SettingsPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-rose-600"
+                                                        className="h-8 w-8 text-slate-400 hover:bg-rose-400/10 hover:text-rose-200"
                                                         onClick={() => handleDeleteRule(rule.id)}
                                                     >
                                                         <AlertCircle className="w-4 h-4" />
@@ -913,85 +937,96 @@ export default function SettingsPage() {
                 </Card>
 
                 <div className="space-y-6">
-                <Card className="border-border shadow-sm bg-card">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                            <FileText className="w-4 h-4 text-[#2F8E92]" /> Invoice Branding
+                <Card className={sectionCardClass}>
+                    <CardHeader className={sectionHeaderClass}>
+                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-white">
+                            <span className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-cyan-100">
+                                <FileText className="w-4 h-4" />
+                            </span>
+                            Invoice Branding
                         </CardTitle>
-                        <CardDescription className="text-muted-foreground">
+                        <CardDescription className="text-slate-300">
                             Edit the full company profile shown on generated invoices and PDFs.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-0">
                         <div className="grid sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label htmlFor="invoice_company_name" className="text-foreground">Company Name</Label>
+                                <Label htmlFor="invoice_company_name" className="text-slate-200">Company Name</Label>
                                 <Input
                                     id="invoice_company_name"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={invoiceCompany.name}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, name: e.target.value })}
                                     placeholder="SM2 electronics"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="invoice_company_email" className="text-foreground">Billing Email</Label>
+                                <Label htmlFor="invoice_company_email" className="text-slate-200">Billing Email</Label>
                                 <Input
                                     id="invoice_company_email"
                                     type="email"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={invoiceCompany.email}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, email: e.target.value })}
                                     placeholder="billing@sm2dispatch.com"
                                 />
                             </div>
                             <div className="space-y-2 sm:col-span-2">
-                                <Label htmlFor="invoice_company_street" className="text-foreground">Street Address</Label>
+                                <Label htmlFor="invoice_company_street" className="text-slate-200">Street Address</Label>
                                 <Input
                                     id="invoice_company_street"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={invoiceCompany.street_address}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, street_address: e.target.value })}
                                     placeholder="123 Dispatch Ave"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="invoice_company_city" className="text-foreground">City</Label>
+                                <Label htmlFor="invoice_company_city" className="text-slate-200">City</Label>
                                 <Input
                                     id="invoice_company_city"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={invoiceCompany.city}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, city: e.target.value })}
                                     placeholder="Quebec"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="invoice_company_state" className="text-foreground">State / Province</Label>
+                                <Label htmlFor="invoice_company_state" className="text-slate-200">State / Province</Label>
                                 <Input
                                     id="invoice_company_state"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={invoiceCompany.state}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, state: e.target.value })}
                                     placeholder="QC"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="invoice_company_zip" className="text-foreground">ZIP / Postal Code</Label>
+                                <Label htmlFor="invoice_company_zip" className="text-slate-200">ZIP / Postal Code</Label>
                                 <Input
                                     id="invoice_company_zip"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={invoiceCompany.zip_code}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, zip_code: e.target.value })}
                                     placeholder="G1A 1A1"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="invoice_company_phone" className="text-foreground">Phone</Label>
+                                <Label htmlFor="invoice_company_phone" className="text-slate-200">Phone</Label>
                                 <Input
                                     id="invoice_company_phone"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={invoiceCompany.phone}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, phone: e.target.value })}
                                     placeholder="+1-418-555-0100"
                                 />
                             </div>
                             <div className="space-y-2 sm:col-span-2">
-                                <Label htmlFor="invoice_company_website" className="text-foreground">Website</Label>
+                                <Label htmlFor="invoice_company_website" className="text-slate-200">Website</Label>
                                 <Input
                                     id="invoice_company_website"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={invoiceCompany.website}
                                     onChange={(e) => setInvoiceCompany({ ...invoiceCompany, website: e.target.value })}
                                     placeholder="https://www.sm2dispatch.com"
@@ -999,12 +1034,12 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="bg-muted/30 border-t border-border py-3">
+                    <CardFooter className={sectionFooterClass}>
                         <div className="ml-auto flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={handleCancelInvoiceBranding} disabled={loading}>
+                            <Button size="sm" variant="outline" className="border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={handleCancelInvoiceBranding} disabled={loading}>
                                 Cancel
                             </Button>
-                            <Button size="sm" onClick={handleSaveInvoiceBranding} disabled={loading}>
+                            <Button size="sm" className="bg-[#2F8E92] text-white shadow-[0_12px_30px_rgba(47,142,146,0.24)] hover:bg-[#267276]" onClick={handleSaveInvoiceBranding} disabled={loading}>
                                 {loading && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
                                 {loading ? 'Saving...' : 'Save Invoice Branding'}
                             </Button>
@@ -1012,52 +1047,59 @@ export default function SettingsPage() {
                     </CardFooter>
                 </Card>
 
-                <Card className="border-border shadow-sm bg-card">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                            <KeyRound className="w-4 h-4 text-[#2F8E92]" /> Admin Access
+                <Card className={sectionCardClass}>
+                    <CardHeader className={sectionHeaderClass}>
+                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-white">
+                            <span className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-cyan-100">
+                                <KeyRound className="w-4 h-4" />
+                            </span>
+                            Admin Access
                         </CardTitle>
-                        <CardDescription className="text-muted-foreground">
+                        <CardDescription className="text-slate-300">
                             Update the admin sign-in email and password from one place.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-0">
                         <div className="grid sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label htmlFor="admin_account_email" className="text-foreground">Admin Email</Label>
+                                <Label htmlFor="admin_account_email" className="text-slate-200">Admin Email</Label>
                                 <Input
                                     id="admin_account_email"
                                     type="email"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={adminCredentialForm.adminEmail}
                                     onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, adminEmail: e.target.value }))}
                                     autoComplete="email"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="admin_current_password" className="text-foreground">Current Password</Label>
+                                <Label htmlFor="admin_current_password" className="text-slate-200">Current Password</Label>
                                 <Input
                                     id="admin_current_password"
                                     type="password"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={adminCredentialForm.currentPassword}
                                     onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
                                     autoComplete="current-password"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="admin_new_password" className="text-foreground">New Password (Optional)</Label>
+                                <Label htmlFor="admin_new_password" className="text-slate-200">New Password (Optional)</Label>
                                 <Input
                                     id="admin_new_password"
                                     type="password"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={adminCredentialForm.newPassword}
                                     onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, newPassword: e.target.value }))}
                                     autoComplete="new-password"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="admin_confirm_password" className="text-foreground">Confirm New Password</Label>
+                                <Label htmlFor="admin_confirm_password" className="text-slate-200">Confirm New Password</Label>
                                 <Input
                                     id="admin_confirm_password"
                                     type="password"
+                                    className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                     value={adminCredentialForm.confirmPassword}
                                     onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                                     autoComplete="new-password"
@@ -1065,14 +1107,15 @@ export default function SettingsPage() {
                             </div>
                         </div>
                         {adminCredentialError && (
-                            <p className="mt-3 text-sm text-red-600">{adminCredentialError}</p>
+                            <p className="mt-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{adminCredentialError}</p>
                         )}
                     </CardContent>
-                    <CardFooter className="bg-muted/30 border-t border-border py-3">
+                    <CardFooter className={sectionFooterClass}>
                         <div className="ml-auto flex items-center gap-2">
                             <Button
                                 size="sm"
                                 variant="outline"
+                                className="border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]"
                                 onClick={() => {
                                     setAdminCredentialForm({
                                         ...savedAdminCredentials,
@@ -1086,7 +1129,7 @@ export default function SettingsPage() {
                             >
                                 Cancel
                             </Button>
-                            <Button size="sm" onClick={handleSaveAdminCredentials} disabled={isSavingAdminCredentials}>
+                            <Button size="sm" className="bg-[#2F8E92] text-white shadow-[0_12px_30px_rgba(47,142,146,0.24)] hover:bg-[#267276]" onClick={handleSaveAdminCredentials} disabled={isSavingAdminCredentials}>
                                 {isSavingAdminCredentials && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
                                 {isSavingAdminCredentials ? 'Saving...' : 'Update Admin Access'}
                             </Button>
@@ -1094,58 +1137,67 @@ export default function SettingsPage() {
                     </CardFooter>
                 </Card>
 
-                <Card className="border-border shadow-sm bg-card">
-                    <CardHeader>
-                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                            <Monitor className="w-4 h-4 text-purple-600" /> Appearance
+                <Card className={sectionCardClass}>
+                    <CardHeader className={sectionHeaderClass}>
+                        <CardTitle className="text-base font-semibold flex items-center gap-2 text-white">
+                            <span className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-cyan-100">
+                                <Monitor className="w-4 h-4" />
+                            </span>
+                            Appearance
                         </CardTitle>
-                        <CardDescription className="text-muted-foreground">Customize your interface theme</CardDescription>
+                        <CardDescription className="text-slate-300">Customize your interface theme.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-0">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Light Mode */}
                             <button
                                 onClick={() => handleThemeChange('light')}
                                 className={cn(
-                                    "flex flex-col items-start p-4 rounded-xl border-2 transition-all hover:bg-muted/50",
-                                    theme === 'light' ? "border-[#2F8E92] bg-[#E6F4F4]/30 ring-1 ring-[#2F8E92]" : "border-border bg-card"
+                                    "flex flex-col items-start rounded-[22px] border p-4 text-left transition-all",
+                                    theme === 'light'
+                                        ? "border-cyan-300/40 bg-cyan-300/10 ring-1 ring-cyan-300/40"
+                                        : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
                                 )}
                             >
-                                <div className="mb-3 p-2 bg-gray-100 rounded-lg text-gray-500">
+                                <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.05] p-2 text-slate-300">
                                     <Sun className="w-5 h-5" />
                                 </div>
-                                <span className="font-semibold text-sm text-foreground">Light Mode</span>
-                                <span className="text-xs text-muted-foreground mt-1 text-left">Standard professional light theme</span>
+                                <span className="font-semibold text-sm text-white">Light Mode</span>
+                                <span className="mt-1 text-xs text-slate-400">Standard professional light theme</span>
                             </button>
 
                             {/* Dark Mode */}
                             <button
                                 onClick={() => handleThemeChange('dark')}
                                 className={cn(
-                                    "flex flex-col items-start p-4 rounded-xl border-2 transition-all hover:bg-muted/50 dark:hover:bg-muted/10",
-                                    theme === 'dark' ? "border-[#2F8E92] bg-[#E6F4F4]/30 ring-1 ring-[#2F8E92]" : "border-border bg-card"
+                                    "flex flex-col items-start rounded-[22px] border p-4 text-left transition-all",
+                                    theme === 'dark'
+                                        ? "border-cyan-300/40 bg-cyan-300/10 ring-1 ring-cyan-300/40"
+                                        : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
                                 )}
                             >
-                                <div className="mb-3 p-2 bg-gray-800 rounded-lg text-gray-400">
+                                <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.05] p-2 text-slate-300">
                                     <Moon className="w-5 h-5" />
                                 </div>
-                                <span className="font-semibold text-sm text-foreground">Dark Mode</span>
-                                <span className="text-xs text-muted-foreground mt-1 text-left">Reduced eye strain for low-light</span>
+                                <span className="font-semibold text-sm text-white">Dark Mode</span>
+                                <span className="mt-1 text-xs text-slate-400">Reduced eye strain for low-light</span>
                             </button>
 
                             {/* System Mode */}
                             <button
                                 onClick={() => handleThemeChange('system')}
                                 className={cn(
-                                    "flex flex-col items-start p-4 rounded-xl border-2 transition-all hover:bg-muted/50",
-                                    theme === 'system' ? "border-[#2F8E92] bg-[#E6F4F4]/30 ring-1 ring-[#2F8E92]" : "border-border bg-card"
+                                    "flex flex-col items-start rounded-[22px] border p-4 text-left transition-all",
+                                    theme === 'system'
+                                        ? "border-cyan-300/40 bg-cyan-300/10 ring-1 ring-cyan-300/40"
+                                        : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
                                 )}
                             >
-                                <div className="mb-3 p-2 bg-muted rounded-lg text-muted-foreground">
+                                <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.05] p-2 text-slate-300">
                                     <Monitor className="w-5 h-5" />
                                 </div>
-                                <span className="font-semibold text-sm text-foreground">System Default</span>
-                                <span className="text-xs text-muted-foreground mt-1 text-left">Sync with device preference</span>
+                                <span className="font-semibold text-sm text-white">System Default</span>
+                                <span className="mt-1 text-xs text-slate-400">Sync with device preference</span>
                             </button>
                         </div>
                     </CardContent>
@@ -1153,6 +1205,7 @@ export default function SettingsPage() {
                 </div>
 
             </div>
+        </div>
         </div>
     );
 }

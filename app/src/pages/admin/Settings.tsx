@@ -25,7 +25,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import {
     Dialog,
     DialogContent,
@@ -131,7 +130,6 @@ const DEFAULT_ADMIN_EMAIL = 'admin@sm2dispatch.com';
 
 const getDefaultAdminCredentialValues = () => ({
     adminEmail: DEFAULT_ADMIN_EMAIL,
-    recoveryEmail: DEFAULT_ADMIN_EMAIL,
 });
 
 
@@ -239,7 +237,6 @@ export default function SettingsPage() {
 
                 const nextValues = {
                     adminEmail: settings.admin_email,
-                    recoveryEmail: settings.recovery_email,
                 };
                 setSavedAdminCredentials(nextValues);
                 setAdminCredentialForm((prev) => ({
@@ -414,13 +411,12 @@ export default function SettingsPage() {
 
         setAdminCredentialError(null);
         const adminEmail = adminCredentialForm.adminEmail.trim().toLowerCase();
-        const recoveryEmail = adminCredentialForm.recoveryEmail.trim().toLowerCase();
         const currentPassword = adminCredentialForm.currentPassword.trim();
         const newPassword = adminCredentialForm.newPassword.trim();
         const confirmPassword = adminCredentialForm.confirmPassword.trim();
 
-        if (!adminEmail || !recoveryEmail || !currentPassword) {
-            setAdminCredentialError('Admin email, recovery email(s), and current password are required.');
+        if (!adminEmail || !currentPassword) {
+            setAdminCredentialError('Admin email and current password are required.');
             return;
         }
         if ((newPassword && !confirmPassword) || (!newPassword && confirmPassword)) {
@@ -440,13 +436,11 @@ export default function SettingsPage() {
         try {
             const updated = await updateAdminCredentialSettings(adminToken, {
                 admin_email: adminEmail,
-                recovery_email: recoveryEmail,
                 current_password: currentPassword,
                 new_password: newPassword || undefined,
             });
             const nextValues = {
                 adminEmail: updated.admin_email,
-                recoveryEmail: updated.recovery_email,
             };
             setSavedAdminCredentials(nextValues);
             setAdminCredentialForm({
@@ -455,7 +449,7 @@ export default function SettingsPage() {
                 newPassword: '',
                 confirmPassword: '',
             });
-            alert(newPassword ? 'Admin access settings updated successfully.' : 'Admin email and recovery email settings updated successfully.');
+            alert(newPassword ? 'Admin access settings updated successfully.' : 'Admin email updated successfully.');
         } catch (error) {
             setAdminCredentialError(error instanceof Error ? error.message : 'Unable to update admin access settings.');
         } finally {
@@ -950,10 +944,10 @@ export default function SettingsPage() {
                 <Card className="border-border shadow-sm bg-card">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-                            <KeyRound className="w-4 h-4 text-[#2F8E92]" /> Admin Access & Recovery
+                            <KeyRound className="w-4 h-4 text-[#2F8E92]" /> Admin Access
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            Update the admin sign-in email, one or more approved recovery inboxes for OTP delivery, and the password from one place.
+                            Update the admin sign-in email and password from one place.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -969,16 +963,6 @@ export default function SettingsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="admin_recovery_email" className="text-foreground">Recovery Emails For OTP</Label>
-                                <Textarea
-                                    id="admin_recovery_email"
-                                    value={adminCredentialForm.recoveryEmail}
-                                    onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, recoveryEmail: e.target.value }))}
-                                    rows={3}
-                                    placeholder="admin@sm2dispatch.com, shahmeerk736@gmail.com"
-                                />
-                            </div>
-                            <div className="space-y-2 sm:col-span-2">
                                 <Label htmlFor="admin_current_password" className="text-foreground">Current Password</Label>
                                 <Input
                                     id="admin_current_password"
@@ -1009,9 +993,6 @@ export default function SettingsPage() {
                                 />
                             </div>
                         </div>
-                        <p className="mt-4 text-xs text-muted-foreground">
-                            Add one or more approved recovery inboxes separated by commas. Forgot-password OTPs will be sent to every address in this list.
-                        </p>
                         {adminCredentialError && (
                             <p className="mt-3 text-sm text-red-600">{adminCredentialError}</p>
                         )}
@@ -1036,7 +1017,7 @@ export default function SettingsPage() {
                             </Button>
                             <Button size="sm" onClick={handleSaveAdminCredentials} disabled={isSavingAdminCredentials}>
                                 {isSavingAdminCredentials && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
-                                {isSavingAdminCredentials ? 'Saving...' : 'Update Access Settings'}
+                                {isSavingAdminCredentials ? 'Saving...' : 'Update Admin Access'}
                             </Button>
                         </div>
                     </CardFooter>

@@ -75,7 +75,6 @@ def update_admin_credentials_settings(
     return AdminCredentialSettingsService(db).update_credentials(
         current_password=payload.current_password,
         admin_email=payload.admin_email,
-        recovery_email=payload.recovery_email,
         new_password=payload.new_password,
     )
 

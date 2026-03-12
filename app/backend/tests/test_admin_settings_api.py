@@ -40,7 +40,7 @@ class AdminSettingsApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()["access_token"]
 
-    def test_admin_credentials_settings_supports_multiple_recovery_email_updates(self):
+    def test_admin_credentials_settings_updates_admin_email_and_password(self):
         token = self._admin_token()
 
         response = self.client.get(
@@ -51,15 +51,14 @@ class AdminSettingsApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         payload = response.json()
         self.assertEqual(payload["admin_email"], "admin@sm2dispatch.com")
-        self.assertEqual(payload["recovery_email"], "admin@sm2dispatch.com")
-        self.assertEqual(payload["recovery_emails"], ["admin@sm2dispatch.com"])
+        self.assertIn("password_changed_at", payload)
+        self.assertIn("updated_at", payload)
 
         update_response = self.client.put(
             "/admin/settings/admin-credentials",
             headers={"Authorization": f"Bearer {token}"},
             json={
                 "admin_email": "owner@sm2dispatch.com",
-                "recovery_email": "super@sm2dispatch.com, ops@sm2dispatch.com",
                 "current_password": "admin123",
                 "new_password": "newpass123",
             },
@@ -68,11 +67,8 @@ class AdminSettingsApiTests(unittest.TestCase):
         self.assertEqual(update_response.status_code, 200, update_response.text)
         updated_payload = update_response.json()
         self.assertEqual(updated_payload["admin_email"], "owner@sm2dispatch.com")
-        self.assertEqual(updated_payload["recovery_email"], "super@sm2dispatch.com, ops@sm2dispatch.com")
-        self.assertEqual(
-            updated_payload["recovery_emails"],
-            ["super@sm2dispatch.com", "ops@sm2dispatch.com"],
-        )
+        self.assertIn("password_changed_at", updated_payload)
+        self.assertIn("updated_at", updated_payload)
 
         refreshed_response = self.client.get(
             "/admin/settings/admin-credentials",
@@ -81,11 +77,8 @@ class AdminSettingsApiTests(unittest.TestCase):
         self.assertEqual(refreshed_response.status_code, 200, refreshed_response.text)
         refreshed_payload = refreshed_response.json()
         self.assertEqual(refreshed_payload["admin_email"], "owner@sm2dispatch.com")
-        self.assertEqual(refreshed_payload["recovery_email"], "super@sm2dispatch.com, ops@sm2dispatch.com")
-        self.assertEqual(
-            refreshed_payload["recovery_emails"],
-            ["super@sm2dispatch.com", "ops@sm2dispatch.com"],
-        )
+        self.assertIn("password_changed_at", refreshed_payload)
+        self.assertIn("updated_at", refreshed_payload)
 
         new_login_response = self.client.post(
             "/auth/admin-token",

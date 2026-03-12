@@ -7,25 +7,6 @@ from pydantic import BaseModel, EmailStr, Field, TypeAdapter, field_validator
 _EMAIL_ADAPTER = TypeAdapter(EmailStr)
 
 
-def _normalize_email_list_string(value: str) -> str:
-    normalized_parts: list[str] = []
-    seen: set[str] = set()
-    for raw_part in value.replace("\r", ",").replace("\n", ",").replace(";", ",").split(","):
-        candidate = raw_part.strip().lower()
-        if not candidate:
-            continue
-        validated = str(_EMAIL_ADAPTER.validate_python(candidate)).lower()
-        if validated in seen:
-            continue
-        seen.add(validated)
-        normalized_parts.append(validated)
-
-    if not normalized_parts:
-        raise ValueError("value cannot be blank")
-
-    return ", ".join(normalized_parts)
-
-
 class InvoiceBrandingSettingsPayload(BaseModel):
     logo_url: Optional[str] = None
     name: str = Field(..., min_length=1, max_length=255)
@@ -80,15 +61,12 @@ class AdminPasswordChangeResponse(BaseModel):
 
 class AdminCredentialSettingsResponse(BaseModel):
     admin_email: str
-    recovery_email: str
-    recovery_emails: list[str] = Field(default_factory=list)
     password_changed_at: datetime
     updated_at: datetime
 
 
 class AdminCredentialSettingsUpdatePayload(BaseModel):
     admin_email: str = Field(..., min_length=3, max_length=255)
-    recovery_email: str = Field(..., min_length=3, max_length=255)
     current_password: str = Field(..., min_length=1, max_length=255)
     new_password: Optional[str] = Field(default=None, min_length=6, max_length=255)
 
@@ -99,11 +77,6 @@ class AdminCredentialSettingsUpdatePayload(BaseModel):
         if not normalized:
             raise ValueError("value cannot be blank")
         return str(_EMAIL_ADAPTER.validate_python(normalized)).lower()
-
-    @field_validator("recovery_email")
-    @classmethod
-    def _normalize_recovery_email_fields(cls, value: str) -> str:
-        return _normalize_email_list_string(value)
 
     @field_validator("current_password")
     @classmethod

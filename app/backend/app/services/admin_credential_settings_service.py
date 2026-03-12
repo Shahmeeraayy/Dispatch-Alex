@@ -2,38 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import secrets
 from datetime import datetime, timezone
 import bcrypt
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..core.config import ADMIN_DEFAULT_PASSWORD, ADMIN_EMAIL, ADMIN_RECOVERY_EMAIL
+from ..core.config import ADMIN_DEFAULT_PASSWORD, ADMIN_EMAIL
 from ..models.admin_credential_settings import AdminCredentialSettings
 
 
 ADMIN_CREDENTIAL_SETTINGS_KEY = "default"
 PBKDF2_ITERATIONS = 600_000
-
-
-def parse_recovery_emails(value: str | None) -> list[str]:
-    if value is None:
-        return []
-
-    normalized: list[str] = []
-    seen: set[str] = set()
-    for raw_part in value.replace("\r", ",").replace("\n", ",").replace(";", ",").split(","):
-        candidate = raw_part.strip().lower()
-        if not candidate or candidate in seen:
-            continue
-        seen.add(candidate)
-        normalized.append(candidate)
-    return normalized
-
-
-def serialize_recovery_emails(emails: list[str]) -> str:
-    return ", ".join(emails)
 
 
 def hash_password(password: str) -> str:
@@ -83,9 +63,6 @@ class AdminCredentialSettingsService:
         row = AdminCredentialSettings(
             key=ADMIN_CREDENTIAL_SETTINGS_KEY,
             admin_email=ADMIN_EMAIL,
-            recovery_email=serialize_recovery_emails(
-                parse_recovery_emails(ADMIN_RECOVERY_EMAIL) or [ADMIN_EMAIL],
-            ),
             password_hash=hash_password(ADMIN_DEFAULT_PASSWORD),
         )
         self.db.add(row)
@@ -93,28 +70,10 @@ class AdminCredentialSettingsService:
         self.db.refresh(row)
         return row
 
-    def _ensure_recovery_email(self, row: AdminCredentialSettings) -> AdminCredentialSettings:
-        current_recovery_emails = parse_recovery_emails(row.recovery_email)
-        if not current_recovery_emails:
-            current_recovery_emails = (
-                parse_recovery_emails(row.admin_email)
-                or parse_recovery_emails(ADMIN_RECOVERY_EMAIL)
-                or parse_recovery_emails(ADMIN_EMAIL)
-            )
-
-        serialized = serialize_recovery_emails(current_recovery_emails)
-        if row.recovery_email != serialized:
-            row.recovery_email = serialized
-            self.db.commit()
-            self.db.refresh(row)
-        return row
-
     def get_settings(self) -> dict[str, object]:
-        row = self._ensure_recovery_email(self._get_or_create_settings_row())
+        row = self._get_or_create_settings_row()
         return {
             "admin_email": row.admin_email,
-            "recovery_email": row.recovery_email,
-            "recovery_emails": parse_recovery_emails(row.recovery_email),
             "password_changed_at": row.password_changed_at.isoformat(),
             "updated_at": row.updated_at.isoformat(),
         }
@@ -125,7 +84,7 @@ class AdminCredentialSettingsService:
         if not normalized_email or not normalized_password:
             return False
 
-        row = self._ensure_recovery_email(self._get_or_create_settings_row())
+        row = self._get_or_create_settings_row()
         if normalized_email != (row.admin_email or "").strip().lower():
             return False
         return verify_password(normalized_password, row.password_hash)
@@ -138,7 +97,7 @@ class AdminCredentialSettingsService:
         if len(normalized_next) < 6:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="New password must be at least 6 characters")
 
-        row = self._ensure_recovery_email(self._get_or_create_settings_row())
+        row = self._get_or_create_settings_row()
         if not verify_password(normalized_current, row.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
         if verify_password(normalized_next, row.password_hash):
@@ -160,28 +119,24 @@ class AdminCredentialSettingsService:
         *,
         current_password: str,
         admin_email: str,
-        recovery_email: str,
         new_password: str | None = None,
     ) -> dict[str, object]:
         normalized_current = current_password.strip()
         normalized_admin_email = admin_email.strip().lower()
-        normalized_recovery_emails = parse_recovery_emails(recovery_email)
-        normalized_recovery_email = serialize_recovery_emails(normalized_recovery_emails)
         normalized_new_password = new_password.strip() if new_password is not None else None
 
         if not normalized_current:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Current password is required")
-        if not normalized_admin_email or not normalized_recovery_email:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Admin and recovery emails are required")
+        if not normalized_admin_email:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Admin email is required")
         if normalized_new_password is not None and len(normalized_new_password) < 6:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="New password must be at least 6 characters")
 
-        row = self._ensure_recovery_email(self._get_or_create_settings_row())
+        row = self._get_or_create_settings_row()
         if not verify_password(normalized_current, row.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
 
         row.admin_email = normalized_admin_email
-        row.recovery_email = normalized_recovery_email
 
         if normalized_new_password:
             if verify_password(normalized_new_password, row.password_hash):
@@ -195,8 +150,6 @@ class AdminCredentialSettingsService:
         return {
             "status": "ok",
             "admin_email": row.admin_email,
-            "recovery_email": row.recovery_email,
-            "recovery_emails": normalized_recovery_emails,
             "password_changed_at": row.password_changed_at.isoformat(),
             "updated_at": row.updated_at.isoformat(),
         }

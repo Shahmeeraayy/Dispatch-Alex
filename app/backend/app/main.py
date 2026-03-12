@@ -50,13 +50,6 @@ app = FastAPI(
 def ensure_runtime_schema() -> None:
     with deps.engine.begin() as conn:
         Base.metadata.create_all(bind=conn)
-        admin_columns = {
-            column["name"]
-            for column in inspect(conn).get_columns("admin_credential_settings")
-        }
-        if admin_columns and "recovery_email" not in admin_columns:
-            conn.exec_driver_sql("ALTER TABLE admin_credential_settings ADD COLUMN recovery_email VARCHAR(255)")
-
         invoice_columns = {column["name"] for column in inspect(conn).get_columns("invoices")}
         if invoice_columns and "approval_note" not in invoice_columns:
             conn.exec_driver_sql("ALTER TABLE invoices ADD COLUMN approval_note TEXT")

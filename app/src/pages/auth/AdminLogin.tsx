@@ -2,21 +2,7 @@ import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  requestForgotPasswordOtp,
-  resetPasswordWithOtp,
-  verifyForgotPasswordOtp,
-} from '@/lib/backend-api';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -44,30 +30,8 @@ export default function AdminLoginPage() {
   const [rememberSession, setRememberSession] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
-  const [forgotStep, setForgotStep] = useState<'request' | 'verify' | 'reset'>('request');
-  const [forgotEmail, setForgotEmail] = useState('admin@sm2dispatch.com');
-  const [otp, setOtp] = useState('');
-  const [resetToken, setResetToken] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
-  const [forgotError, setForgotError] = useState<string | null>(null);
-  const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
 
   const from = (location.state as NavigationState | null)?.from;
-
-  const resetForgotState = () => {
-    setForgotStep('request');
-    setForgotEmail(email || 'admin@sm2dispatch.com');
-    setOtp('');
-    setResetToken('');
-    setNewPassword('');
-    setConfirmNewPassword('');
-    setForgotMessage(null);
-    setForgotError(null);
-    setIsForgotSubmitting(false);
-  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -82,75 +46,6 @@ export default function AdminLoginPage() {
       setErrorMessage(error instanceof Error ? error.message : 'Sign in failed.');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleRequestOtp = async () => {
-    setForgotError(null);
-    setForgotMessage(null);
-    setIsForgotSubmitting(true);
-    try {
-      const response = await requestForgotPasswordOtp({ email: forgotEmail });
-      const deliveryHints = (response.delivery_email_hints ?? []).filter((value): value is string => Boolean(value));
-      if (deliveryHints.length > 1) {
-        setForgotMessage(`OTP sent to the approved recovery emails: ${deliveryHints.join(', ')}.`);
-      } else if (deliveryHints.length === 1) {
-        setForgotMessage(`OTP sent to the approved recovery email ${deliveryHints[0]}.`);
-      } else if (response.delivery_email_hint) {
-        setForgotMessage(`OTP sent to the approved recovery email ${response.delivery_email_hint}.`);
-      } else {
-        setForgotMessage(response.message);
-      }
-      setForgotStep('verify');
-    } catch (error) {
-      setForgotError(error instanceof Error ? error.message : 'Unable to send reset code.');
-    } finally {
-      setIsForgotSubmitting(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setForgotError(null);
-    setForgotMessage(null);
-    setIsForgotSubmitting(true);
-    try {
-      const response = await verifyForgotPasswordOtp({ email: forgotEmail, otp });
-      setResetToken(response.reset_token);
-      setForgotMessage('OTP verified. You can now set a new password.');
-      setForgotStep('reset');
-    } catch (error) {
-      setForgotError(error instanceof Error ? error.message : 'OTP verification failed.');
-    } finally {
-      setIsForgotSubmitting(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    setForgotError(null);
-    setForgotMessage(null);
-    if (!newPassword || !confirmNewPassword) {
-      setForgotError('Enter and confirm the new password.');
-      return;
-    }
-    if (newPassword != confirmNewPassword) {
-      setForgotError('New password and confirmation do not match.');
-      return;
-    }
-
-    setIsForgotSubmitting(true);
-    try {
-      await resetPasswordWithOtp({
-        reset_token: resetToken,
-        new_password: newPassword,
-      });
-      setForgotMessage('Password reset successfully. Sign in with the new password.');
-      setPassword('');
-      setIsForgotPasswordOpen(false);
-      resetForgotState();
-    } catch (error) {
-      setForgotError(error instanceof Error ? error.message : 'Unable to reset password.');
-    } finally {
-      setIsForgotSubmitting(false);
     }
   };
 
@@ -217,131 +112,9 @@ export default function AdminLoginPage() {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="admin-password" className="block text-sm font-medium text-slate-700">
-                    Password
-                  </Label>
-                  <Dialog
-                    open={isForgotPasswordOpen}
-                    onOpenChange={(open) => {
-                      setIsForgotPasswordOpen(open);
-                      if (open) {
-                        resetForgotState();
-                      }
-                    }}
-                  >
-                    <DialogTrigger asChild>
-                      <button
-                        type="button"
-                        className="text-sm font-medium text-[#008080] transition-colors hover:text-[#006666]"
-                      >
-                        Forgot password?
-                      </button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Forgot admin password</DialogTitle>
-                        <DialogDescription>
-                          Enter the admin sign-in email. The OTP will be delivered to the approved recovery inboxes configured for that account.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="forgot-admin-email">Admin Email</Label>
-                          <Input
-                            id="forgot-admin-email"
-                            type="email"
-                            value={forgotEmail}
-                            onChange={(event) => setForgotEmail(event.target.value)}
-                            disabled={forgotStep !== 'request'}
-                            autoComplete="email"
-                          />
-                          <p className="text-xs text-slate-500">
-                            The verification code is sent to the approved recovery inboxes, not necessarily this sign-in email.
-                          </p>
-                        </div>
-
-                        {forgotStep !== 'request' && (
-                          <div className="space-y-2">
-                            <Label htmlFor="forgot-admin-otp">OTP Code</Label>
-                            <Input
-                              id="forgot-admin-otp"
-                              inputMode="numeric"
-                              maxLength={6}
-                              placeholder="6-digit OTP"
-                              value={otp}
-                              onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                            />
-                          </div>
-                        )}
-
-                        {forgotStep === 'reset' && (
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="space-y-2">
-                              <Label htmlFor="forgot-admin-new-password">New Password</Label>
-                              <Input
-                                id="forgot-admin-new-password"
-                                type="password"
-                                value={newPassword}
-                                onChange={(event) => setNewPassword(event.target.value)}
-                                autoComplete="new-password"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="forgot-admin-confirm-password">Confirm Password</Label>
-                              <Input
-                                id="forgot-admin-confirm-password"
-                                type="password"
-                                value={confirmNewPassword}
-                                onChange={(event) => setConfirmNewPassword(event.target.value)}
-                                autoComplete="new-password"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {forgotMessage && (
-                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                            {forgotMessage}
-                          </div>
-                        )}
-
-                        {forgotError && (
-                          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                            {forgotError}
-                          </div>
-                        )}
-                      </div>
-                      <DialogFooter className="sm:justify-between">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setIsForgotPasswordOpen(false);
-                            resetForgotState();
-                          }}
-                        >
-                          Close
-                        </Button>
-                        {forgotStep === 'request' && (
-                          <Button type="button" onClick={handleRequestOtp} disabled={isForgotSubmitting}>
-                            {isForgotSubmitting ? 'Sending...' : 'Send OTP'}
-                          </Button>
-                        )}
-                        {forgotStep === 'verify' && (
-                          <Button type="button" onClick={handleVerifyOtp} disabled={isForgotSubmitting}>
-                            {isForgotSubmitting ? 'Verifying...' : 'Verify OTP'}
-                          </Button>
-                        )}
-                        {forgotStep === 'reset' && (
-                          <Button type="button" onClick={handleResetPassword} disabled={isForgotSubmitting}>
-                            {isForgotSubmitting ? 'Updating...' : 'Reset Password'}
-                          </Button>
-                        )}
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                <Label htmlFor="admin-password" className="block text-sm font-medium text-slate-700">
+                  Password
+                </Label>
 
                 <div className="relative">
                   <Input
@@ -351,7 +124,7 @@ export default function AdminLoginPage() {
                     onChange={(event) => setPassword(event.target.value)}
                     autoComplete="current-password"
                     required
-                    placeholder="••••••••"
+                    placeholder="********"
                     className="w-full rounded-lg border border-slate-200 px-4 py-3 pr-12 text-base outline-none transition-all focus-visible:border-[#008080] focus-visible:ring-2 focus-visible:ring-[#008080]/20"
                   />
                   <button
@@ -399,7 +172,7 @@ export default function AdminLoginPage() {
                   to="/tech/login"
                   className="ml-1 font-semibold text-[#008080] transition-colors hover:text-[#006666]"
                 >
-                  Go to technician login →
+                  Go to technician login {'->'}
                 </Link>
               </p>
             </footer>

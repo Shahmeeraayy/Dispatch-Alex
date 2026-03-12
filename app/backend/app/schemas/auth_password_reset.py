@@ -16,6 +16,7 @@ class ForgotPasswordRequest(BaseModel):
 class ForgotPasswordResponse(BaseModel):
     message: str
     delivery_email_hint: str | None = None
+    delivery_email_hints: list[str] = Field(default_factory=list)
 
 
 class VerifyOtpRequest(BaseModel):

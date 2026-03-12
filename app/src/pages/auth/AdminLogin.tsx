@@ -91,8 +91,13 @@ export default function AdminLoginPage() {
     setIsForgotSubmitting(true);
     try {
       const response = await requestForgotPasswordOtp({ email: forgotEmail });
-      if (response.delivery_email_hint) {
-        setForgotMessage(`OTP sent to the recovery email ${response.delivery_email_hint}.`);
+      const deliveryHints = (response.delivery_email_hints ?? []).filter((value): value is string => Boolean(value));
+      if (deliveryHints.length > 1) {
+        setForgotMessage(`OTP sent to the approved recovery emails: ${deliveryHints.join(', ')}.`);
+      } else if (deliveryHints.length === 1) {
+        setForgotMessage(`OTP sent to the approved recovery email ${deliveryHints[0]}.`);
+      } else if (response.delivery_email_hint) {
+        setForgotMessage(`OTP sent to the approved recovery email ${response.delivery_email_hint}.`);
       } else {
         setForgotMessage(response.message);
       }
@@ -237,7 +242,7 @@ export default function AdminLoginPage() {
                       <DialogHeader>
                         <DialogTitle>Forgot admin password</DialogTitle>
                         <DialogDescription>
-                          Enter the admin sign-in email. The OTP will be delivered to the recovery email configured for that account.
+                          Enter the admin sign-in email. The OTP will be delivered to the approved recovery inboxes configured for that account.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
@@ -252,7 +257,7 @@ export default function AdminLoginPage() {
                             autoComplete="email"
                           />
                           <p className="text-xs text-slate-500">
-                            The verification code is sent to the configured recovery email, not necessarily this sign-in email.
+                            The verification code is sent to the approved recovery inboxes, not necessarily this sign-in email.
                           </p>
                         </div>
 

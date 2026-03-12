@@ -249,6 +249,7 @@ export type BackendAdminPasswordChangeResponse = {
 export type BackendAdminCredentialSettings = {
   admin_email: string;
   recovery_email: string;
+  recovery_emails: string[];
   password_changed_at: string;
   updated_at: string;
 };
@@ -256,6 +257,7 @@ export type BackendAdminCredentialSettings = {
 export type BackendForgotPasswordResponse = {
   message: string;
   delivery_email_hint?: string | null;
+  delivery_email_hints?: string[] | null;
 };
 
 export type BackendVerifyOtpResponse = {

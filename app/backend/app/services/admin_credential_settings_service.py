@@ -17,6 +17,25 @@ ADMIN_CREDENTIAL_SETTINGS_KEY = "default"
 PBKDF2_ITERATIONS = 600_000
 
 
+def parse_recovery_emails(value: str | None) -> list[str]:
+    if value is None:
+        return []
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw_part in value.replace("\r", ",").replace("\n", ",").replace(";", ",").split(","):
+        candidate = raw_part.strip().lower()
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        normalized.append(candidate)
+    return normalized
+
+
+def serialize_recovery_emails(emails: list[str]) -> str:
+    return ", ".join(emails)
+
+
 def hash_password(password: str) -> str:
     normalized = password.strip()
     hashed = bcrypt.hashpw(normalized.encode("utf-8"), bcrypt.gensalt())
@@ -64,7 +83,9 @@ class AdminCredentialSettingsService:
         row = AdminCredentialSettings(
             key=ADMIN_CREDENTIAL_SETTINGS_KEY,
             admin_email=ADMIN_EMAIL,
-            recovery_email=ADMIN_RECOVERY_EMAIL,
+            recovery_email=serialize_recovery_emails(
+                parse_recovery_emails(ADMIN_RECOVERY_EMAIL) or [ADMIN_EMAIL],
+            ),
             password_hash=hash_password(ADMIN_DEFAULT_PASSWORD),
         )
         self.db.add(row)
@@ -73,21 +94,27 @@ class AdminCredentialSettingsService:
         return row
 
     def _ensure_recovery_email(self, row: AdminCredentialSettings) -> AdminCredentialSettings:
-        current_recovery_email = (row.recovery_email or "").strip().lower()
-        if current_recovery_email:
-            return row
+        current_recovery_emails = parse_recovery_emails(row.recovery_email)
+        if not current_recovery_emails:
+            current_recovery_emails = (
+                parse_recovery_emails(row.admin_email)
+                or parse_recovery_emails(ADMIN_RECOVERY_EMAIL)
+                or parse_recovery_emails(ADMIN_EMAIL)
+            )
 
-        fallback_recovery_email = (row.admin_email or ADMIN_RECOVERY_EMAIL or ADMIN_EMAIL).strip().lower()
-        row.recovery_email = fallback_recovery_email
-        self.db.commit()
-        self.db.refresh(row)
+        serialized = serialize_recovery_emails(current_recovery_emails)
+        if row.recovery_email != serialized:
+            row.recovery_email = serialized
+            self.db.commit()
+            self.db.refresh(row)
         return row
 
-    def get_settings(self) -> dict[str, str]:
+    def get_settings(self) -> dict[str, object]:
         row = self._ensure_recovery_email(self._get_or_create_settings_row())
         return {
             "admin_email": row.admin_email,
             "recovery_email": row.recovery_email,
+            "recovery_emails": parse_recovery_emails(row.recovery_email),
             "password_changed_at": row.password_changed_at.isoformat(),
             "updated_at": row.updated_at.isoformat(),
         }
@@ -135,10 +162,11 @@ class AdminCredentialSettingsService:
         admin_email: str,
         recovery_email: str,
         new_password: str | None = None,
-    ) -> dict[str, str]:
+    ) -> dict[str, object]:
         normalized_current = current_password.strip()
         normalized_admin_email = admin_email.strip().lower()
-        normalized_recovery_email = recovery_email.strip().lower()
+        normalized_recovery_emails = parse_recovery_emails(recovery_email)
+        normalized_recovery_email = serialize_recovery_emails(normalized_recovery_emails)
         normalized_new_password = new_password.strip() if new_password is not None else None
 
         if not normalized_current:
@@ -168,6 +196,7 @@ class AdminCredentialSettingsService:
             "status": "ok",
             "admin_email": row.admin_email,
             "recovery_email": row.recovery_email,
+            "recovery_emails": normalized_recovery_emails,
             "password_changed_at": row.password_changed_at.isoformat(),
             "updated_at": row.updated_at.isoformat(),
         }

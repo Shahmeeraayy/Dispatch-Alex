@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Dialog,
     DialogContent,
@@ -419,7 +420,7 @@ export default function SettingsPage() {
         const confirmPassword = adminCredentialForm.confirmPassword.trim();
 
         if (!adminEmail || !recoveryEmail || !currentPassword) {
-            setAdminCredentialError('Admin email, super email, and current password are required.');
+            setAdminCredentialError('Admin email, recovery email(s), and current password are required.');
             return;
         }
         if ((newPassword && !confirmPassword) || (!newPassword && confirmPassword)) {
@@ -454,7 +455,7 @@ export default function SettingsPage() {
                 newPassword: '',
                 confirmPassword: '',
             });
-            alert(newPassword ? 'Admin access settings updated successfully.' : 'Admin email and super email updated successfully.');
+            alert(newPassword ? 'Admin access settings updated successfully.' : 'Admin email and recovery email settings updated successfully.');
         } catch (error) {
             setAdminCredentialError(error instanceof Error ? error.message : 'Unable to update admin access settings.');
         } finally {
@@ -952,7 +953,7 @@ export default function SettingsPage() {
                             <KeyRound className="w-4 h-4 text-[#2F8E92]" /> Admin Access & Recovery
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            Update the admin sign-in email, the super email used for OTP recovery, and the password from one place.
+                            Update the admin sign-in email, one or more approved recovery inboxes for OTP delivery, and the password from one place.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -968,13 +969,13 @@ export default function SettingsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="admin_recovery_email" className="text-foreground">Super Email For OTP</Label>
-                                <Input
+                                <Label htmlFor="admin_recovery_email" className="text-foreground">Recovery Emails For OTP</Label>
+                                <Textarea
                                     id="admin_recovery_email"
-                                    type="email"
                                     value={adminCredentialForm.recoveryEmail}
                                     onChange={(e) => setAdminCredentialForm((prev) => ({ ...prev, recoveryEmail: e.target.value }))}
-                                    autoComplete="email"
+                                    rows={3}
+                                    placeholder="admin@sm2dispatch.com, shahmeerk736@gmail.com"
                                 />
                             </div>
                             <div className="space-y-2 sm:col-span-2">
@@ -1009,7 +1010,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
                         <p className="mt-4 text-xs text-muted-foreground">
-                            The super email is the recovery destination for future forgot-password OTP delivery.
+                            Add one or more approved recovery inboxes separated by commas. Forgot-password OTPs will be sent to every address in this list.
                         </p>
                         {adminCredentialError && (
                             <p className="mt-3 text-sm text-red-600">{adminCredentialError}</p>

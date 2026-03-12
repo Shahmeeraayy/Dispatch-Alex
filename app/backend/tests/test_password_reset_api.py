@@ -13,6 +13,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_FILE.replace(os.sep, '/')}"
 
 from app.api.deps import engine
 from app.main import app
+from app.models.admin_credential_settings import AdminCredentialSettings
 from app.models.base import Base
 from app.models.password_reset_token import PasswordResetToken
 
@@ -32,6 +33,7 @@ class PasswordResetApiTests(unittest.TestCase):
     def setUp(self):
         with engine.begin() as conn:
             conn.execute(PasswordResetToken.__table__.delete())
+            conn.execute(AdminCredentialSettings.__table__.delete())
 
     def test_forgot_password_returns_generic_message_for_unknown_email(self):
         response = self.client.post("/auth/forgot-password", json={"email": "missing@example.com"})
@@ -61,6 +63,10 @@ class PasswordResetApiTests(unittest.TestCase):
         self.assertEqual(captured["recipient_email"], "admin@sm2dispatch.com")
         self.assertEqual(len(captured["otp_code"]), 6)
         self.assertEqual(forgot_response.json()["delivery_email_hint"], "ad***@sm2dispatch.com")
+        self.assertEqual(
+            forgot_response.json()["delivery_email_hints"],
+            ["ad***@sm2dispatch.com"],
+        )
 
         verify_response = self.client.post(
             "/auth/verify-otp",
@@ -93,6 +99,44 @@ class PasswordResetApiTests(unittest.TestCase):
 
         limited_response = self.client.post("/auth/verify-otp", json=wrong_payload)
         self.assertEqual(limited_response.status_code, 429, limited_response.text)
+
+    def test_forgot_password_sends_to_all_configured_recovery_emails(self):
+        token = self.client.post(
+            "/auth/admin-token",
+            json={"email": "admin@sm2dispatch.com", "password": "admin123"},
+        ).json()["access_token"]
+
+        update_response = self.client.put(
+            "/admin/settings/admin-credentials",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "admin_email": "admin@sm2dispatch.com",
+                "recovery_email": "admin@sm2dispatch.com, shahmeerk736@gmail.com",
+                "current_password": "admin123",
+            },
+        )
+        self.assertEqual(update_response.status_code, 200, update_response.text)
+
+        recipients: list[str] = []
+        with patch("app.services.email_service.EmailService.send_password_reset_otp") as send_otp:
+            def remember_recipient(*, recipient_email: str, otp_code: str) -> None:
+                recipients.append(recipient_email)
+
+            send_otp.side_effect = remember_recipient
+            forgot_response = self.client.post(
+                "/auth/forgot-password",
+                json={"email": "admin@sm2dispatch.com"},
+            )
+
+        self.assertEqual(forgot_response.status_code, 200, forgot_response.text)
+        self.assertEqual(
+            recipients,
+            ["admin@sm2dispatch.com", "shahmeerk736@gmail.com"],
+        )
+        self.assertEqual(
+            forgot_response.json()["delivery_email_hints"],
+            ["ad***@sm2dispatch.com", "sh***@gmail.com"],
+        )
 
     def test_forgot_password_returns_error_when_email_delivery_fails(self):
         with patch(

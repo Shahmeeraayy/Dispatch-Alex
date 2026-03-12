@@ -16,7 +16,11 @@ from ..core.config import (
 )
 from ..core.security import create_password_reset_token, decode_password_reset_token
 from ..models.password_reset_token import PasswordResetToken
-from .admin_credential_settings_service import AdminCredentialSettingsService, hash_password
+from .admin_credential_settings_service import (
+    AdminCredentialSettingsService,
+    hash_password,
+    serialize_recovery_emails,
+)
 from .email_service import EmailService
 
 GENERIC_RESET_MESSAGE = "If an account exists for that email, a verification code has been sent."
@@ -56,7 +60,7 @@ class PasswordResetService:
         self.email_service = email_service or EmailService()
         self.admin_settings = AdminCredentialSettingsService(db)
 
-    def request_password_reset(self, email: str) -> dict[str, str]:
+    def request_password_reset(self, email: str) -> dict[str, object]:
         normalized_email = email.strip().lower()
         now_utc = utc_now()
 
@@ -78,11 +82,15 @@ class PasswordResetService:
         if normalized_email != settings["admin_email"].strip().lower():
             return {"message": GENERIC_RESET_MESSAGE}
 
-        delivery_email = settings["recovery_email"].strip().lower()
+        delivery_emails = [
+            str(item).strip().lower()
+            for item in settings.get("recovery_emails", [])
+            if str(item).strip()
+        ]
         otp_code = f"{secrets.randbelow(1_000_000):06d}"
         row = PasswordResetToken(
             email=normalized_email,
-            delivery_email=delivery_email,
+            delivery_email=serialize_recovery_emails(delivery_emails),
             otp_hash=hash_otp(otp_code),
             expires_at=now_utc + timedelta(minutes=PASSWORD_RESET_OTP_TTL_MINUTES),
         )
@@ -90,19 +98,24 @@ class PasswordResetService:
         self.db.commit()
         self.db.refresh(row)
 
-        try:
-            self.email_service.send_password_reset_otp(
-                recipient_email=row.delivery_email,
-                otp_code=otp_code,
-            )
-        except Exception:
-            logger.exception(
-                "Failed to send password reset OTP for admin account.",
-                extra={
-                    "admin_email": normalized_email,
-                    "delivery_email": row.delivery_email,
-                },
-            )
+        successful_delivery_emails: list[str] = []
+        for recipient_email in delivery_emails:
+            try:
+                self.email_service.send_password_reset_otp(
+                    recipient_email=recipient_email,
+                    otp_code=otp_code,
+                )
+                successful_delivery_emails.append(recipient_email)
+            except Exception:
+                logger.exception(
+                    "Failed to send password reset OTP for admin account.",
+                    extra={
+                        "admin_email": normalized_email,
+                        "delivery_email": recipient_email,
+                    },
+                )
+
+        if not successful_delivery_emails:
             self.db.delete(row)
             self.db.commit()
             raise HTTPException(
@@ -110,10 +123,15 @@ class PasswordResetService:
                 detail="Password reset email could not be sent. Verify the recovery email and SMTP configuration.",
             )
 
-        response: dict[str, str] = {"message": GENERIC_RESET_MESSAGE}
-        delivery_hint = mask_email(delivery_email)
-        if delivery_hint:
-            response["delivery_email_hint"] = delivery_hint
+        response: dict[str, object] = {"message": GENERIC_RESET_MESSAGE}
+        delivery_hints = [
+            masked
+            for masked in (mask_email(email) for email in successful_delivery_emails)
+            if masked
+        ]
+        if delivery_hints:
+            response["delivery_email_hints"] = delivery_hints
+            response["delivery_email_hint"] = delivery_hints[0]
         return response
 
     def verify_otp(self, email: str, otp_code: str) -> dict[str, str]:

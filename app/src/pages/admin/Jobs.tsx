@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+    Activity,
     Search,
     Download,
     RefreshCw,
@@ -31,6 +32,7 @@ import {
     LayoutDashboard,
     TrendingUp,
     ShieldCheck,
+    Sparkles,
     Trash2,
     Check,
     ChevronsUpDown
@@ -101,7 +103,6 @@ import {
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card } from '@/components/ui/card';
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { DISPATCH_JOB_STATUS, normalizeDispatchJobStatus } from '@/lib/job-status';
@@ -220,6 +221,35 @@ const JOB_EXPORT_COLUMNS = [
     'UpdatedAt',
 ];
 const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
+const displayFontStyle: CSSProperties = {
+    fontFamily: '"Space Grotesk", "Sora", system-ui, sans-serif',
+};
+const bodyFontStyle: CSSProperties = {
+    fontFamily: '"Manrope", "Inter", system-ui, sans-serif',
+};
+
+type JobsMetricTone = 'cyan' | 'violet' | 'blue';
+
+function jobsMetricCardClasses(tone: JobsMetricTone): string {
+    return cn(
+        'group relative overflow-hidden rounded-[26px] border px-5 py-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.28)]',
+        tone === 'cyan' && 'border-cyan-400/20 bg-[linear-gradient(180deg,rgba(8,31,45,0.96),rgba(7,23,34,0.96))] hover:border-cyan-300/35',
+        tone === 'violet' && 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(28,20,49,0.96),rgba(19,17,34,0.96))] hover:border-violet-300/35',
+        tone === 'blue' && 'border-blue-400/20 bg-[linear-gradient(180deg,rgba(10,26,50,0.96),rgba(8,20,36,0.96))] hover:border-blue-300/35',
+    );
+}
+
+function jobsMetricTopLineClasses(tone: JobsMetricTone): string {
+    if (tone === 'violet') return 'via-violet-300/80';
+    if (tone === 'blue') return 'via-blue-300/80';
+    return 'via-cyan-300/80';
+}
+
+function jobsMetricIconClasses(tone: JobsMetricTone): string {
+    if (tone === 'violet') return 'border border-violet-300/20 bg-violet-300/12 text-violet-100';
+    if (tone === 'blue') return 'border border-blue-300/20 bg-blue-300/12 text-blue-100';
+    return 'border border-cyan-300/20 bg-cyan-300/12 text-cyan-100';
+}
 
 const getStoredAdminJobsSnapshot = () => {
     try {
@@ -629,28 +659,28 @@ const appendAuditLog = (
 function StatusBadge({ status, type }: { status: string; type: 'job' | 'invoice' | 'urgency' }) {
     const styles: Record<string, string> = {
         // Job Status
-        admin_preview: 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800',
-        pending_admin_confirmation: 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800',
-        pending: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
-        scheduled: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-        in_progress: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-        completed: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-        cancelled: 'bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-800 font-medium',
-        unknown: 'bg-zinc-50 dark:bg-zinc-900/20 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800',
+        admin_preview: 'border-violet-300/20 bg-violet-300/12 text-violet-100',
+        pending_admin_confirmation: 'border-violet-300/20 bg-violet-300/12 text-violet-100',
+        pending: 'border-indigo-300/20 bg-indigo-300/12 text-indigo-100',
+        scheduled: 'border-blue-300/20 bg-blue-300/12 text-blue-100',
+        in_progress: 'border-amber-300/20 bg-amber-300/12 text-amber-100',
+        completed: 'border-emerald-300/20 bg-emerald-300/12 text-emerald-100',
+        cancelled: 'border-slate-300/20 bg-slate-300/10 text-slate-300 font-medium',
+        unknown: 'border-zinc-300/20 bg-zinc-300/10 text-zinc-200',
 
         // Invoice State
-        draft: 'bg-gray-50 dark:bg-gray-900/20 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800',
-        pending_approval: 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
-        approved: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-        synced: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-        failed: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
-        void: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 border-gray-200 dark:border-gray-700 line-through',
+        draft: 'border-slate-300/20 bg-slate-300/10 text-slate-300',
+        pending_approval: 'border-orange-300/20 bg-orange-300/12 text-orange-100',
+        approved: 'border-blue-300/20 bg-blue-300/12 text-blue-100',
+        synced: 'border-green-300/20 bg-green-300/12 text-green-100',
+        failed: 'border-red-300/20 bg-red-300/12 text-red-100',
+        void: 'border-slate-300/20 bg-slate-300/10 text-slate-400 line-through',
 
         // Urgency
-        low: 'bg-slate-100 dark:bg-slate-900/20 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800',
-        normal: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-        high: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800',
-        critical: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse',
+        low: 'border-slate-300/20 bg-slate-300/10 text-slate-300',
+        normal: 'border-blue-300/20 bg-blue-300/12 text-blue-100',
+        high: 'border-orange-300/20 bg-orange-300/12 text-orange-100',
+        critical: 'border-red-300/20 bg-red-300/12 text-red-100 animate-pulse',
 
     };
 
@@ -663,7 +693,7 @@ function StatusBadge({ status, type }: { status: string; type: 'job' | 'invoice'
     };
 
     return (
-        <Badge variant="outline" className={cn('capitalize font-medium border shadow-sm', styles[status] || 'bg-muted text-foreground')}>
+        <Badge variant="outline" className={cn('capitalize font-medium border shadow-sm backdrop-blur-sm', styles[status] || 'border-white/10 bg-white/[0.05] text-white')}>
             {labels[status] || status.replace('_', ' ')}
         </Badge>
     );
@@ -1806,25 +1836,25 @@ export default function JobsPage() {
             key: 'visible',
             label: 'Visible Results',
             value: pagination.total,
+            description: 'Jobs currently matching the live filters.',
             icon: LayoutDashboard,
-            iconClassName: 'text-[#2F8E92]',
-            badgeClassName: 'border-[#2F8E92]/20 bg-[#2F8E92]/10 text-[#2F8E92]',
+            tone: 'cyan' as const,
         },
         {
             key: 'review',
             label: 'Pending Review',
             value: quickFilterCounts.pendingReview,
+            description: 'Admin preview and confirmation queue.',
             icon: ClipboardList,
-            iconClassName: 'text-violet-600',
-            badgeClassName: 'border-violet-200 bg-violet-50 text-violet-700',
+            tone: 'violet' as const,
         },
         {
             key: 'awaiting',
             label: 'Awaiting Tech',
             value: quickFilterCounts.awaitingTechAcceptance,
+            description: 'Ready to move once a technician accepts.',
             icon: Truck,
-            iconClassName: 'text-blue-600',
-            badgeClassName: 'border-blue-200 bg-blue-50 text-blue-700',
+            tone: 'blue' as const,
         },
     ] as const;
     const queueQuickFilters = [
@@ -1833,68 +1863,99 @@ export default function JobsPage() {
             label: 'Pending Review',
             count: quickFilterCounts.pendingReview,
             icon: ClipboardList,
-            activeClassName: 'border-violet-300 bg-violet-50 text-violet-700',
+            activeClassName: 'border-violet-300/25 bg-violet-300/12 text-violet-100',
         },
         {
             key: 'awaiting_tech_acceptance' as const,
             label: 'Awaiting Tech',
             count: quickFilterCounts.awaitingTechAcceptance,
             icon: Truck,
-            activeClassName: 'border-blue-300 bg-blue-50 text-blue-700',
+            activeClassName: 'border-blue-300/25 bg-blue-300/12 text-blue-100',
         },
     ] as const;
 
     return (
-        <div className="flex flex-col h-full space-y-6">
+        <div className="relative flex h-full flex-col space-y-6" style={bodyFontStyle}>
 
-            {/* 1. Header Area */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Jobs</h1>
-                    <p className="text-sm text-muted-foreground font-medium">Monitor and manage all dispatch jobs</p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <Badge variant="outline" className="h-6 rounded-full border-[#2F8E92]/20 bg-[#2F8E92]/5 text-[#2F8E92]">
-                            <History className="mr-1.5 h-3 w-3" />
-                            Live sync every 30s
-                        </Badge>
-                        {selectedRows.size > 0 ? (
-                            <Badge variant="outline" className="h-6 rounded-full border-border bg-card text-foreground">
-                                <Users className="mr-1.5 h-3 w-3" />
-                                {selectedRows.size} selected
+            <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_28px_100px_rgba(0,0,0,0.32)]">
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                <div className="pointer-events-none absolute left-8 top-8 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
+                <div className="pointer-events-none absolute right-10 top-10 h-44 w-44 rounded-full bg-blue-400/8 blur-3xl" />
+
+                <div className="relative grid gap-6 p-6 xl:grid-cols-[1.25fr_0.9fr] xl:p-8">
+                    <div>
+                        <div
+                            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100"
+                            style={displayFontStyle}
+                        >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Dispatch Queue
+                        </div>
+
+                        <h1
+                            className="mt-5 text-[clamp(2rem,3.5vw,3.8rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white"
+                            style={displayFontStyle}
+                        >
+                            Jobs
+                            <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
+                                command surface
+                            </span>
+                        </h1>
+
+                        <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                            Monitor dispatch, review queue movement, and take action on technician assignment and admin confirmation from one cleaner control view.
+                        </p>
+
+                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                            <Badge variant="outline" className="h-8 rounded-full border-cyan-300/20 bg-cyan-300/10 px-4 text-cyan-100">
+                                <History className="mr-1.5 h-3.5 w-3.5" />
+                                Live sync every 30s
                             </Badge>
-                        ) : null}
+                            <Badge variant="outline" className="h-8 rounded-full border-emerald-300/20 bg-emerald-300/10 px-4 text-emerald-100">
+                                <Activity className="mr-1.5 h-3.5 w-3.5" />
+                                Backend live
+                            </Badge>
+                            {selectedRows.size > 0 ? (
+                                <Badge variant="outline" className="h-8 rounded-full border-white/10 bg-white/[0.04] px-4 text-white">
+                                    <Users className="mr-1.5 h-3.5 w-3.5" />
+                                    {selectedRows.size} selected
+                                </Badge>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 sm:flex-row xl:flex-col xl:items-stretch">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-11 justify-center gap-2 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-slate-100 shadow-none hover:bg-white/[0.08] hover:text-white"
+                            onClick={() => refreshJobs({ showErrorToast: true, background: false })}
+                            disabled={loading}
+                        >
+                            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+                            Refresh
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="h-11 justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0ca6a6] to-[#149fcb] px-4 text-white shadow-[0_18px_44px_rgba(12,166,166,0.22)] hover:from-[#11b5b5] hover:to-[#1aaedf]"
+                            onClick={() => setCreateJobOpen(true)}
+                        >
+                            <Plus className="h-4 w-4" />
+                            New Job
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-11 justify-center gap-2 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-slate-100 shadow-none hover:bg-white/[0.08] hover:text-white"
+                            onClick={() => setExportModalOpen(true)}
+                        >
+                            <Download className="h-4 w-4 text-slate-300" />
+                            Export CSV
+                        </Button>
                     </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 rounded-xl border-border bg-card px-4 shadow-sm hover:bg-muted"
-                        onClick={() => refreshJobs({ showErrorToast: true, background: false })}
-                        disabled={loading}
-                    >
-                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-                        Refresh
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="h-9 gap-2 rounded-xl bg-[#2F8E92] px-4 shadow-sm hover:bg-[#267276]"
-                        onClick={() => setCreateJobOpen(true)}
-                    >
-                        <Plus className="w-4 h-4" />
-                        New Job
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 gap-2 rounded-xl border-border bg-card px-4 shadow-sm hover:bg-muted"
-                        onClick={() => setExportModalOpen(true)}
-                    >
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                        Export CSV
-                    </Button>
-                </div>
-            </div>
+            </section>
 
             <Dialog open={createJobOpen} onOpenChange={setCreateJobOpen}>
                 <DialogContent className="sm:max-w-xl">
@@ -2138,42 +2199,50 @@ export default function JobsPage() {
                 onConfirm={handleExport}
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {summaryCards.map((card) => {
                     const Icon = card.icon;
                     return (
-                        <Card
+                        <div
                             key={card.key}
-                            className="relative overflow-hidden border-border/70 bg-card shadow-sm backdrop-blur"
+                            className={jobsMetricCardClasses(card.tone)}
                         >
-                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-                            <div className="p-4 flex items-center justify-between gap-3">
+                            <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent', jobsMetricTopLineClasses(card.tone))} />
+                            <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
                                         {card.label}
                                     </div>
-                                    <div className="mt-1 text-2xl font-bold text-foreground">{card.value}</div>
+                                    <div className="mt-3 text-[2.65rem] font-semibold leading-none tracking-[-0.06em] text-white" style={displayFontStyle}>
+                                        {card.value}
+                                    </div>
+                                    <p className="mt-4 text-sm leading-6 text-slate-400">{card.description}</p>
                                 </div>
-                                <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl border', card.badgeClassName)}>
-                                    <Icon className={cn('h-5 w-5', card.iconClassName)} />
+                                <div className={cn('flex h-11 w-11 items-center justify-center rounded-2xl', jobsMetricIconClasses(card.tone))}>
+                                    <Icon className="h-5 w-5" />
                                 </div>
                             </div>
-                        </Card>
+                            <div className="mt-6 flex items-center justify-between">
+                                <span className="text-sm font-medium text-slate-300">Operational view</span>
+                                <ArrowRight className="h-4 w-4 text-white/45 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-white" />
+                            </div>
+                        </div>
                     );
                 })}
             </div>
 
             {/* 2. Filter Bar (Enterprise Grade) */}
-            <Card className="relative overflow-hidden border-border/70 bg-card shadow-sm backdrop-blur">
-                <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-r from-[#2F8E92]/6 via-transparent to-blue-500/5 pointer-events-none" />
+            <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,23,38,0.98),rgba(7,18,31,0.98))] shadow-[0_28px_90px_rgba(0,0,0,0.3)]">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/60 to-transparent" />
+                <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-r from-[#2F8E92]/6 via-transparent to-blue-500/5 pointer-events-none" />
                 <div className="relative p-4 md:p-5 space-y-4">
                     <div className="flex flex-col lg:flex-row gap-4">
                     {/* Search */}
                     <div className="relative flex-1 min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                         <Input
                             placeholder="Search by Job Code, VIN, Stock, or Dealership..."
-                            className="h-10 pl-9 rounded-xl bg-muted/20 border-border focus:bg-background transition-all shadow-sm"
+                            className="h-11 rounded-2xl border-white/10 bg-white/[0.04] pl-9 text-white placeholder:text-slate-500 transition-all shadow-none focus-visible:border-cyan-300/35 focus-visible:ring-cyan-300/15"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -2182,9 +2251,9 @@ export default function JobsPage() {
                     {/* Filters */}
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
                         <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
-                            <SelectTrigger className="h-10 w-[170px] rounded-xl bg-background border-dashed border-border text-foreground shadow-sm">
+                            <SelectTrigger className="h-11 w-[170px] rounded-2xl border-white/10 bg-white/[0.04] text-white shadow-none">
                                 <div className="flex items-center gap-2">
-                                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
                                     <SelectValue placeholder="Urgency" />
                                 </div>
                             </SelectTrigger>
@@ -2198,12 +2267,12 @@ export default function JobsPage() {
                         </Select>
 
                         <div className="relative">
-                            <Calendar className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                            <Calendar className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                             <Input
                                 type="date"
                                 value={dateFilter}
                                 onChange={(event) => setDateFilter(event.target.value)}
-                                className="h-10 w-[180px] rounded-xl pl-9 bg-background border-dashed border-border text-foreground shadow-sm"
+                                className="h-11 w-[180px] rounded-2xl border-white/10 bg-white/[0.04] pl-9 text-white shadow-none"
                                 aria-label="Filter by date"
                             />
                         </div>
@@ -2213,7 +2282,7 @@ export default function JobsPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={clearFilters}
-                                className="h-10 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 px-3"
+                                className="h-11 rounded-2xl px-3 text-rose-200 hover:bg-rose-400/10 hover:text-rose-100"
                             >
                                 <X className="w-4 h-4 mr-1" /> Clear
                             </Button>
@@ -2222,7 +2291,7 @@ export default function JobsPage() {
                 </div>
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex flex-wrap items-center gap-2">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-slate-400 shadow-none">
                                 <SlidersHorizontal className="h-3.5 w-3.5" />
                                 Queue Filters
                             </div>
@@ -2237,7 +2306,7 @@ export default function JobsPage() {
                                         size="sm"
                                         onClick={() => handleQuickFilterChipClick(filter.key)}
                                         className={cn(
-                                            'h-9 rounded-xl border-border bg-card px-3 text-foreground hover:bg-muted shadow-sm',
+                                            'h-9 rounded-2xl border-white/10 bg-white/[0.03] px-3 text-slate-200 hover:bg-white/[0.08] shadow-none',
                                             isActive && filter.activeClassName,
                                         )}
                                     >
@@ -2247,8 +2316,8 @@ export default function JobsPage() {
                                             className={cn(
                                                 'ml-2 inline-flex min-w-5 items-center justify-center rounded-full border px-1.5 text-[10px] font-semibold leading-4',
                                                 isActive
-                                                    ? 'border-current/20 bg-white/70'
-                                                    : 'border-border bg-muted text-muted-foreground',
+                                                    ? 'border-current/20 bg-white/15'
+                                                    : 'border-white/10 bg-white/[0.05] text-slate-400',
                                             )}
                                         >
                                             {filter.count}
@@ -2259,207 +2328,293 @@ export default function JobsPage() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <Badge variant="outline" className="h-8 rounded-full border-border bg-card text-muted-foreground">
+                            <Badge variant="outline" className="h-8 rounded-full border-white/10 bg-white/[0.03] text-slate-400">
                                 <TrendingUp className="mr-1.5 h-3 w-3" />
                                 Sorted by rank
                             </Badge>
                             {activeFilterCount > 0 ? (
-                                <Badge variant="outline" className="h-8 rounded-full border-border bg-card text-foreground">
+                                <Badge variant="outline" className="h-8 rounded-full border-white/10 bg-white/[0.03] text-white">
                                     {activeFilterCount} active filter{activeFilterCount === 1 ? '' : 's'}
                                 </Badge>
                             ) : null}
                         </div>
                     </div>
                 </div>
-            </Card>
+            </div>
 
             {/* 3. Jobs Table */}
-            <div className="relative flex-1 min-h-[560px] bg-card border border-border/70 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-r from-[#2F8E92]/5 via-transparent to-blue-500/5" />
-                {loading ? (
-                    <div className="p-4 md:p-5 space-y-4 min-h-[420px]">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <Skeleton className="h-9 rounded-xl" />
-                            <Skeleton className="h-9 rounded-xl" />
-                            <Skeleton className="h-9 rounded-xl" />
+            <div className="relative flex min-h-[620px] flex-1 flex-col overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,22,39,0.98),rgba(5,15,28,0.99))] shadow-[0_34px_110px_rgba(0,0,0,0.34)]">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(47,142,146,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.08),transparent_26%)]" />
+
+                <div className="relative flex flex-col gap-4 border-b border-white/10 px-5 py-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-3">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                            <Activity className="h-3.5 w-3.5 text-cyan-200" />
+                            Dispatch Queue
                         </div>
-                        {Array.from({ length: 10 }).map((_, i) => (
-                            <Skeleton key={i} className="h-12 w-full rounded-lg" />
-                        ))}
+                        <div className="space-y-2">
+                            <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white" style={displayFontStyle}>
+                                Jobs at operational depth
+                            </h2>
+                            <p className="max-w-2xl text-sm leading-6 text-slate-400" style={bodyFontStyle}>
+                                Review live dispatch records, monitor assignment readiness, and move jobs through the queue without falling back to a basic spreadsheet surface.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <Badge variant="outline" className="h-9 rounded-full border-white/10 bg-white/[0.04] px-3 text-slate-300">
+                            <ClipboardList className="mr-1.5 h-3.5 w-3.5 text-cyan-200" />
+                            {pagination.total} total jobs
+                        </Badge>
+                        <Badge variant="outline" className="h-9 rounded-full border-white/10 bg-white/[0.04] px-3 text-slate-300">
+                            <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-emerald-200" />
+                            Queue synced
+                        </Badge>
+                        {selectedRows.size > 0 ? (
+                            <Badge variant="outline" className="h-9 rounded-full border-cyan-300/20 bg-cyan-300/10 px-3 text-cyan-100">
+                                <Users className="mr-1.5 h-3.5 w-3.5" />
+                                {selectedRows.size} selected
+                            </Badge>
+                        ) : null}
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div className="relative flex-1 p-5 md:p-6">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <Skeleton className="h-10 rounded-2xl bg-white/[0.06]" />
+                            <Skeleton className="h-10 rounded-2xl bg-white/[0.06]" />
+                            <Skeleton className="h-10 rounded-2xl bg-white/[0.06]" />
+                        </div>
+                        <div className="mt-5 space-y-3">
+                            {Array.from({ length: 10 }).map((_, i) => (
+                                <Skeleton key={i} className="h-16 w-full rounded-[20px] bg-white/[0.05]" />
+                            ))}
+                        </div>
                     </div>
                 ) : data.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 px-4 text-muted-foreground min-h-[420px]">
-                        <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4 shadow-inner">
-                            <Search className="w-8 h-8 text-muted-foreground/70" />
+                    <div className="relative flex min-h-[420px] flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+                        <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                            <Search className="h-8 w-8 text-cyan-200/80" />
                         </div>
-                        <h3 className="text-lg font-semibold text-foreground">No jobs found</h3>
-                        <p className="text-sm mt-1 max-w-sm text-center text-muted-foreground">
-                            We couldn't find any jobs matching your filters. Try adjusting your search criteria.
+                        <h3 className="text-2xl font-semibold tracking-[-0.03em] text-white" style={displayFontStyle}>
+                            No jobs match this view
+                        </h3>
+                        <p className="mt-3 max-w-md text-sm leading-6 text-slate-400" style={bodyFontStyle}>
+                            The dispatch board is clear for the current filter set. Adjust the queue filters or reset search criteria to widen the visible range.
                         </p>
-                        <Button variant="outline" className="mt-4 rounded-xl bg-card" onClick={clearFilters}>
-                            Clear all filters
+                        <Button
+                            variant="outline"
+                            className="mt-6 h-11 rounded-2xl border-white/10 bg-white/[0.03] px-5 text-slate-100 hover:bg-white/[0.08] hover:text-white"
+                            onClick={clearFilters}
+                        >
+                            Reset filters
                         </Button>
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-auto min-h-[420px]">
-                        <Table>
-                            <TableHeader className="bg-muted/80 sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
-                                <TableRow>
-                                    <TableHead className="w-[40px] pl-4">
+                    <div className="relative flex-1 overflow-auto">
+                        <Table className="min-w-[1220px]">
+                            <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+                                <TableRow className="border-white/0 hover:bg-transparent">
+                                    <TableHead className="w-[48px] pl-5">
                                         <Checkbox
                                             checked={headerCheckboxState}
                                             onCheckedChange={handleSelectAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="w-[200px]">
-                                        <Button variant="ghost" size="sm" className="-ml-3 h-8 text-xs font-bold text-muted-foreground uppercase tracking-wider hover:bg-muted">
-                                            Job Details <ArrowUpDown className="ml-2 h-3 w-3" />
+                                    <TableHead className="w-[250px]">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="-ml-3 h-9 rounded-2xl px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                                        >
+                                            Job Details <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
                                         </Button>
                                     </TableHead>
-                                    <TableHead className="w-[180px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Dealership</TableHead>
-                                    <TableHead className="w-[200px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Vehicle</TableHead>
-                                    <TableHead className="w-[180px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Technician</TableHead>
-                                    <TableHead className="w-[120px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Urgency</TableHead>
-                                    <TableHead className="w-[100px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Ranking</TableHead>
-
-                                    <TableHead className="w-[140px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Status</TableHead>
-
-                                    <TableHead className="w-[140px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Appointment Date</TableHead>
-                                    <TableHead className="w-[120px] font-semibold text-xs text-muted-foreground uppercase tracking-wider">Time</TableHead>
-                                    <TableHead className="w-[220px] text-right font-semibold text-xs text-muted-foreground uppercase tracking-wider">Actions</TableHead>
+                                    <TableHead className="w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Dealership</TableHead>
+                                    <TableHead className="w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Vehicle</TableHead>
+                                    <TableHead className="w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician</TableHead>
+                                    <TableHead className="w-[130px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Urgency</TableHead>
+                                    <TableHead className="w-[120px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Ranking</TableHead>
+                                    <TableHead className="w-[160px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Status</TableHead>
+                                    <TableHead className="w-[160px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Appointment Date</TableHead>
+                                    <TableHead className="w-[120px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Time</TableHead>
+                                    <TableHead className="w-[240px] pr-5 text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {data.map((job) => (
-                                    <TableRow
-                                        key={job.job_id}
-                                        className={cn(
-                                            "group cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/40",
-                                            "even:bg-muted/10",
-                                            job.attention_flag && "bg-red-500/5 hover:bg-red-500/10"
-                                        )}
-                                    >
-                                        <TableCell className="pl-4 relative">
-                                            {/* Attention Indicator */}
-                                            {job.attention_flag && (
-                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-l-sm" />
+                                {data.map((job, index) => {
+                                    const primaryTechnicianName = job.assigned_technician_name?.trim()
+                                        ? job.assigned_technician_name
+                                        : null;
+                                    const pendingTechnicianName = !primaryTechnicianName
+                                        && (job.job_status === 'admin_preview' || job.job_status === 'pending_admin_confirmation')
+                                        && job.pending_assigned_technician_name?.trim()
+                                            ? job.pending_assigned_technician_name
+                                            : null;
+
+                                    return (
+                                        <TableRow
+                                            key={job.job_id}
+                                            className={cn(
+                                                'group border-b border-white/6 bg-transparent transition-colors hover:bg-white/[0.045]',
+                                                index % 2 === 1 && 'bg-white/[0.015]',
+                                                job.attention_flag && 'bg-red-400/[0.045] hover:bg-red-400/[0.08]',
                                             )}
-                                            <Checkbox
-                                                checked={selectedRows.has(job.job_id)}
-                                                onCheckedChange={(checked) => handleSelectRow(job.job_id, checked as boolean)}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-foreground group-hover:text-[#2F8E92] transition-colors">{job.job_code}</span>
-                                                <span className="text-xs text-muted-foreground">{job.service_name}</span>
-                                                {job.attention_flag && (
-                                                    <span className="text-[10px] font-bold text-red-600 flex items-center gap-1 mt-1">
-                                                        <AlertCircle className="w-3 h-3" /> Attention
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Building2Icon className="w-4 h-4 text-muted-foreground" />
-                                                <span className="text-sm font-medium text-foreground">{job.dealership_name}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm text-foreground font-medium">{job.vehicle_summary}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {job.assigned_technician_name ? (
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700">
-                                                        {job.assigned_technician_name.substring(0, 2)}
-                                                    </div>
-                                                    <span className="text-sm text-foreground">{job.assigned_technician_name}</span>
-                                                </div>
-                                            ) : (job.job_status === 'admin_preview' || job.job_status === 'pending_admin_confirmation') && job.pending_assigned_technician_name ? (
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center text-[10px] font-bold text-violet-700">
-                                                        {job.pending_assigned_technician_name.substring(0, 2)}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm text-violet-700">{job.pending_assigned_technician_name}</span>
-                                                        <span className="text-[10px] text-violet-500">Pending admin confirmation</span>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground italic">Unassigned</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <StatusBadge status={job.urgency} type="urgency" />
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <Badge className="w-fit bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
-                                                    Rank: {job.ranking_score}
-                                                </Badge>
-
-
-                                                {job.applied_rules && job.applied_rules.length > 0 && (
-                                                    <span className="text-[10px] text-muted-foreground mt-1 truncate max-w-[80px]" title={job.applied_rules.join(', ')}>
-                                                        {job.applied_rules.length} rules
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <StatusBadge status={job.job_status} type="job" />
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm text-foreground">{formatJobDate(job.created_at)}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm text-muted-foreground">{formatJobTime(job.created_at)}</div>
-                                        </TableCell>
-                                        <TableCell className="text-right pr-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {(job.job_status === 'admin_preview' || job.job_status === 'pending_admin_confirmation') && Boolean(
-                                                    (job.pending_assigned_technician_name ?? job.assigned_technician_name)?.trim()
-                                                ) && (
-                                                    <Button
-                                                        size="sm"
-                                                        className="h-8 rounded-lg bg-[#2F8E92] hover:bg-[#267276] text-white shadow-sm"
-                                                        onClick={() => void handleConfirmJob(job)}
-                                                    >
-                                                        Confirm
-                                                    </Button>
-                                                )}
-                                                {isAssignableJob(job) ? (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 rounded-lg border-border bg-card hover:bg-muted"
-                                                        onClick={() => handleAssignTechnician(job)}
-                                                    >
-                                                        {job.job_status === 'scheduled' && Boolean(job.assigned_technician_name?.trim())
-                                                            ? 'Re-assign tech'
-                                                            : 'Assign tech'}
-                                                    </Button>
+                                        >
+                                            <TableCell className="relative pl-5">
+                                                {job.attention_flag ? (
+                                                    <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-gradient-to-b from-red-300 via-orange-300 to-red-500" />
                                                 ) : null}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                                <Checkbox
+                                                    checked={selectedRows.has(job.job_id)}
+                                                    onCheckedChange={(checked) => handleSelectRow(job.job_id, checked as boolean)}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <span
+                                                        className="text-base font-semibold tracking-[-0.03em] text-white transition-colors group-hover:text-cyan-100"
+                                                        style={displayFontStyle}
+                                                    >
+                                                        {job.job_code}
+                                                    </span>
+                                                    <span className="text-sm text-slate-300">{job.service_name}</span>
+                                                    {job.attention_flag ? (
+                                                        <span className="inline-flex w-fit items-center gap-1 rounded-full border border-red-300/20 bg-red-300/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-100">
+                                                            <AlertCircle className="h-3 w-3" />
+                                                            Attention
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-500">
+                                                            Created {formatJobDate(job.created_at)} at {formatJobTime(job.created_at)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                                                        <Building2Icon className="h-4 w-4" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="truncate text-sm font-semibold text-white">{job.dealership_name}</div>
+                                                        <div className="mt-1 text-xs text-slate-500">Live partner destination</div>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium text-slate-100">{job.vehicle_summary}</div>
+                                                    <div className="text-xs text-slate-500">Dispatch-ready vehicle profile</div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                {primaryTechnicianName ? (
+                                                    <div className="inline-flex items-center gap-3 rounded-2xl border border-emerald-300/18 bg-emerald-300/[0.08] px-3 py-2">
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-300/20 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100">
+                                                            {primaryTechnicianName.substring(0, 2)}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-medium text-emerald-50">{primaryTechnicianName}</div>
+                                                            <div className="text-[11px] text-emerald-200/70">Assigned technician</div>
+                                                        </div>
+                                                    </div>
+                                                ) : pendingTechnicianName ? (
+                                                    <div className="inline-flex items-center gap-3 rounded-2xl border border-violet-300/18 bg-violet-300/[0.09] px-3 py-2">
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-300/20 text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-100">
+                                                            {pendingTechnicianName.substring(0, 2)}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-medium text-violet-50">{pendingTechnicianName}</div>
+                                                            <div className="text-[11px] text-violet-200/70">Pending admin confirmation</div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-400">
+                                                        <User className="h-3.5 w-3.5" />
+                                                        Unassigned
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <StatusBadge status={job.urgency} type="urgency" />
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <span className="inline-flex w-fit items-center rounded-full border border-emerald-300/20 bg-emerald-300/[0.1] px-3 py-1 text-xs font-semibold text-emerald-100">
+                                                        Rank {job.ranking_score ?? 0}
+                                                    </span>
+                                                    {job.applied_rules && job.applied_rules.length > 0 ? (
+                                                        <span
+                                                            className="max-w-[110px] truncate text-[11px] text-slate-500"
+                                                            title={job.applied_rules.join(', ')}
+                                                        >
+                                                            {job.applied_rules.length} rule{job.applied_rules.length === 1 ? '' : 's'} applied
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[11px] text-slate-600">No ranking modifiers</span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <StatusBadge status={job.job_status} type="job" />
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium text-slate-100">{formatJobDate(job.created_at)}</div>
+                                                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-600">Calendar slot</div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="text-sm font-medium text-slate-300">{formatJobTime(job.created_at)}</div>
+                                            </TableCell>
+                                            <TableCell className="py-4 pr-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {(job.job_status === 'admin_preview' || job.job_status === 'pending_admin_confirmation') && Boolean(
+                                                        (job.pending_assigned_technician_name ?? job.assigned_technician_name)?.trim()
+                                                    ) ? (
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-9 rounded-2xl bg-[linear-gradient(135deg,#24c4cb,#2d9fe5)] px-4 text-white shadow-[0_18px_34px_rgba(36,196,203,0.22)] hover:brightness-105"
+                                                            onClick={() => void handleConfirmJob(job)}
+                                                        >
+                                                            <Check className="mr-2 h-3.5 w-3.5" />
+                                                            Confirm
+                                                        </Button>
+                                                    ) : null}
+                                                    {isAssignableJob(job) ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-9 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-slate-100 hover:bg-white/[0.08] hover:text-white"
+                                                            onClick={() => handleAssignTechnician(job)}
+                                                        >
+                                                            <User className="mr-2 h-3.5 w-3.5" />
+                                                            {job.job_status === 'scheduled' && Boolean(job.assigned_technician_name?.trim())
+                                                                ? 'Re-assign tech'
+                                                                : 'Assign tech'}
+                                                        </Button>
+                                                    ) : null}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>
                 )}
 
                 {/* Pagination & Footer */}
-                <div className="border-t border-border/70 bg-muted/40 px-4 py-3 md:px-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <div className="relative flex flex-col gap-4 border-t border-white/10 bg-[linear-gradient(180deg,rgba(8,18,31,0.88),rgba(6,15,26,0.96))] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400" style={bodyFontStyle}>
                         <span>
-                            Showing <span className="font-medium text-foreground">{footerStart}</span> to <span className="font-medium text-foreground">{footerEnd}</span> of <span className="font-medium text-foreground">{pagination.total}</span> entries
+                            Showing <span className="font-medium text-white">{footerStart}</span> to <span className="font-medium text-white">{footerEnd}</span> of <span className="font-medium text-white">{pagination.total}</span> jobs
                         </span>
                         {selectedRows.size > 0 ? (
-                            <Badge variant="outline" className="h-7 rounded-full border-border bg-card text-foreground">
+                            <Badge variant="outline" className="h-8 rounded-full border-cyan-300/20 bg-cyan-300/10 px-3 text-cyan-100">
                                 <Users className="mr-1.5 h-3 w-3" />
                                 {selectedRows.size} selected
                             </Badge>
@@ -2468,12 +2623,12 @@ export default function JobsPage() {
 
                     <div className="flex flex-wrap items-center gap-4 md:gap-6">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Rows per page</span>
+                            <span className="text-sm text-slate-400">Rows per page</span>
                             <Select
                                 value={pagination.pageSize.toString()}
-                                onValueChange={(val) => setPagination(prev => ({ ...prev, pageSize: Number(val), page: 1 }))}
+                                onValueChange={(val) => setPagination((prev) => ({ ...prev, pageSize: Number(val), page: 1 }))}
                             >
-                                <SelectTrigger className="w-[74px] h-8 rounded-lg bg-card border-border">
+                                <SelectTrigger className="h-9 w-[84px] rounded-2xl border-white/10 bg-white/[0.04] text-white shadow-none">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2484,27 +2639,27 @@ export default function JobsPage() {
                             </Select>
                         </div>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-border bg-card"
+                                className="h-9 w-9 rounded-2xl border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:text-white"
                                 disabled={pagination.page === 1}
-                                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
                             >
-                                <ChevronLeft className="w-4 h-4" />
+                                <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <div className="text-sm font-medium px-2 text-foreground">
+                            <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white">
                                 Page {pagination.page} of {pagination.totalPages}
                             </div>
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-border bg-card"
+                                className="h-9 w-9 rounded-2xl border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:text-white"
                                 disabled={pagination.page >= pagination.totalPages}
-                                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
                             >
-                                <ChevronRight className="w-4 h-4" />
+                                <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
@@ -2513,34 +2668,53 @@ export default function JobsPage() {
 
             {/* 5. Bulk Actions (Floating) */}
             {selectedRows.size > 0 && (
-                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-xl flex items-center gap-6 z-50 animate-in slide-in-from-bottom-4 duration-200">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-white/20 px-2 py-0.5 rounded text-sm font-bold">{selectedRows.size}</div>
-                        <span className="text-sm font-medium">Selected</span>
+                <div className="fixed bottom-6 left-1/2 z-50 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 items-center gap-4 rounded-[26px] border border-white/10 bg-[linear-gradient(135deg,rgba(8,20,35,0.95),rgba(6,16,29,0.98))] px-4 py-3 text-white shadow-[0_26px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl animate-in slide-in-from-bottom-4 duration-200 sm:px-5">
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
+                    <div className="flex shrink-0 items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/12 text-cyan-100">
+                            <Users className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <div className="text-sm font-semibold text-white">{selectedRows.size} jobs selected</div>
+                            <div className="text-xs text-slate-400">Apply queue actions in one move.</div>
+                        </div>
                     </div>
-                    <div className="h-4 w-px bg-white/20" />
-                    <div className="flex items-center gap-2">
-                        <Button size="sm" variant="ghost" className="hover:bg-white/10 text-white hover:text-white h-8" onClick={handleBulkAssignTechnician}>
-                            <User className="w-4 h-4 mr-2" />
-                            Assign Selected
+                    <div className="hidden h-10 w-px bg-white/10 lg:block" />
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 rounded-2xl border-white/10 bg-white/[0.04] px-4 text-slate-100 hover:bg-white/[0.08] hover:text-white"
+                            onClick={handleBulkAssignTechnician}
+                        >
+                            <User className="mr-2 h-4 w-4" />
+                            Assign selected
                         </Button>
-                        <Button size="sm" variant="ghost" className="hover:bg-white/10 text-white hover:text-white h-8" onClick={() => setExportModalOpen(true)}>
-                            <Download className="w-4 h-4 mr-2" />
-                            Export Selected
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 rounded-2xl border-white/10 bg-white/[0.04] px-4 text-slate-100 hover:bg-white/[0.08] hover:text-white"
+                            onClick={() => setExportModalOpen(true)}
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Export selected
                         </Button>
-                        <Button size="sm" variant="ghost" className="hover:bg-red-500/20 text-white hover:text-white h-8" onClick={handleBulkRemoveJobs}>
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Remove Selected
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 rounded-2xl border-red-300/20 bg-red-300/10 px-4 text-red-100 hover:bg-red-300/18 hover:text-red-50"
+                            onClick={handleBulkRemoveJobs}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Remove selected
                         </Button>
-                    </div>
-                    <div className="ml-2">
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6 rounded-full hover:bg-white/20 text-gray-400 hover:text-white"
+                            className="h-10 w-10 rounded-2xl text-slate-400 hover:bg-white/[0.08] hover:text-white"
                             onClick={() => setSelectedRows(new Set())}
                         >
-                            <X className="w-4 h-4" />
+                            <X className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>

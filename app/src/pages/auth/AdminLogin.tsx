@@ -28,6 +28,12 @@ const orbitalGlowStyle: CSSProperties = {
 };
 
 const accessTags = ['Dispatch', 'Approvals', 'Technicians'] as const;
+const displayFontStyle: CSSProperties = {
+  fontFamily: '"Space Grotesk", "Sora", system-ui, sans-serif',
+};
+const bodyFontStyle: CSSProperties = {
+  fontFamily: '"Manrope", "Inter", system-ui, sans-serif',
+};
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
@@ -63,29 +69,42 @@ export default function AdminLoginPage() {
       className="relative min-h-[100svh] overflow-hidden bg-[#04131f] text-white antialiased"
       style={pageBackgroundStyle}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-35" style={gridOverlayStyle} />
+      <div className="admin-login-grid pointer-events-none absolute inset-0 opacity-35" style={gridOverlayStyle} />
       <div className="pointer-events-none absolute left-[-5rem] top-[-6rem] h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-8rem] right-[-6rem] h-80 w-80 rounded-full bg-teal-300/14 blur-3xl" />
 
       <main className="relative flex min-h-[100svh] items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="relative w-full max-w-[560px]">
+        <div className="admin-login-card relative w-full max-w-[560px]" style={bodyFontStyle}>
           <div className="pointer-events-none absolute inset-x-5 top-4 h-full rounded-[40px] border border-white/8 bg-white/[0.03] blur-sm" />
-          <div className="pointer-events-none absolute -left-3 -right-3 -top-3 h-40 rounded-[38px] opacity-80 blur-2xl" style={orbitalGlowStyle} />
+          <div
+            className="admin-login-halo pointer-events-none absolute -left-3 -right-3 -top-3 h-40 rounded-[38px] opacity-80 blur-2xl"
+            style={orbitalGlowStyle}
+          />
 
           <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,31,48,0.96),rgba(6,23,38,0.96))] p-6 shadow-[0_34px_120px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:p-8">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),rgba(255,255,255,0)_52%)]" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+            <div className="pointer-events-none absolute left-8 top-[7.1rem] h-px w-28 bg-gradient-to-r from-transparent via-cyan-200/80 to-transparent admin-login-scan" />
 
             <div className="relative">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                  <div
+                    className="inline-flex items-center gap-2 rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+                    style={displayFontStyle}
+                  >
                     <Sparkles className="h-3.5 w-3.5" />
                     SM2 Electronics
                   </div>
 
-                  <h1 className="mt-5 text-[clamp(2.2rem,4vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.06em] text-white">
-                    Admin portal
+                  <h1
+                    className="mt-5 text-[clamp(2.2rem,4vw,3.85rem)] font-semibold leading-[0.9] tracking-[-0.07em] text-white"
+                    style={displayFontStyle}
+                  >
+                    Admin
+                    <span className="block bg-gradient-to-r from-white via-cyan-100 to-cyan-200 bg-clip-text text-transparent">
+                      portal
+                    </span>
                   </h1>
                   <p className="mt-3 max-w-md text-sm leading-6 text-slate-300 sm:text-[15px]">
                     Sign in to your dispatch control workspace with a cleaner, more premium operator experience.
@@ -109,7 +128,7 @@ export default function AdminLoginPage() {
                 ))}
               </div>
 
-              <div className="mt-6 rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,27,43,0.92),rgba(7,23,37,0.92))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:p-6">
+              <div className="mt-6 rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,27,43,0.92),rgba(7,23,37,0.92))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_24px_60px_rgba(3,12,24,0.34)] sm:p-6">
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="admin-email" className="block text-sm font-semibold text-slate-200">
@@ -123,7 +142,7 @@ export default function AdminLoginPage() {
                       autoComplete="email"
                       required
                       placeholder="admin@sm2dispatch.com"
-                      className="h-13 rounded-2xl border-white/14 bg-white/[0.04] px-4 text-base text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] placeholder:text-slate-500 focus-visible:border-cyan-300/45 focus-visible:ring-cyan-300/15"
+                      className="h-[54px] rounded-2xl border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] px-4 text-base text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] placeholder:text-slate-500 focus-visible:border-cyan-300/45 focus-visible:ring-cyan-300/15"
                     />
                   </div>
 
@@ -146,7 +165,7 @@ export default function AdminLoginPage() {
                         autoComplete="current-password"
                         required
                         placeholder="********"
-                        className="h-13 rounded-2xl border-white/14 bg-white/[0.04] px-4 pr-12 text-base text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] placeholder:text-slate-500 focus-visible:border-cyan-300/45 focus-visible:ring-cyan-300/15"
+                        className="h-[54px] rounded-2xl border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] px-4 pr-12 text-base text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] placeholder:text-slate-500 focus-visible:border-cyan-300/45 focus-visible:ring-cyan-300/15"
                       />
                       <button
                         type="button"
@@ -187,11 +206,14 @@ export default function AdminLoginPage() {
 
                   <Button
                     type="submit"
-                    className="h-14 w-full rounded-2xl bg-gradient-to-r from-[#0ca6a6] to-[#149fcb] text-base font-semibold text-white shadow-[0_18px_44px_rgba(12,166,166,0.24)] transition-all hover:from-[#11b5b5] hover:to-[#1aaedf] hover:shadow-[0_24px_50px_rgba(20,159,203,0.28)] active:scale-[0.99]"
+                    className="group relative h-14 w-full overflow-hidden rounded-2xl bg-gradient-to-r from-[#0ca6a6] to-[#149fcb] text-base font-semibold text-white shadow-[0_18px_44px_rgba(12,166,166,0.24)] transition-all hover:from-[#11b5b5] hover:to-[#1aaedf] hover:shadow-[0_24px_50px_rgba(20,159,203,0.28)] active:scale-[0.99]"
                     disabled={isSubmitting}
                   >
-                    <span>{isSubmitting ? 'Signing in...' : 'Enter Admin Portal'}</span>
-                    {!isSubmitting ? <ArrowRight className="ml-2 h-4 w-4" /> : null}
+                    <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-white/30 blur-2xl transition-transform duration-700 group-hover:translate-x-[430%]" />
+                    <span className="relative flex items-center justify-center">
+                      <span>{isSubmitting ? 'Signing in...' : 'Enter Admin Portal'}</span>
+                      {!isSubmitting ? <ArrowRight className="ml-2 h-4 w-4" /> : null}
+                    </span>
                   </Button>
                 </form>
               </div>

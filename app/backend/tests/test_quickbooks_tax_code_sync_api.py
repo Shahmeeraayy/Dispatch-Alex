@@ -180,6 +180,34 @@ class QuickBooksTaxCodeSyncApiTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_missing_exempt_mapping_self_repairs_from_hors_champ_row(self):
+        self._seed_connection()
+
+        db = SessionLocal()
+        try:
+            db.add(
+                QuickBooksTaxCode(
+                    realm_id="9341456520395836",
+                    qb_tax_code_id="QB-TAX-HORS-CHAMP",
+                    name="Hors champ",
+                    description="",
+                    active=True,
+                    internal_tax_code=None,
+                )
+            )
+            db.commit()
+
+            from app.services.quickbooks_tax_code_sync_service import QuickBooksTaxCodeSyncService
+
+            service = QuickBooksTaxCodeSyncService(db)
+            resolved_id = service.get_tax_code_id_for_internal_code("EXEMPT", realm_id="9341456520395836")
+            self.assertEqual(resolved_id, "QB-TAX-HORS-CHAMP")
+
+            row = db.query(QuickBooksTaxCode).filter(QuickBooksTaxCode.qb_tax_code_id == "QB-TAX-HORS-CHAMP").first()
+            self.assertEqual(row.internal_tax_code, "EXEMPT")
+        finally:
+            db.close()
+
 
 if __name__ == "__main__":
     unittest.main()

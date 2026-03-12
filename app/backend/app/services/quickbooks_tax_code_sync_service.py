@@ -319,6 +319,7 @@ class QuickBooksTaxCodeSyncService:
                 "detaxe",
                 "sans taxe",
                 "hors taxe",
+                "hors champ",
                 "notax",
                 "no tax",
                 "non taxable",

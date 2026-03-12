@@ -86,18 +86,18 @@ export default function TechnicianLoginPage() {
           <div className="relative z-10 mt-12 grid gap-4 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/70">Jobs</p>
-              <p className="mt-3 text-3xl font-bold text-white">Live</p>
-              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Track incoming assignments and move jobs cleanly from accepted to completed.</p>
+              <p className="mt-3 text-3xl font-bold text-white">Active Dispatch</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Stay on top of incoming assignments and manage job progress smoothly from acceptance to completion.</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/70">Service</p>
-              <p className="mt-3 text-3xl font-bold text-white">Mobile</p>
-              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Built for field technicians handling PPF, tint, glass, and electronics installs.</p>
+              <p className="mt-3 text-3xl font-bold text-white">Field Service Excellence</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Purpose-built for technicians delivering PPF, tint, glass, and electronic installation services on site.</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/70">Profile</p>
-              <p className="mt-3 text-3xl font-bold text-white">Ready</p>
-              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Keep schedules, availability, and account details current without leaving the workflow.</p>
+              <p className="mt-3 text-3xl font-bold text-white">Operational Readiness</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-50/75">Maintain accurate schedules, availability, and profile details to stay aligned with dispatch workflows.</p>
             </div>
           </div>
 

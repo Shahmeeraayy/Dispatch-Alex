@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Activity,
   AlertCircle,
   AlertTriangle,
   ArrowRight,
@@ -8,17 +9,18 @@ import {
   Building2,
   CheckCircle2,
   ClipboardList,
+  Clock3,
   FileCheck,
   FileClock,
   FileText,
   PlayCircle,
   RefreshCw,
   ShieldAlert,
+  Sparkles,
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -76,6 +78,12 @@ type DashboardSnapshot = {
 };
 
 const ADMIN_REFRESH_EVENT = 'sm-dispatch:admin-refresh';
+const displayFontStyle: CSSProperties = {
+  fontFamily: '"Space Grotesk", "Sora", system-ui, sans-serif',
+};
+const bodyFontStyle: CSSProperties = {
+  fontFamily: '"Manrope", "Inter", system-ui, sans-serif',
+};
 
 function toDateInputValue(value: Date): string {
   const year = value.getFullYear();
@@ -108,18 +116,72 @@ function titleCaseStatus(status: string): string {
     .join(' ');
 }
 
-function toneClasses(tone: DashboardCardTone): string {
-  if (tone === 'green') return 'border-emerald-200 bg-white hover:border-emerald-300';
-  if (tone === 'orange') return 'border-amber-200 bg-white hover:border-amber-300';
-  if (tone === 'red') return 'border-rose-200 bg-white hover:border-rose-300';
-  return 'border-blue-200 bg-white hover:border-blue-300';
+function metricCardClasses(tone: DashboardCardTone): string {
+  return cn(
+    'group relative overflow-hidden rounded-[24px] border px-5 py-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.28)]',
+    tone === 'green' && 'border-emerald-400/20 bg-[linear-gradient(180deg,rgba(8,34,30,0.96),rgba(7,24,25,0.96))] hover:border-emerald-300/35',
+    tone === 'orange' && 'border-amber-400/20 bg-[linear-gradient(180deg,rgba(36,24,14,0.96),rgba(24,18,14,0.96))] hover:border-amber-300/35',
+    tone === 'red' && 'border-rose-400/20 bg-[linear-gradient(180deg,rgba(42,16,25,0.96),rgba(28,15,23,0.96))] hover:border-rose-300/35',
+    tone === 'blue' && 'border-cyan-400/20 bg-[linear-gradient(180deg,rgba(9,29,48,0.96),rgba(8,20,38,0.96))] hover:border-cyan-300/35',
+  );
 }
 
-function iconToneClasses(tone: DashboardCardTone): string {
-  if (tone === 'green') return 'bg-emerald-100 text-emerald-700';
-  if (tone === 'orange') return 'bg-amber-100 text-amber-700';
-  if (tone === 'red') return 'bg-rose-100 text-rose-700';
-  return 'bg-blue-100 text-blue-700';
+function metricTopLineClasses(tone: DashboardCardTone): string {
+  if (tone === 'green') return 'via-emerald-300/80';
+  if (tone === 'orange') return 'via-amber-300/80';
+  if (tone === 'red') return 'via-rose-300/80';
+  return 'via-cyan-300/80';
+}
+
+function metricIconClasses(tone: DashboardCardTone): string {
+  if (tone === 'green') return 'border border-emerald-300/20 bg-emerald-300/12 text-emerald-100';
+  if (tone === 'orange') return 'border border-amber-300/20 bg-amber-300/12 text-amber-100';
+  if (tone === 'red') return 'border border-rose-300/20 bg-rose-300/12 text-rose-100';
+  return 'border border-cyan-300/20 bg-cyan-300/12 text-cyan-100';
+}
+
+function metricValueClasses(tone: DashboardCardTone): string {
+  if (tone === 'green') return 'text-emerald-50';
+  if (tone === 'orange') return 'text-amber-50';
+  if (tone === 'red') return 'text-rose-50';
+  return 'text-white';
+}
+
+function metricQueueClasses(tone: DashboardCardTone): string {
+  if (tone === 'green') return 'text-emerald-200/80';
+  if (tone === 'orange') return 'text-amber-200/80';
+  if (tone === 'red') return 'text-rose-200/80';
+  return 'text-cyan-200/80';
+}
+
+function alertPanelClasses(tone: DashboardAlert['tone']): string {
+  return cn(
+    'rounded-[22px] border px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+    tone === 'critical' && 'border-rose-400/20 bg-rose-400/10',
+    tone === 'warning' && 'border-amber-400/20 bg-amber-400/10',
+    tone === 'info' && 'border-emerald-400/20 bg-emerald-400/10',
+  );
+}
+
+function alertIconClasses(tone: DashboardAlert['tone']): string {
+  if (tone === 'critical') return 'text-rose-200';
+  if (tone === 'warning') return 'text-amber-200';
+  return 'text-emerald-200';
+}
+
+function activityBadgeClasses(tone: ActivityRow['tone']): string {
+  return cn(
+    'border text-[11px] font-semibold uppercase tracking-[0.18em]',
+    tone === 'success' && 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
+    tone === 'warning' && 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+    tone === 'info' && 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+  );
+}
+
+function activityDotClasses(tone: ActivityRow['tone']): string {
+  if (tone === 'success') return 'bg-emerald-300 shadow-[0_0_0_6px_rgba(52,211,153,0.12)]';
+  if (tone === 'warning') return 'bg-amber-300 shadow-[0_0_0_6px_rgba(251,191,36,0.12)]';
+  return 'bg-cyan-300 shadow-[0_0_0_6px_rgba(34,211,238,0.12)]';
 }
 
 function buildSnapshot(input: {
@@ -178,6 +240,14 @@ function buildSnapshot(input: {
       tone: 'critical',
     });
   }
+  if (alerts.length === 0) {
+    alerts.push({
+      id: 'all-clear',
+      title: 'Operational queue looks clean',
+      description: 'No overdue invoices or review bottlenecks are currently blocking the dashboard.',
+      tone: 'info',
+    });
+  }
   const activity = jobs
     .slice()
     .sort((left, right) => (
@@ -214,15 +284,18 @@ function buildSnapshot(input: {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-16 w-full rounded-xl" />
+      <Skeleton className="h-[280px] w-full rounded-[30px]" />
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
         {Array.from({ length: 9 }).map((_, index) => (
-          <Skeleton key={index} className="h-28 w-full rounded-xl" />
+          <Skeleton key={index} className="h-40 w-full rounded-[24px]" />
         ))}
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_1fr] gap-6">
-        <Skeleton className="h-[420px] w-full rounded-xl" />
-        <Skeleton className="h-[420px] w-full rounded-xl" />
+      <div className="grid grid-cols-1 xl:grid-cols-[1.65fr_1fr] gap-6">
+        <Skeleton className="h-[540px] w-full rounded-[28px]" />
+        <div className="space-y-6">
+          <Skeleton className="h-[260px] w-full rounded-[28px]" />
+          <Skeleton className="h-[260px] w-full rounded-[28px]" />
+        </div>
       </div>
     </div>
   );
@@ -309,183 +382,410 @@ export default function Dashboard() {
     };
   }, [loadDashboard]);
 
+  const leadMetrics = useMemo(() => {
+    if (!snapshot) {
+      return [];
+    }
+
+    const lookup = new Map(snapshot.cards.map((card) => [card.id, card]));
+    return [
+      lookup.get('completed-today'),
+      lookup.get('pending-review'),
+      lookup.get('approval-required'),
+    ].filter((item): item is DashboardCard => Boolean(item));
+  }, [snapshot]);
+
+  const overviewTiles = useMemo(() => {
+    if (!snapshot) {
+      return [];
+    }
+
+    return [
+      {
+        id: 'jobs',
+        label: 'Jobs in System',
+        value: snapshot.stats.jobs,
+        description: 'Live dispatch records across the backend.',
+        icon: Briefcase,
+      },
+      {
+        id: 'technicians',
+        label: 'Technician Roster',
+        value: snapshot.stats.technicians,
+        description: 'Active field operators currently on file.',
+        icon: Users,
+      },
+      {
+        id: 'dealerships',
+        label: 'Dealership Coverage',
+        value: snapshot.stats.dealerships,
+        description: 'Partner locations wired into operations.',
+        icon: Building2,
+      },
+      {
+        id: 'invoices',
+        label: 'Invoice Ledger',
+        value: snapshot.stats.invoices,
+        description: 'Tracked invoices available in the backend.',
+        icon: FileText,
+      },
+    ];
+  }, [snapshot]);
+
+  const quickActions = useMemo(() => ([
+    {
+      id: 'jobs',
+      label: 'View All Jobs',
+      description: 'Open the dispatch board, status queues, and live scheduling.',
+      icon: Briefcase,
+      onClick: () => navigate('/admin/jobs'),
+    },
+    {
+      id: 'approvals',
+      label: 'Invoice Approvals',
+      description: 'Review completed jobs that are waiting for invoice approval.',
+      icon: ShieldAlert,
+      onClick: () => navigate('/admin/invoice-approvals'),
+    },
+    {
+      id: 'technicians',
+      label: 'Technician Roster',
+      description: 'Manage field staff coverage, status, and account readiness.',
+      icon: Users,
+      onClick: () => navigate('/admin/technicians'),
+    },
+    {
+      id: 'dealerships',
+      label: 'Dealership Directory',
+      description: 'Review partner locations and sync operational details.',
+      icon: Building2,
+      onClick: () => navigate('/admin/dealerships'),
+    },
+  ]), [navigate]);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground font-medium">
-            Live operational metrics from the Neon-backed admin APIs.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <span className="hidden sm:block text-xs text-muted-foreground">
-            Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2"
-            onClick={() => void loadDashboard({ background: true })}
-            title="Refresh dashboard"
-            disabled={refreshing}
-          >
-            <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
-            Refresh
-          </Button>
-        </div>
-      </div>
+    <div className="relative mx-auto max-w-[1700px] pb-10" style={bodyFontStyle}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] rounded-[34px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_34%),radial-gradient(circle_at_top_right,rgba(52,211,153,0.1),rgba(52,211,153,0)_28%)]" />
+      <div className="pointer-events-none absolute left-10 top-10 h-48 w-48 rounded-full bg-cyan-400/8 blur-3xl" />
+      <div className="pointer-events-none absolute right-10 top-20 h-56 w-56 rounded-full bg-emerald-400/8 blur-3xl" />
 
-      {error ? (
-        <Card className="border-rose-200 bg-rose-50">
-          <CardContent className="p-4 text-sm text-rose-700">{error}</CardContent>
-        </Card>
-      ) : null}
+      <div className="relative space-y-6">
+        <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
 
-      {snapshot?.alerts.length ? (
-        <section className="space-y-3">
-          {snapshot.alerts.map((alert) => (
-            <Card
-              key={alert.id}
-              className={cn(
-                'border shadow-sm',
-                alert.tone === 'critical' && 'border-rose-200 bg-rose-50',
-                alert.tone === 'warning' && 'border-amber-200 bg-amber-50',
-                alert.tone === 'info' && 'border-emerald-200 bg-emerald-50',
-              )}
-            >
-              <CardContent className="p-4 flex items-start gap-3">
-                {alert.tone === 'critical' ? <AlertCircle className="w-5 h-5 text-rose-700 mt-0.5" /> : null}
-                {alert.tone === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-700 mt-0.5" /> : null}
-                {alert.tone === 'info' ? <CheckCircle2 className="w-5 h-5 text-emerald-700 mt-0.5" /> : null}
-                <div>
-                  <div className="font-semibold text-sm text-foreground">{alert.title}</div>
-                  <div className="text-sm text-muted-foreground">{alert.description}</div>
+          <div className="relative grid gap-6 p-6 xl:grid-cols-[1.2fr_0.85fr] xl:p-8">
+            <div>
+              <div
+                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100"
+                style={displayFontStyle}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Operations Pulse
+              </div>
+
+              <h1
+                className="mt-5 text-[clamp(2.1rem,4vw,4.2rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white"
+                style={displayFontStyle}
+              >
+                Dispatch
+                <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
+                  command dashboard
+                </span>
+              </h1>
+
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                Live operational metrics from the Neon-backed admin APIs, styled like a real control room instead of a generic table wall.
+              </p>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                {leadMetrics.map((metric) => (
+                  <div
+                    key={metric.id}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  >
+                    <span className="text-slate-400">{metric.label}</span>
+                    <span className="ml-2 font-semibold text-white">{metric.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300">
+                  <Clock3 className="h-4 w-4 text-cyan-200" />
+                  Last sync {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
-      ) : null}
-
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-        {snapshot?.cards.map((card) => (
-          <button
-            key={card.id}
-            type="button"
-            className={cn(
-              'rounded-xl border p-5 text-left shadow-sm transition hover:shadow-md',
-              toneClasses(card.tone),
-            )}
-            onClick={() => navigate(card.navigateTo)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-semibold text-muted-foreground">{card.label}</span>
-              <div className={cn('rounded-lg p-2', iconToneClasses(card.tone))}>
-                <card.icon className="w-4 h-4" />
+                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-sm text-emerald-100">
+                  <Activity className="h-4 w-4" />
+                  Live backend session
+                </div>
               </div>
             </div>
-            <div className="text-4xl font-bold tracking-tight">{card.value}</div>
-          </button>
-        ))}
-      </section>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_1fr] gap-6">
-        <Card className="border-border shadow-sm">
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-6 pt-6 pb-3">
-              <div>
-                <h2 className="text-lg font-semibold">Recent Activity</h2>
-                <p className="text-sm text-muted-foreground">Latest job updates from the backend.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {overviewTiles.map((tile) => (
+                <div
+                  key={tile.id}
+                  className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,31,48,0.94),rgba(8,23,37,0.94))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                        {tile.label}
+                      </p>
+                      <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white" style={displayFontStyle}>
+                        {tile.value}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/10 p-2.5 text-cyan-100">
+                      <tile.icon className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-400">{tile.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative border-t border-white/10 px-6 py-5 xl:px-8">
+            {error ? (
+              <div className="rounded-[22px] border border-rose-400/20 bg-rose-400/10 px-4 py-4 text-sm text-rose-100">
+                {error}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/jobs')}>
-                View Jobs <ArrowRight className="w-4 h-4 ml-1" />
+            ) : (
+              <div className="grid gap-3 lg:grid-cols-3">
+                {snapshot?.alerts.map((alert) => (
+                  <div key={alert.id} className={alertPanelClasses(alert.tone)}>
+                    <div className="flex items-start gap-3">
+                      {alert.tone === 'critical' ? <AlertCircle className={cn('mt-0.5 h-5 w-5', alertIconClasses(alert.tone))} /> : null}
+                      {alert.tone === 'warning' ? <AlertTriangle className={cn('mt-0.5 h-5 w-5', alertIconClasses(alert.tone))} /> : null}
+                      {alert.tone === 'info' ? <CheckCircle2 className={cn('mt-0.5 h-5 w-5', alertIconClasses(alert.tone))} /> : null}
+                      <div>
+                        <p className="text-sm font-semibold text-white">{alert.title}</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-300">{alert.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight text-white" style={displayFontStyle}>
+                Live queue
+              </h2>
+              <p className="text-sm text-slate-400">
+                Fast entry points into the operational states that matter most right now.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] px-4 text-slate-200 hover:bg-white/[0.08] hover:text-white"
+              onClick={() => void loadDashboard({ background: true })}
+              title="Refresh dashboard"
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+              Refresh dashboard
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
+            {snapshot?.cards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                className={metricCardClasses(card.tone)}
+                onClick={() => navigate(card.navigateTo)}
+              >
+                <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent', metricTopLineClasses(card.tone))} />
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                      {card.label}
+                    </p>
+                    <div
+                      className={cn('mt-4 text-[2.8rem] font-semibold leading-none tracking-[-0.07em]', metricValueClasses(card.tone))}
+                      style={displayFontStyle}
+                    >
+                      {card.value}
+                    </div>
+                  </div>
+                  <div className={cn('rounded-2xl p-2.5', metricIconClasses(card.tone))}>
+                    <card.icon className="h-4 w-4" />
+                  </div>
+                </div>
+
+                <div className="mt-6 flex items-center justify-between">
+                  <span className={cn('text-sm font-medium', metricQueueClasses(card.tone))}>
+                    Open queue
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-white/55 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-white" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 2xl:grid-cols-[1.6fr_1fr] gap-6">
+          <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,23,38,0.98),rgba(7,18,31,0.98))] shadow-[0_28px_90px_rgba(0,0,0,0.3)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/60 to-transparent" />
+            <div className="flex items-center justify-between px-6 pb-4 pt-6">
+              <div>
+                <h2 className="text-xl font-semibold text-white" style={displayFontStyle}>
+                  Recent activity
+                </h2>
+                <p className="text-sm text-slate-400">
+                  Latest job movement coming in from the backend session.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 rounded-full text-cyan-200 hover:bg-white/[0.05] hover:text-white"
+                onClick={() => navigate('/admin/jobs')}
+              >
+                View jobs
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
-            <ScrollArea className="h-[420px]">
-              <div className="px-6 pb-6 space-y-3">
-                {snapshot?.activity.length ? snapshot.activity.map((event) => (
-                  <div key={event.id} className="rounded-lg border border-border p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="font-medium text-sm">{event.title}</div>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          event.tone === 'success' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                          event.tone === 'warning' && 'bg-amber-50 text-amber-700 border-amber-200',
-                          event.tone === 'info' && 'bg-blue-50 text-blue-700 border-blue-200',
-                        )}
+
+            <ScrollArea className="h-[560px]">
+              <div className="px-6 pb-6">
+                {snapshot?.activity.length ? (
+                  <div className="space-y-4">
+                    {snapshot.activity.map((event) => (
+                      <div
+                        key={event.id}
+                        className="rounded-[22px] border border-white/10 bg-white/[0.03] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                       >
-                        {event.badge}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-2">{event.description}</div>
-                    <div className="text-xs text-muted-foreground mt-2">{event.timestamp}</div>
+                        <div className="flex items-start gap-4">
+                          <div className={cn('mt-1 h-2.5 w-2.5 rounded-full', activityDotClasses(event.tone))} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-white">{event.title}</p>
+                                <p className="mt-2 text-sm leading-6 text-slate-400">{event.description}</p>
+                              </div>
+                              <Badge variant="outline" className={activityBadgeClasses(event.tone)}>
+                                {event.badge}
+                              </Badge>
+                            </div>
+                            <div className="mt-4 text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
+                              {event.timestamp}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )) : (
-                  <div className="px-2 py-6 text-sm text-muted-foreground">No recent activity found.</div>
+                ) : (
+                  <div className="rounded-[22px] border border-white/10 bg-white/[0.03] px-5 py-6 text-sm text-slate-400">
+                    No recent activity found.
+                  </div>
                 )}
               </div>
             </ScrollArea>
-          </CardContent>
-        </Card>
+          </section>
 
-        <div className="space-y-6">
-          <Card className="border-border shadow-sm">
-            <CardContent className="p-6 space-y-4">
+          <div className="space-y-6">
+            <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,23,38,0.98),rgba(7,18,31,0.98))] p-6 shadow-[0_28px_90px_rgba(0,0,0,0.3)]">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/60 to-transparent" />
               <div>
-                <h2 className="text-lg font-semibold">Quick Actions</h2>
-                <p className="text-sm text-muted-foreground">Open the live operational screens.</p>
+                <h2 className="text-xl font-semibold text-white" style={displayFontStyle}>
+                  Quick actions
+                </h2>
+                <p className="text-sm text-slate-400">
+                  Jump directly into the operational screens you use the most.
+                </p>
               </div>
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/jobs')}>
-                <Briefcase className="w-4 h-4 mr-2" /> View All Jobs
-              </Button>
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/invoice-approvals')}>
-                <ShieldAlert className="w-4 h-4 mr-2" /> Invoice Approvals
-              </Button>
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/technicians')}>
-                <Users className="w-4 h-4 mr-2" /> Technician Roster
-              </Button>
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/dealerships')}>
-                <Building2 className="w-4 h-4 mr-2" /> Dealership Directory
-              </Button>
-            </CardContent>
-          </Card>
 
-          <Card className="border-border shadow-sm">
-            <CardContent className="p-6 space-y-4">
-              <div>
-                <h2 className="text-lg font-semibold">System Health</h2>
-                <p className="text-sm text-muted-foreground">Counts loaded from the active backend session.</p>
+              <div className="mt-5 space-y-3">
+                {quickActions.map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    onClick={action.onClick}
+                    className="group flex w-full items-start gap-4 rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 text-left transition-all duration-200 hover:border-cyan-300/25 hover:bg-white/[0.06]"
+                  >
+                    <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/10 p-2.5 text-cyan-100">
+                      <action.icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-white">{action.label}</p>
+                        <ArrowRight className="h-4 w-4 text-white/45 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-white" />
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-400">{action.description}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Jobs in DB</span>
-                <span className="font-semibold">{snapshot?.stats.jobs ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Technicians</span>
-                <span className="font-semibold">{snapshot?.stats.technicians ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Dealerships</span>
-                <span className="font-semibold">{snapshot?.stats.dealerships ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Invoices</span>
-                <span className="font-semibold">{snapshot?.stats.invoices ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
-                <span className="text-muted-foreground">Backend sync</span>
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+            </section>
+
+            <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,23,38,0.98),rgba(7,18,31,0.98))] p-6 shadow-[0_28px_90px_rgba(0,0,0,0.3)]">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-white" style={displayFontStyle}>
+                    System health
+                  </h2>
+                  <p className="text-sm text-slate-400">
+                    Backend counts and dispatch surface readiness at a glance.
+                  </p>
+                </div>
+                <div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100">
                   Live
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                {[
+                  { label: 'Jobs in DB', value: snapshot?.stats.jobs ?? 0 },
+                  { label: 'Technicians', value: snapshot?.stats.technicians ?? 0 },
+                  { label: 'Dealerships', value: snapshot?.stats.dealerships ?? 0 },
+                  { label: 'Invoices', value: snapshot?.stats.invoices ?? 0 },
+                ].map((item, index) => (
+                  <div
+                    key={item.label}
+                    className={cn(
+                      'flex items-center justify-between py-3 text-sm',
+                      index !== 0 && 'border-t border-white/8',
+                    )}
+                  >
+                    <span className="text-slate-400">{item.label}</span>
+                    <span className="font-semibold text-white">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-center justify-between rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    Sync status
+                  </p>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Dashboard is reading from the active admin backend session.
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="border-emerald-300/20 bg-emerald-300/10 text-emerald-100"
+                >
+                  Backend live
                 </Badge>
               </div>
-            </CardContent>
-          </Card>
+            </section>
+          </div>
         </div>
       </div>
     </div>

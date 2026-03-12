@@ -57,11 +57,63 @@ class QuickBooksInvoiceService:
                 payload=payload,
             )
         else:
-            response_payload = self._post_invoice(
+            existing_invoice = self._find_invoice_by_doc_number(
                 realm_id=connection.realm_id,
                 access_token=connection.access_token,
-                payload=payload,
+                doc_number=str(payload.get("DocNumber") or "").strip(),
             )
+            if existing_invoice is not None:
+                existing_qb_invoice_id = str(existing_invoice.get("Id") or "").strip()
+                existing_customer_id = str(((existing_invoice.get("CustomerRef") or {}).get("value")) or "").strip()
+                requested_customer_id = str(((payload.get("CustomerRef") or {}).get("value")) or "").strip()
+                if existing_customer_id and requested_customer_id and existing_customer_id != requested_customer_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=(
+                            f"QuickBooks invoice number '{payload.get('DocNumber')}' already exists for a different customer "
+                            f"(QuickBooks invoice Id {existing_qb_invoice_id})."
+                        ),
+                    )
+                response_payload = self._update_invoice(
+                    realm_id=connection.realm_id,
+                    access_token=connection.access_token,
+                    qb_invoice_id=existing_qb_invoice_id,
+                    payload=payload,
+                )
+            else:
+                try:
+                    response_payload = self._post_invoice(
+                        realm_id=connection.realm_id,
+                        access_token=connection.access_token,
+                        payload=payload,
+                    )
+                except HTTPException as exc:
+                    if not self._is_duplicate_doc_number_error(exc):
+                        raise
+                    existing_invoice = self._find_invoice_by_doc_number(
+                        realm_id=connection.realm_id,
+                        access_token=connection.access_token,
+                        doc_number=str(payload.get("DocNumber") or "").strip(),
+                    )
+                    if existing_invoice is None:
+                        raise
+                    existing_qb_invoice_id = str(existing_invoice.get("Id") or "").strip()
+                    existing_customer_id = str(((existing_invoice.get("CustomerRef") or {}).get("value")) or "").strip()
+                    requested_customer_id = str(((payload.get("CustomerRef") or {}).get("value")) or "").strip()
+                    if existing_customer_id and requested_customer_id and existing_customer_id != requested_customer_id:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail=(
+                                f"QuickBooks invoice number '{payload.get('DocNumber')}' already exists for a different customer "
+                                f"(QuickBooks invoice Id {existing_qb_invoice_id})."
+                            ),
+                        ) from exc
+                    response_payload = self._update_invoice(
+                        realm_id=connection.realm_id,
+                        access_token=connection.access_token,
+                        qb_invoice_id=existing_qb_invoice_id,
+                        payload=payload,
+                    )
 
         invoice_payload = response_payload.get("Invoice") if isinstance(response_payload, dict) else None
         resolved_qb_invoice_id = str((invoice_payload or {}).get("Id") or qb_invoice_id).strip()
@@ -232,6 +284,80 @@ class QuickBooksInvoiceService:
                 },
             )
         return response_payload
+
+    def _find_invoice_by_doc_number(
+        self,
+        *,
+        realm_id: str,
+        access_token: str,
+        doc_number: str,
+    ) -> dict[str, Any] | None:
+        if not doc_number:
+            return None
+        escaped_doc_number = doc_number.replace("\\", "\\\\").replace("'", "\\'")
+        response = requests.post(
+            f"{self._company_api_base()}/company/{realm_id}/query",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json",
+                "Content-Type": "application/text",
+            },
+            params={"minorversion": 75},
+            data=f"SELECT * FROM Invoice WHERE DocNumber = '{escaped_doc_number}' MAXRESULTS 2",
+            timeout=30,
+        )
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="QuickBooks invoice query response was not valid JSON.",
+            ) from exc
+
+        if not response.ok:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "message": "QuickBooks invoice lookup failed.",
+                    "provider_status": response.status_code,
+                    "provider_response": payload,
+                },
+            )
+
+        query_response = payload.get("QueryResponse") if isinstance(payload, dict) else None
+        invoices = query_response.get("Invoice") if isinstance(query_response, dict) else None
+        if isinstance(invoices, list):
+            return next((row for row in invoices if isinstance(row, dict)), None)
+        if isinstance(invoices, dict):
+            return invoices
+        return None
+
+    @staticmethod
+    def _is_duplicate_doc_number_error(exc: HTTPException) -> bool:
+        detail = exc.detail
+        if not isinstance(detail, dict):
+            return False
+        provider_response = detail.get("provider_response")
+        if not isinstance(provider_response, dict):
+            return False
+        fault = provider_response.get("Fault")
+        if not isinstance(fault, dict):
+            return False
+        errors = fault.get("Error")
+        if isinstance(errors, dict):
+            errors = [errors]
+        if not isinstance(errors, list):
+            return False
+        for error in errors:
+            if not isinstance(error, dict):
+                continue
+            code = str(error.get("code") or "").strip()
+            message = f"{error.get('Message') or ''} {error.get('Detail') or ''}".lower()
+            if code == "6140":
+                return True
+            if "duplicate" in message or "document en double" in message:
+                return True
+        return False
 
     @staticmethod
     def _company_api_base() -> str:

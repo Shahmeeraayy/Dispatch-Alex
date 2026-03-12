@@ -125,6 +125,12 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         }
         return response
 
+    def _invoice_lookup_empty_response(self) -> Mock:
+        response = Mock()
+        response.ok = True
+        response.json.return_value = {"QueryResponse": {}}
+        return response
+
     def _seed_dealership(self) -> Dealership:
         with SessionLocal() as db:
             row = Dealership(
@@ -212,7 +218,13 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[sync_preferences_response, sync_tax_code_response, invoice_preferences_response, mocked_response],
+            side_effect=[
+                sync_preferences_response,
+                sync_tax_code_response,
+                invoice_preferences_response,
+                self._invoice_lookup_empty_response(),
+                mocked_response,
+            ],
         ) as mocked_post:
             create_res = self.client.post(
                 "/invoices",
@@ -252,7 +264,13 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[sync_preferences_response, sync_tax_code_response, invoice_preferences_response, mocked_response],
+            side_effect=[
+                sync_preferences_response,
+                sync_tax_code_response,
+                invoice_preferences_response,
+                self._invoice_lookup_empty_response(),
+                mocked_response,
+            ],
         ):
             create_res = self.client.post(
                 "/invoices",
@@ -288,7 +306,13 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[create_sync_preferences_response, create_sync_tax_code_response, create_invoice_preferences_response, failing_response],
+            side_effect=[
+                create_sync_preferences_response,
+                create_sync_tax_code_response,
+                create_invoice_preferences_response,
+                self._invoice_lookup_empty_response(),
+                failing_response,
+            ],
         ):
             create_res = self.client.post(
                 "/invoices",
@@ -312,7 +336,13 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[retry_sync_preferences_response, retry_sync_tax_code_response, retry_invoice_preferences_response, success_response],
+            side_effect=[
+                retry_sync_preferences_response,
+                retry_sync_tax_code_response,
+                retry_invoice_preferences_response,
+                self._invoice_lookup_empty_response(),
+                success_response,
+            ],
         ):
             sync_res = self.client.post(f"/quickbooks/invoices/{invoice_id}", headers=self.auth_header)
 
@@ -337,7 +367,13 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[create_sync_preferences_response, create_sync_tax_code_response, create_invoice_preferences_response, create_response],
+            side_effect=[
+                create_sync_preferences_response,
+                create_sync_tax_code_response,
+                create_invoice_preferences_response,
+                self._invoice_lookup_empty_response(),
+                create_response,
+            ],
         ):
             create_res = self.client.post(
                 "/invoices",
@@ -403,7 +439,13 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[create_sync_preferences_response, create_sync_tax_code_response, create_invoice_preferences_response, failing_response],
+            side_effect=[
+                create_sync_preferences_response,
+                create_sync_tax_code_response,
+                create_invoice_preferences_response,
+                self._invoice_lookup_empty_response(),
+                failing_response,
+            ],
         ):
             create_res = self.client.post(
                 "/invoices",
@@ -428,7 +470,13 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
 
         with patch(
             "app.services.quickbooks_invoice_service.requests.post",
-            side_effect=[update_sync_preferences_response, update_sync_tax_code_response, update_invoice_preferences_response, success_response],
+            side_effect=[
+                update_sync_preferences_response,
+                update_sync_tax_code_response,
+                update_invoice_preferences_response,
+                self._invoice_lookup_empty_response(),
+                success_response,
+            ],
         ):
             update_res = self.client.put(
                 f"/invoices/{invoice_id}",
@@ -444,6 +492,63 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
         self.assertEqual(updated["qb_invoice_id"], "QB-INV-888")
         self.assertEqual(updated["qb_sync_status"], "synced")
         self.assertIsNone(updated["qb_sync_error"])
+
+    def test_create_invoice_links_existing_quickbooks_invoice_when_doc_number_already_exists(self):
+        self._seed_qb_connection()
+        self._seed_tax_codes()
+        dealership = self._seed_dealership()
+        job_id = self._seed_job_with_service_catalog(dealership)
+
+        lookup_response = Mock()
+        lookup_response.ok = True
+        lookup_response.json.return_value = {
+            "QueryResponse": {
+                "Invoice": {
+                    "Id": "QB-INV-EXISTING-2137",
+                    "DocNumber": "INV-0001",
+                    "CustomerRef": {"value": "QB-CUST-100"},
+                }
+            }
+        }
+        fetch_response = Mock()
+        fetch_response.ok = True
+        fetch_response.json.return_value = {"Invoice": {"Id": "QB-INV-EXISTING-2137", "SyncToken": "7"}}
+        update_response = Mock()
+        update_response.ok = True
+        update_response.json.return_value = {"Invoice": {"Id": "QB-INV-EXISTING-2137", "SyncToken": "8"}}
+
+        with patch(
+            "app.services.quickbooks_invoice_service.requests.post",
+            side_effect=[
+                self._preferences_response(True),
+                self._tax_code_query_response(),
+                self._preferences_response(True),
+                lookup_response,
+                update_response,
+            ],
+        ) as mocked_post, patch(
+            "app.services.quickbooks_invoice_service.requests.get",
+            return_value=fetch_response,
+        ) as mocked_get:
+            create_res = self.client.post(
+                "/invoices",
+                json={
+                    "dispatch_job_ids": [job_id],
+                    "terms": "NET_15",
+                    "shipping": "0.00",
+                    "status": "sent",
+                },
+                headers=self.auth_header,
+            )
+
+        self.assertEqual(create_res.status_code, 201, create_res.text)
+        created = create_res.json()
+        self.assertEqual(created["qb_invoice_id"], "QB-INV-EXISTING-2137")
+        self.assertEqual(created["qb_sync_status"], "synced")
+        mocked_get.assert_called_once()
+        sent_payload = mocked_post.call_args_list[-1].kwargs["json"]
+        self.assertEqual(sent_payload["Id"], "QB-INV-EXISTING-2137")
+        self.assertEqual(sent_payload["DocNumber"], created["invoice_number"])
 
     def test_create_invoice_fails_quickbooks_sync_when_sales_tax_disabled(self):
         self._seed_qb_connection()

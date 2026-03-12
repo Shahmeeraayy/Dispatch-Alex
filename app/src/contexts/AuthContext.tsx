@@ -1,7 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { User, UserRole } from '@/types';
 import { currentUser, technicianUser } from '@/mock/data';
-import { safeGetItem, safeParseJSON, safeSetItem, safeRemoveItem } from '@/lib/storage';
+import {
+  safeGetItem,
+  safeParseJSON,
+  safeSetItem,
+  safeRemoveItem,
+  safeRemoveItemFromScopes,
+  type StorageScope,
+} from '@/lib/storage';
 import {
   approveAdminTechnicianSignupRequest,
   clearStoredTechnicianToken,
@@ -116,7 +123,7 @@ interface AuthContextType {
   pendingTechnicianRequests: TechnicianSignupRequestSummary[];
   pendingTechnicianPasswordResetRequests: TechnicianPasswordResetRequestSummary[];
   syncAdminData: () => Promise<void>;
-  login: (email: string, password: string, role?: UserRole) => Promise<void>;
+  login: (email: string, password: string, role?: UserRole, options?: { remember?: boolean }) => Promise<void>;
   requestTechnicianSignup: (input: TechnicianSignupInput) => Promise<void>;
   approveTechnicianSignupRequest: (requestId: string) => Promise<void>;
   rejectTechnicianSignupRequest: (requestId: string) => Promise<void>;
@@ -132,8 +139,6 @@ const AUTH_STORAGE_KEY = 'sm_dispatch_auth_user';
 const TECHNICIANS_STORAGE_KEY = 'sm_dispatch_technician_accounts';
 const TECHNICIAN_SIGNUP_REQUESTS_STORAGE_KEY = 'sm_dispatch_technician_signup_requests';
 const ADMIN_EMAIL = currentUser.email.toLowerCase();
-const ADMIN_TOKEN_STORAGE_KEY = 'sm_dispatch_admin_access_token';
-const TECHNICIAN_TOKEN_STORAGE_KEY = 'sm_dispatch_technician_access_token';
 
 const DEFAULT_TECHNICIAN_ACCOUNTS: TechnicianAccount[] = [
   {
@@ -290,18 +295,29 @@ function mapBackendPasswordResetRequests(
   }));
 }
 
-function parseStoredUser(): User | null {
-  const raw = safeGetItem(AUTH_STORAGE_KEY);
-  if (!raw) {
-    return null;
+function parseStoredUser(): { user: User | null; scope: StorageScope } {
+  const scopes: StorageScope[] = ['local', 'session'];
+
+  for (const scope of scopes) {
+    const raw = safeGetItem(AUTH_STORAGE_KEY, scope);
+    if (!raw) {
+      continue;
+    }
+
+    try {
+      return {
+        user: JSON.parse(raw) as User,
+        scope,
+      };
+    } catch {
+      safeRemoveItem(AUTH_STORAGE_KEY, scope);
+    }
   }
 
-  try {
-    return JSON.parse(raw) as User;
-  } catch {
-    safeRemoveItem(AUTH_STORAGE_KEY);
-    return null;
-  }
+  return {
+    user: null,
+    scope: 'local',
+  };
 }
 
 function parseStoredTechnicians(): TechnicianAccount[] {
@@ -379,6 +395,7 @@ function parseStoredSignupRequests(): TechnicianSignupRequest[] {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [authStorageScope, setAuthStorageScope] = useState<StorageScope>('local');
   const [technicianAccounts, setTechnicianAccounts] = useState<TechnicianAccount[]>(DEFAULT_TECHNICIAN_ACCOUNTS);
   const [pendingTechnicianRequests, setPendingTechnicianRequests] = useState<TechnicianSignupRequest[]>([]);
   const [pendingTechnicianPasswordResetRequests, setPendingTechnicianPasswordResetRequests] = useState<TechnicianPasswordResetRequest[]>([]);
@@ -388,13 +405,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      setUser(parseStoredUser());
+      const restoredUser = parseStoredUser();
+      setUser(restoredUser.user);
+      setAuthStorageScope(restoredUser.scope);
       setTechnicianAccounts(parseStoredTechnicians());
       setPendingTechnicianRequests(parseStoredSignupRequests());
       setPendingTechnicianPasswordResetRequests([]);
 
-      const adminToken = safeGetItem(ADMIN_TOKEN_STORAGE_KEY);
-      const technicianToken = safeGetItem(TECHNICIAN_TOKEN_STORAGE_KEY);
+      const adminToken = getStoredAdminToken();
+      const technicianToken = getStoredTechnicianToken();
 
       setHasBackendAdminToken(Boolean(adminToken && adminToken.trim()));
       setHasBackendTechnicianToken(Boolean(technicianToken && technicianToken.trim()));
@@ -453,12 +472,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      safeSetItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+      const alternateScope = authStorageScope === 'local' ? 'session' : 'local';
+      safeRemoveItem(AUTH_STORAGE_KEY, alternateScope);
+      safeSetItem(AUTH_STORAGE_KEY, JSON.stringify(user), authStorageScope);
       return;
     }
 
-    safeRemoveItem(AUTH_STORAGE_KEY);
-  }, [user]);
+    safeRemoveItemFromScopes(AUTH_STORAGE_KEY);
+  }, [authStorageScope, user]);
 
   useEffect(() => {
     safeSetItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(technicianAccounts));
@@ -492,9 +513,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, [hasBackendTechnicianToken, user?.role]);
 
-  const login = useCallback(async (email: string, password: string, role: UserRole = 'admin') => {
+  const login = useCallback(async (
+    email: string,
+    password: string,
+    role: UserRole = 'admin',
+    options?: { remember?: boolean },
+  ) => {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = password.trim();
+    const persistSession = options?.remember === true;
+    const nextStorageScope: StorageScope = persistSession ? 'local' : 'session';
 
     if (!normalizedEmail || !normalizedPassword) {
       throw new Error('Email and password are required.');
@@ -505,10 +533,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: normalizedEmail,
         password: normalizedPassword,
       });
-      setStoredAdminToken(tokenResponse.access_token);
+      setStoredAdminToken(tokenResponse.access_token, persistSession);
       setHasBackendAdminToken(true);
       clearStoredTechnicianToken();
       setHasBackendTechnicianToken(false);
+      setAuthStorageScope(nextStorageScope);
       await refreshBackendAdminData();
 
       setUser({
@@ -524,7 +553,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: normalizedEmail,
         password: normalizedPassword,
       });
-      setStoredTechnicianToken(tokenResponse.access_token);
+      setStoredTechnicianToken(tokenResponse.access_token, persistSession);
       setHasBackendTechnicianToken(true);
 
       const backendProfile = await fetchTechnicianMeProfile(tokenResponse.access_token);
@@ -541,6 +570,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatedAt: nowIso,
       };
 
+      setAuthStorageScope(nextStorageScope);
       setTechnicianAccounts((prev) => {
         const existingIndex = prev.findIndex((item) => item.id === backendAccount.id);
         if (existingIndex === -1) {

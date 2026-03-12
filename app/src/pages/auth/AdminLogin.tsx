@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password, 'admin');
+      await login(email, password, 'admin', { remember: rememberSession });
       const destination = from && from.startsWith('/admin') ? from : '/admin';
       navigate(destination, { replace: true });
     } catch (error) {

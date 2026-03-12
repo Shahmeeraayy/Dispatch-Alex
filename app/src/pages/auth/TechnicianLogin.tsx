@@ -60,7 +60,7 @@ export default function TechnicianLoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password, 'technician');
+      await login(email, password, 'technician', { remember: rememberSession });
       const destination = from && from.startsWith('/tech') ? from : '/tech/jobs';
       navigate(destination, { replace: true });
     } catch (error) {

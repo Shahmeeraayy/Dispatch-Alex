@@ -1,4 +1,4 @@
-import { safeGetItem, safeRemoveItem, safeSetItem } from '@/lib/storage';
+import { safeGetItemFromScopes, safeRemoveItemFromScopes, safeSetItem } from '@/lib/storage';
 
 const ADMIN_TOKEN_STORAGE_KEY = 'sm_dispatch_admin_access_token';
 const TECHNICIAN_TOKEN_STORAGE_KEY = 'sm_dispatch_technician_access_token';
@@ -523,29 +523,31 @@ export function assertApiUrlConfigured(): void {
 }
 
 export function getStoredAdminToken(): string | null {
-  const raw = safeGetItem(ADMIN_TOKEN_STORAGE_KEY);
+  const raw = safeGetItemFromScopes(ADMIN_TOKEN_STORAGE_KEY);
   return raw && raw.trim() ? raw : null;
 }
 
-export function setStoredAdminToken(token: string): void {
-  safeSetItem(ADMIN_TOKEN_STORAGE_KEY, token);
+export function setStoredAdminToken(token: string, persist = true): void {
+  clearStoredAdminToken();
+  safeSetItem(ADMIN_TOKEN_STORAGE_KEY, token, persist ? 'local' : 'session');
 }
 
 export function clearStoredAdminToken(): void {
-  safeRemoveItem(ADMIN_TOKEN_STORAGE_KEY);
+  safeRemoveItemFromScopes(ADMIN_TOKEN_STORAGE_KEY);
 }
 
 export function getStoredTechnicianToken(): string | null {
-  const raw = safeGetItem(TECHNICIAN_TOKEN_STORAGE_KEY);
+  const raw = safeGetItemFromScopes(TECHNICIAN_TOKEN_STORAGE_KEY);
   return raw && raw.trim() ? raw : null;
 }
 
-export function setStoredTechnicianToken(token: string): void {
-  safeSetItem(TECHNICIAN_TOKEN_STORAGE_KEY, token);
+export function setStoredTechnicianToken(token: string, persist = true): void {
+  clearStoredTechnicianToken();
+  safeSetItem(TECHNICIAN_TOKEN_STORAGE_KEY, token, persist ? 'local' : 'session');
 }
 
 export function clearStoredTechnicianToken(): void {
-  safeRemoveItem(TECHNICIAN_TOKEN_STORAGE_KEY);
+  safeRemoveItemFromScopes(TECHNICIAN_TOKEN_STORAGE_KEY);
 }
 
 async function tryRefreshAdminToken(expiredToken: string): Promise<string | null> {

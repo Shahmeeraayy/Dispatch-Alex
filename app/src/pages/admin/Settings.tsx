@@ -3,14 +3,15 @@ import {
     AlertCircle,
     Pencil,
     RefreshCw,
-    Clock,
     KeyRound,
     Moon,
     Sun,
     Monitor,
     FileText,
     ListFilter,
-    PlusCircle
+    PlusCircle,
+    Building2,
+    ShieldCheck,
 } from 'lucide-react';
 import { MOCK_DEALERSHIPS as FALLBACK_DEALERSHIPS } from './Dealerships';
 import type { PriorityRule, UrgencyLevel } from '@/types';
@@ -569,23 +570,92 @@ export default function SettingsPage() {
 
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 pb-12">
+        <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
 
-            {/* 1. Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
-                    <p className="text-sm text-muted-foreground font-medium">System configuration, integrations, and reliability controls</p>
+                    <p className="text-sm text-muted-foreground font-medium">
+                        System configuration, dispatch ranking, invoice branding, and access controls.
+                    </p>
                 </div>
-                <div />
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-2 rounded-xl border-border bg-card px-4 shadow-sm hover:bg-muted"
+                        onClick={() => setRefreshSeed((current) => current + 1)}
+                    >
+                        <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                        Refresh
+                    </Button>
+                </div>
             </div>
 
-            <div className="grid gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <Card className="border-blue-200 bg-card shadow-sm">
+                    <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dispatch Rules</p>
+                                <p className="text-3xl font-bold text-foreground">{priorityRules.length}</p>
+                                <p className="text-sm text-muted-foreground">Ranking rules configured</p>
+                            </div>
+                            <div className="rounded-xl bg-blue-100 p-3 text-blue-700">
+                                <ListFilter className="w-5 h-5" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-emerald-200 bg-card shadow-sm">
+                    <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active Rules</p>
+                                <p className="text-3xl font-bold text-foreground">{priorityRules.filter((rule) => rule.isActive).length}</p>
+                                <p className="text-sm text-muted-foreground">Rules currently affecting queue ranking</p>
+                            </div>
+                            <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
+                                <ShieldCheck className="w-5 h-5" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-orange-200 bg-card shadow-sm">
+                    <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dealership Coverage</p>
+                                <p className="text-3xl font-bold text-foreground">{dealershipOptions.length}</p>
+                                <p className="text-sm text-muted-foreground">Dealerships available for rule targeting</p>
+                            </div>
+                            <div className="rounded-xl bg-orange-100 p-3 text-orange-700">
+                                <Building2 className="w-5 h-5" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 bg-card shadow-sm">
+                    <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">CRM Theme</p>
+                                <p className="text-3xl font-bold text-foreground">
+                                    {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'}
+                                </p>
+                                <p className="text-sm text-muted-foreground">Current interface appearance</p>
+                            </div>
+                            <div className="rounded-xl bg-slate-100 p-3 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                <Monitor className="w-5 h-5" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-                {/* Section G - Ranking Rules */}
+            <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
 
-
-                <Card className="border-border shadow-sm bg-card">
+                <Card className="border-border shadow-sm bg-card xl:row-span-2">
                     <CardHeader className="pb-4">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
@@ -842,6 +912,7 @@ export default function SettingsPage() {
                     </CardContent>
                 </Card>
 
+                <div className="space-y-6">
                 <Card className="border-border shadow-sm bg-card">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
@@ -1023,9 +1094,6 @@ export default function SettingsPage() {
                     </CardFooter>
                 </Card>
 
-                {/* Section F - Appearance (User Preference) */}
-
-
                 <Card className="border-border shadow-sm bg-card">
                     <CardHeader>
                         <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
@@ -1082,6 +1150,7 @@ export default function SettingsPage() {
                         </div>
                     </CardContent>
                 </Card>
+                </div>
 
             </div>
         </div>

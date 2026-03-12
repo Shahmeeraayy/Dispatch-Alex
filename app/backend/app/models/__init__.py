@@ -16,6 +16,7 @@ from .skill import Skill, technician_skills
 from .signup_request import SignupRequest
 from .technician import Technician
 from .technician_email_change_request import TechnicianEmailChangeRequest
+from .technician_password_reset_request import TechnicianPasswordResetRequest
 from .time_off import TimeOff
 from .working_hours import WorkingHours
 from .zone import Zone, technician_zones

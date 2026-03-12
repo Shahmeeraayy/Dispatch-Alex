@@ -124,6 +124,24 @@ export type BackendSignupRequest = {
   updated_at: string;
 };
 
+export type BackendTechnicianPasswordResetRequest = {
+  id: string;
+  technician_id: string;
+  technician_name?: string | null;
+  technician_email: string;
+  technician_phone?: string | null;
+  status: 'PENDING' | 'RESOLVED';
+  requested_at: string;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  remarks?: string | null;
+  updated_at: string;
+};
+
+export type BackendTechnicianPasswordResetRequestNotificationResponse = {
+  message: string;
+};
+
 export type BackendDealership = {
   id: string;
   qb_customer_id?: string | null;
@@ -783,6 +801,37 @@ export async function rejectAdminTechnicianSignupRequest(
     method: 'POST',
     token,
     body: { reason },
+  });
+}
+
+export async function requestTechnicianPasswordReset(
+  payload: { email: string },
+): Promise<BackendTechnicianPasswordResetRequestNotificationResponse> {
+  return requestJson<BackendTechnicianPasswordResetRequestNotificationResponse>('/auth/technician-password-reset-request', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function fetchAdminTechnicianPasswordResetRequests(
+  token: string,
+  status: 'PENDING' | 'RESOLVED' = 'PENDING',
+): Promise<BackendTechnicianPasswordResetRequest[]> {
+  const suffix = `?status=${encodeURIComponent(status)}`;
+  return requestJson<BackendTechnicianPasswordResetRequest[]>(`/admin/technician-password-reset-requests${suffix}`, {
+    token,
+  });
+}
+
+export async function resolveAdminTechnicianPasswordResetRequest(
+  token: string,
+  requestId: string,
+  remarks?: string,
+): Promise<BackendTechnicianPasswordResetRequest> {
+  return requestJson<BackendTechnicianPasswordResetRequest>(`/admin/technician-password-reset-requests/${requestId}/resolve`, {
+    method: 'POST',
+    token,
+    body: { remarks },
   });
 }
 

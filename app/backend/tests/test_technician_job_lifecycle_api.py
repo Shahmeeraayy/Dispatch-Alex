@@ -17,6 +17,7 @@ from app.models.base import Base
 from app.models.job import Job
 from app.models.job_event import JobEvent
 from app.models.technician import Technician
+from app.models.technician_password_reset_request import TechnicianPasswordResetRequest
 
 
 class TechnicianJobLifecycleApiTests(unittest.TestCase):
@@ -35,6 +36,7 @@ class TechnicianJobLifecycleApiTests(unittest.TestCase):
         with SessionLocal() as db:
             db.query(JobEvent).delete()
             db.query(Job).delete()
+            db.query(TechnicianPasswordResetRequest).delete()
             db.query(Technician).delete()
             db.commit()
 

@@ -50,7 +50,15 @@ const navItems = [
   { path: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
-function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+function Sidebar({
+  isOpen,
+  onClose,
+  pendingPasswordResetCount,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  pendingPasswordResetCount: number;
+}) {
   const location = useLocation();
   const activeItem = location.pathname;
 
@@ -102,7 +110,12 @@ function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
                 )}
               >
                 <Icon className={cn('w-5 h-5 transition-colors', isActive ? 'text-primary dark:text-cyan-300' : 'text-muted-foreground group-hover:text-foreground dark:text-slate-500 dark:group-hover:text-slate-200')} />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.path === '/admin/technician-accounts' && pendingPasswordResetCount > 0 ? (
+                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">
+                    {pendingPasswordResetCount}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -158,6 +171,7 @@ function UserMenu() {
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const { pendingTechnicianPasswordResetRequests } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState('Updated 2 min ago');
   const [qbStatus, setQbStatus] = useState<BackendQuickBooksConnectionStatus | null>(null);
@@ -251,7 +265,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="admin-shell min-h-screen bg-muted/40">
       <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          pendingPasswordResetCount={pendingTechnicianPasswordResetRequests.length}
+        />
 
         {/* Main content */}
         <main className="flex-1 min-w-0 flex flex-col min-h-screen">

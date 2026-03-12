@@ -22,6 +22,7 @@ from .api.endpoints import (
     integrations_quickbooks_webhooks,
     invoices,
     signup_requests,
+    technician_password_reset_requests,
     technician_profile,
     technician_time_off,
 )
@@ -186,6 +187,8 @@ app.include_router(integrations_quickbooks_oauth.router)
 app.include_router(integrations_quickbooks_webhooks.router)
 app.include_router(signup_requests.public_router)
 app.include_router(signup_requests.admin_router)
+app.include_router(technician_password_reset_requests.public_router)
+app.include_router(technician_password_reset_requests.admin_router)
 
 
 @app.exception_handler(OperationalError)

@@ -21,6 +21,7 @@ from app.models.job import Job
 from app.models.signup_request import SignupRequest
 from app.models.technician import Technician
 from app.models.technician_email_change_request import TechnicianEmailChangeRequest
+from app.models.technician_password_reset_request import TechnicianPasswordResetRequest
 from app.models.time_off import TimeOff
 from app.models.working_hours import WorkingHours
 from app.schemas.technician_profile import TechnicianAvailabilityUpdateRequest
@@ -31,7 +32,10 @@ class TechnicianProfileApiTests(unittest.TestCase):
     def setUpClass(cls):
         Base.metadata.create_all(bind=engine)
         cls.client = TestClient(app)
-        admin_token_response = cls.client.post("/auth/dev/admin-token")
+        admin_token_response = cls.client.post(
+            "/auth/dev/admin-token",
+            json={"email": "admin@sm2dispatch.com", "password": "admin123"},
+        )
         assert admin_token_response.status_code == 200
         cls.admin_auth_header = {"Authorization": f"Bearer {admin_token_response.json()['access_token']}"}
 
@@ -48,6 +52,7 @@ class TechnicianProfileApiTests(unittest.TestCase):
             db.query(Job).delete()
             db.query(SignupRequest).delete()
             db.query(TechnicianEmailChangeRequest).delete()
+            db.query(TechnicianPasswordResetRequest).delete()
             db.query(TimeOff).delete()
             db.query(WorkingHours).delete()
             db.query(Technician).delete()

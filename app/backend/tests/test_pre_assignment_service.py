@@ -17,6 +17,7 @@ from app.models.job import Job
 from app.models.job_event import JobEvent
 from app.models.skill import Skill, technician_skills
 from app.models.technician import Technician
+from app.models.technician_password_reset_request import TechnicianPasswordResetRequest
 from app.models.time_off import TimeOff
 from app.models.working_hours import WorkingHours
 from app.models.zone import Zone, technician_zones
@@ -42,6 +43,7 @@ class PreAssignmentServiceTests(unittest.TestCase):
             db.query(WorkingHours).delete()
             db.execute(technician_skills.delete())
             db.execute(technician_zones.delete())
+            db.query(TechnicianPasswordResetRequest).delete()
             db.query(Technician).delete()
             db.query(Skill).delete()
             db.query(Zone).delete()

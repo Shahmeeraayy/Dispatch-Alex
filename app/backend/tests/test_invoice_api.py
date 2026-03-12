@@ -24,6 +24,7 @@ from app.models.job_service import JobService
 from app.models.priority_rule import PriorityRule
 from app.models.service_catalog import ServiceCatalog
 from app.models.technician import Technician
+from app.models.technician_password_reset_request import TechnicianPasswordResetRequest
 
 
 class InvoiceApiTests(unittest.TestCase):
@@ -54,6 +55,7 @@ class InvoiceApiTests(unittest.TestCase):
             db.query(PriorityRule).delete()
             db.query(ServiceCatalog).delete()
             db.query(Job).delete()
+            db.query(TechnicianPasswordResetRequest).delete()
             db.query(Technician).delete()
             db.query(Dealership).delete()
             db.commit()

@@ -9,6 +9,7 @@ from ..models.job import Job
 from ..models.skill import Skill, technician_skills
 from ..models.technician import Technician
 from ..models.technician_email_change_request import TechnicianEmailChangeRequest
+from ..models.technician_password_reset_request import TechnicianPasswordResetRequest
 from ..models.time_off import TimeOff
 from ..models.working_hours import WorkingHours
 from ..models.zone import Zone, technician_zones
@@ -453,3 +454,105 @@ class TechnicianRepository:
         self.db.flush()
         self.db.refresh(row)
         return row
+
+    def list_password_reset_requests(self, *, status: Optional[str] = None) -> List[TechnicianPasswordResetRequest]:
+        query = self.db.query(TechnicianPasswordResetRequest)
+        if status is not None:
+            query = query.filter(TechnicianPasswordResetRequest.status == status)
+        return query.order_by(TechnicianPasswordResetRequest.requested_at.desc()).all()
+
+    def get_password_reset_request_by_id(self, request_id: UUID) -> Optional[TechnicianPasswordResetRequest]:
+        return (
+            self.db.query(TechnicianPasswordResetRequest)
+            .filter(TechnicianPasswordResetRequest.id == request_id)
+            .first()
+        )
+
+    def get_pending_password_reset_request(self, technician_id: UUID) -> Optional[TechnicianPasswordResetRequest]:
+        return (
+            self.db.query(TechnicianPasswordResetRequest)
+            .filter(
+                TechnicianPasswordResetRequest.technician_id == technician_id,
+                TechnicianPasswordResetRequest.status == "PENDING",
+            )
+            .order_by(TechnicianPasswordResetRequest.requested_at.desc())
+            .first()
+        )
+
+    def create_password_reset_request(
+        self,
+        *,
+        technician_id: UUID,
+        requested_email: str,
+    ) -> TechnicianPasswordResetRequest:
+        row = TechnicianPasswordResetRequest(
+            technician_id=technician_id,
+            requested_email=requested_email.lower(),
+            status="PENDING",
+        )
+        self.db.add(row)
+        self.db.flush()
+        self.db.refresh(row)
+        return row
+
+    def refresh_password_reset_request(
+        self,
+        row: TechnicianPasswordResetRequest,
+        *,
+        requested_email: str,
+        now: datetime,
+    ) -> TechnicianPasswordResetRequest:
+        row.requested_email = requested_email.lower()
+        row.status = "PENDING"
+        row.requested_at = now
+        row.updated_at = now
+        row.reviewed_by = None
+        row.reviewed_at = None
+        row.remarks = None
+        self.db.flush()
+        self.db.refresh(row)
+        return row
+
+    def mark_password_reset_request_resolved(
+        self,
+        row: TechnicianPasswordResetRequest,
+        *,
+        reviewer_id: Optional[UUID],
+        remarks: Optional[str],
+        now: datetime,
+    ) -> TechnicianPasswordResetRequest:
+        row.status = "RESOLVED"
+        row.reviewed_by = reviewer_id
+        row.reviewed_at = now
+        row.remarks = remarks
+        row.updated_at = now
+        self.db.flush()
+        self.db.refresh(row)
+        return row
+
+    def resolve_pending_password_reset_requests(
+        self,
+        technician_id: UUID,
+        *,
+        reviewer_id: Optional[UUID],
+        remarks: Optional[str],
+        now: datetime,
+    ) -> List[TechnicianPasswordResetRequest]:
+        rows = (
+            self.db.query(TechnicianPasswordResetRequest)
+            .filter(
+                TechnicianPasswordResetRequest.technician_id == technician_id,
+                TechnicianPasswordResetRequest.status == "PENDING",
+            )
+            .all()
+        )
+        for row in rows:
+            row.status = "RESOLVED"
+            row.reviewed_by = reviewer_id
+            row.reviewed_at = now
+            row.remarks = remarks
+            row.updated_at = now
+        self.db.flush()
+        for row in rows:
+            self.db.refresh(row)
+        return rows

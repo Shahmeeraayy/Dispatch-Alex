@@ -8,6 +8,7 @@ import {
   clearStoredAdminToken,
   createTechnicianSignupRequest,
   fetchAdminToken,
+  fetchAdminTechnicianPasswordResetRequests,
   fetchDevTechnicianToken,
   fetchTechnicianMeProfile,
   fetchAdminTechnicianSignupRequests,
@@ -15,6 +16,7 @@ import {
   getStoredAdminToken,
   getStoredTechnicianToken,
   rejectAdminTechnicianSignupRequest,
+  resolveAdminTechnicianPasswordResetRequest,
   setStoredAdminToken,
   setStoredTechnicianToken,
   updateAdminTechnician,
@@ -42,6 +44,19 @@ type TechnicianSignupRequest = {
   updatedAt: string;
 };
 
+type TechnicianPasswordResetRequest = {
+  id: string;
+  technicianId: string;
+  technicianName?: string;
+  technicianEmail: string;
+  technicianPhone?: string;
+  status: 'PENDING' | 'RESOLVED';
+  requestedAt: string;
+  reviewedAt?: string;
+  remarks?: string;
+  updatedAt: string;
+};
+
 export type TechnicianAccountSummary = {
   id: string;
   name: string;
@@ -59,6 +74,19 @@ export type TechnicianSignupRequestSummary = {
   email: string;
   phone?: string;
   requestedAt: string;
+  updatedAt: string;
+};
+
+export type TechnicianPasswordResetRequestSummary = {
+  id: string;
+  technicianId: string;
+  technicianName?: string;
+  technicianEmail: string;
+  technicianPhone?: string;
+  status: 'PENDING' | 'RESOLVED';
+  requestedAt: string;
+  reviewedAt?: string;
+  remarks?: string;
   updatedAt: string;
 };
 
@@ -86,11 +114,13 @@ interface AuthContextType {
   hasBackendTechnicianToken: boolean;
   technicianAccounts: TechnicianAccountSummary[];
   pendingTechnicianRequests: TechnicianSignupRequestSummary[];
+  pendingTechnicianPasswordResetRequests: TechnicianPasswordResetRequestSummary[];
   syncAdminData: () => Promise<void>;
   login: (email: string, password: string, role?: UserRole) => Promise<void>;
   requestTechnicianSignup: (input: TechnicianSignupInput) => Promise<void>;
   approveTechnicianSignupRequest: (requestId: string) => Promise<void>;
   rejectTechnicianSignupRequest: (requestId: string) => Promise<void>;
+  resolveTechnicianPasswordResetRequest: (requestId: string, remarks?: string) => Promise<void>;
   updateTechnicianAccount: (id: string, input: TechnicianAccountUpdateInput) => Promise<void>;
   setTechnicianAccountActive: (id: string, isActive: boolean) => Promise<void>;
   logout: () => void;
@@ -167,6 +197,23 @@ function toSignupRequestSummary(request: TechnicianSignupRequest): TechnicianSig
   };
 }
 
+function toPasswordResetRequestSummary(
+  request: TechnicianPasswordResetRequest,
+): TechnicianPasswordResetRequestSummary {
+  return {
+    id: request.id,
+    technicianId: request.technicianId,
+    technicianName: request.technicianName,
+    technicianEmail: request.technicianEmail,
+    technicianPhone: request.technicianPhone,
+    status: request.status,
+    requestedAt: request.requestedAt,
+    reviewedAt: request.reviewedAt,
+    remarks: request.remarks,
+    updatedAt: request.updatedAt,
+  };
+}
+
 function mapBackendTechnicianAccounts(
   backendRows: Array<{
     id: string;
@@ -211,6 +258,34 @@ function mapBackendPendingRequests(
     phone: row.phone ?? undefined,
     password: '',
     requestedAt: row.requested_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+function mapBackendPasswordResetRequests(
+  backendRows: Array<{
+    id: string;
+    technician_id: string;
+    technician_name?: string | null;
+    technician_email: string;
+    technician_phone?: string | null;
+    status: 'PENDING' | 'RESOLVED';
+    requested_at: string;
+    reviewed_at?: string | null;
+    remarks?: string | null;
+    updated_at: string;
+  }>,
+): TechnicianPasswordResetRequest[] {
+  return backendRows.map((row) => ({
+    id: row.id,
+    technicianId: row.technician_id,
+    technicianName: row.technician_name ?? undefined,
+    technicianEmail: normalizeEmail(row.technician_email),
+    technicianPhone: row.technician_phone ?? undefined,
+    status: row.status,
+    requestedAt: row.requested_at,
+    reviewedAt: row.reviewed_at ?? undefined,
+    remarks: row.remarks ?? undefined,
     updatedAt: row.updated_at,
   }));
 }
@@ -306,6 +381,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [technicianAccounts, setTechnicianAccounts] = useState<TechnicianAccount[]>(DEFAULT_TECHNICIAN_ACCOUNTS);
   const [pendingTechnicianRequests, setPendingTechnicianRequests] = useState<TechnicianSignupRequest[]>([]);
+  const [pendingTechnicianPasswordResetRequests, setPendingTechnicianPasswordResetRequests] = useState<TechnicianPasswordResetRequest[]>([]);
   const [hasBackendAdminToken, setHasBackendAdminToken] = useState<boolean>(false);
   const [hasBackendTechnicianToken, setHasBackendTechnicianToken] = useState<boolean>(false);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
@@ -315,6 +391,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(parseStoredUser());
       setTechnicianAccounts(parseStoredTechnicians());
       setPendingTechnicianRequests(parseStoredSignupRequests());
+      setPendingTechnicianPasswordResetRequests([]);
 
       const adminToken = safeGetItem(ADMIN_TOKEN_STORAGE_KEY);
       const technicianToken = safeGetItem(TECHNICIAN_TOKEN_STORAGE_KEY);
@@ -326,6 +403,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setTechnicianAccounts(DEFAULT_TECHNICIAN_ACCOUNTS);
       setPendingTechnicianRequests([]);
+      setPendingTechnicianPasswordResetRequests([]);
       setHasBackendAdminToken(false);
       setHasBackendTechnicianToken(false);
     } finally {
@@ -339,13 +417,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const [backendTechnicians, backendPending] = await Promise.all([
+    const [backendTechnicians, backendPending, backendPasswordResetRequests] = await Promise.all([
       fetchAdminTechnicians(token),
       fetchAdminTechnicianSignupRequests(token, 'pending'),
+      fetchAdminTechnicianPasswordResetRequests(token, 'PENDING'),
     ]);
 
     setTechnicianAccounts((prev) => mapBackendTechnicianAccounts(backendTechnicians, prev));
     setPendingTechnicianRequests(mapBackendPendingRequests(backendPending));
+    setPendingTechnicianPasswordResetRequests(mapBackendPasswordResetRequests(backendPasswordResetRequests));
   }, []);
 
   useEffect(() => {
@@ -588,6 +668,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPendingTechnicianRequests((prev) => prev.filter((item) => item.id !== requestId));
   }, [pendingTechnicianRequests, refreshBackendAdminData]);
 
+  const resolveTechnicianPasswordResetRequest = useCallback(async (requestId: string, remarks?: string) => {
+    const token = getStoredAdminToken();
+    if (!token) {
+      throw new Error('Admin session is required to resolve password reset requests.');
+    }
+
+    await resolveAdminTechnicianPasswordResetRequest(token, requestId, remarks);
+    await refreshBackendAdminData();
+  }, [refreshBackendAdminData]);
+
   const updateTechnicianAccount = useCallback(async (id: string, input: TechnicianAccountUpdateInput) => {
     const token = getStoredAdminToken();
     if (token) {
@@ -712,6 +802,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null);
+    setPendingTechnicianPasswordResetRequests([]);
     clearStoredAdminToken();
     clearStoredTechnicianToken();
     setHasBackendAdminToken(false);
@@ -743,11 +834,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasBackendTechnicianToken,
     technicianAccounts: technicianAccounts.map(toTechnicianSummary),
     pendingTechnicianRequests: pendingTechnicianRequests.map(toSignupRequestSummary),
+    pendingTechnicianPasswordResetRequests: pendingTechnicianPasswordResetRequests.map(toPasswordResetRequestSummary),
     syncAdminData,
     login,
     requestTechnicianSignup,
     approveTechnicianSignupRequest,
     rejectTechnicianSignupRequest,
+    resolveTechnicianPasswordResetRequest,
     updateTechnicianAccount,
     setTechnicianAccountActive,
     logout,

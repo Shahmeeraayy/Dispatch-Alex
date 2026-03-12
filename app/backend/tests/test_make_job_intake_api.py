@@ -21,6 +21,7 @@ from app.models.job import Job
 from app.models.job_event import JobEvent
 from app.models.skill import Skill, technician_skills
 from app.models.technician import Technician
+from app.models.technician_password_reset_request import TechnicianPasswordResetRequest
 from app.models.zone import Zone, technician_zones
 
 
@@ -41,6 +42,7 @@ class MakeJobIntakeApiTests(unittest.TestCase):
     def setUp(self):
         with SessionLocal() as db:
             db.query(Job).delete()
+            db.query(TechnicianPasswordResetRequest).delete()
             db.query(Technician).delete()
             db.query(Dealership).delete()
             db.commit()

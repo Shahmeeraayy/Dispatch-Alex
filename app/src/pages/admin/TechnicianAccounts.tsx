@@ -13,10 +13,12 @@ import {
   UserPlus,
   CheckCircle2,
   XCircle,
+  KeyRound,
 } from 'lucide-react';
 import {
   useAuth,
   type TechnicianAccountSummary,
+  type TechnicianPasswordResetRequestSummary,
   type TechnicianSignupRequestSummary,
 } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -62,11 +64,13 @@ export default function TechnicianAccountsPage() {
   const {
     technicianAccounts,
     pendingTechnicianRequests,
+    pendingTechnicianPasswordResetRequests,
     syncAdminData,
     updateTechnicianAccount,
     setTechnicianAccountActive,
     approveTechnicianSignupRequest,
     rejectTechnicianSignupRequest,
+    resolveTechnicianPasswordResetRequest,
   } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -117,6 +121,7 @@ export default function TechnicianAccountsPage() {
 
   const activeCount = technicianAccounts.filter((item) => item.isActive).length;
   const pendingCount = pendingTechnicianRequests.length;
+  const pendingPasswordResetCount = pendingTechnicianPasswordResetRequests.length;
   const hasSearchQuery = searchQuery.trim().length > 0;
 
   const filteredAccounts = useMemo(() => {
@@ -144,6 +149,19 @@ export default function TechnicianAccountsPage() {
       || (request.phone ?? '').toLowerCase().includes(query)
     );
   }, [pendingTechnicianRequests, searchQuery]);
+
+  const filteredPendingPasswordResetRequests = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return pendingTechnicianPasswordResetRequests;
+    }
+
+    return pendingTechnicianPasswordResetRequests.filter((request) =>
+      (request.technicianName ?? '').toLowerCase().includes(query)
+      || request.technicianEmail.toLowerCase().includes(query)
+      || (request.technicianPhone ?? '').toLowerCase().includes(query)
+    );
+  }, [pendingTechnicianPasswordResetRequests, searchQuery]);
 
   const openEditDialog = (account: TechnicianAccountSummary) => {
     setSelectedAccount(account);
@@ -226,6 +244,29 @@ export default function TechnicianAccountsPage() {
     }
   };
 
+  const handleOpenPasswordResetAccount = (request: TechnicianPasswordResetRequestSummary) => {
+    const account = technicianAccounts.find((item) => item.id === request.technicianId);
+    if (!account) {
+      window.alert('Technician account not found.');
+      return;
+    }
+    openEditDialog(account);
+  };
+
+  const handleResolvePasswordResetRequest = async (request: TechnicianPasswordResetRequestSummary) => {
+    const label = request.technicianName ?? request.technicianEmail;
+    if (!window.confirm(`Mark password reset request for ${label} as handled?`)) {
+      return;
+    }
+
+    try {
+      await resolveTechnicianPasswordResetRequest(request.id);
+      await runSync();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to resolve password reset request.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -246,7 +287,7 @@ export default function TechnicianAccountsPage() {
             <RefreshCw className="w-4 h-4" />
             Refresh
           </Button>
-          <div className="grid grid-cols-3 gap-3 md:w-[520px]">
+          <div className="grid grid-cols-2 gap-3 md:w-[680px] md:grid-cols-4">
             <Card className="p-3 border-gray-200">
               <p className="text-xs uppercase tracking-wide text-gray-500">Total Accounts</p>
               <p className="text-xl font-bold text-gray-900">{technicianAccounts.length}</p>
@@ -256,8 +297,12 @@ export default function TechnicianAccountsPage() {
               <p className="text-xl font-bold text-emerald-700">{activeCount}</p>
             </Card>
             <Card className="p-3 border-gray-200">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Pending Requests</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Pending Signups</p>
               <p className="text-xl font-bold text-amber-700">{pendingCount}</p>
+            </Card>
+            <Card className="p-3 border-gray-200">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Password Resets</p>
+              <p className="text-xl font-bold text-rose-700">{pendingPasswordResetCount}</p>
             </Card>
           </div>
         </div>
@@ -287,7 +332,7 @@ export default function TechnicianAccountsPage() {
             {isRefreshing ? 'Syncing data...' : syncError ? 'Sync failed' : 'Data synced'}
           </Badge>
           <Badge variant="outline" className="border-gray-200 text-gray-600">
-            Showing {filteredAccounts.length} accounts • {filteredPendingRequests.length} pending
+            Showing {filteredAccounts.length} accounts | {filteredPendingRequests.length} signup pending | {filteredPendingPasswordResetRequests.length} reset pending
           </Badge>
           {lastSyncedAt ? (
             <span className="text-xs text-gray-500">Last synced at {lastSyncedAt}</span>
@@ -319,6 +364,96 @@ export default function TechnicianAccountsPage() {
             </>
           ) : null}
         </div>
+      </Card>
+
+      <Card className="border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-100 bg-rose-50/40">
+          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-rose-600" />
+            Password Reset Requests
+            <Badge variant="secondary" className="bg-rose-100 text-rose-700 border border-rose-200">
+              {filteredPendingPasswordResetRequests.length}
+            </Badge>
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Technicians who clicked forgot password appear here until an admin handles their access request.
+          </p>
+        </div>
+        <Table>
+          <TableHeader className="bg-gray-50">
+            <TableRow>
+              <TableHead className="pl-6 w-[220px]">Technician</TableHead>
+              <TableHead className="w-[260px]">Contact</TableHead>
+              <TableHead className="w-[220px]">Requested At</TableHead>
+              <TableHead className="text-right pr-6">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredPendingPasswordResetRequests.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-28 text-center text-sm text-gray-500">
+                  {hasSearchQuery ? 'No password reset requests match your search.' : 'No pending password reset requests.'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredPendingPasswordResetRequests.map((request) => (
+                <TableRow key={request.id} className="hover:bg-[#fff7f7]">
+                  <TableCell className="pl-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center">
+                        <KeyRound className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{request.technicianName ?? 'Technician'}</p>
+                        <p className="text-xs text-gray-500 font-mono">{request.id}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="text-sm text-gray-700 flex items-center gap-2">
+                        <Mail className="w-3.5 h-3.5 text-gray-400" />
+                        <span>{request.technicianEmail}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-gray-400" />
+                        <span>{request.technicianPhone ? formatPhoneForDisplay(request.technicianPhone) : 'Not set'}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-gray-700 flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      <span>{formatDateTime(request.requestedAt)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="pr-6">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenPasswordResetAccount(request)}
+                        disabled={isRefreshing}
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Set Password
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-rose-600 hover:bg-rose-700"
+                        onClick={() => handleResolvePasswordResetRequest(request)}
+                        disabled={isRefreshing}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-1" />
+                        Mark Handled
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
       <Card className="border-gray-200">

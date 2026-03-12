@@ -228,6 +228,28 @@ class TechnicianAdminService:
             self.db.rollback()
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Technician email already exists") from exc
 
+        if "password" in update_fields and update_fields["password"]:
+            now_utc = datetime.now(timezone.utc)
+            resolved_rows = self.repo.resolve_pending_password_reset_requests(
+                technician_id,
+                reviewer_id=self.current_user.user_id,
+                remarks="Resolved when admin updated technician password.",
+                now=now_utc,
+            )
+            for request_row in resolved_rows:
+                AuditService.log_event(
+                    self.db,
+                    actor_role=UserRole.ADMIN,
+                    actor_id=self.current_user.user_id,
+                    action="admin.technician.password_reset.resolved",
+                    entity_type=AuditEntityType.TECHNICIAN_PASSWORD_RESET_REQUEST.value,
+                    entity_id=request_row.id,
+                    metadata={
+                        "technician_id": str(technician_id),
+                        "resolution": "password_updated",
+                    },
+                )
+
         audit_changes = dict(update_fields)
         if "password" in audit_changes:
             audit_changes["password"] = "[redacted]"

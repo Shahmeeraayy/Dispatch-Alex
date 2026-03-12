@@ -46,6 +46,11 @@ class Technician(Base):
         back_populates="technician",
         cascade="all, delete-orphan",
     )
+    password_reset_requests = relationship(
+        "TechnicianPasswordResetRequest",
+        back_populates="technician",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         CheckConstraint(

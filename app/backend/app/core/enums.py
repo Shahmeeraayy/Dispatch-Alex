@@ -32,6 +32,7 @@ class AuditEntityType(str, Enum):
     TECHNICIAN_SCHEDULE = "technician_schedule"
     TECHNICIAN_TIME_OFF = "technician_time_off"
     TECHNICIAN_EMAIL_CHANGE_REQUEST = "technician_email_change_request"
+    TECHNICIAN_PASSWORD_RESET_REQUEST = "technician_password_reset_request"
     JOB = "job"
     INVOICE = "invoice"
 

@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Wrench } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { requestTechnicianPasswordReset } from '@/lib/backend-api';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,8 +40,20 @@ export default function TechnicianLoginPage() {
   const [rememberSession, setRememberSession] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
 
   const from = (location.state as NavigationState | null)?.from;
+
+  const resetForgotPasswordState = (nextEmail?: string) => {
+    setForgotEmail((nextEmail ?? email).trim());
+    setForgotMessage(null);
+    setForgotError(null);
+    setIsForgotSubmitting(false);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,6 +68,28 @@ export default function TechnicianLoginPage() {
       setErrorMessage(error instanceof Error ? error.message : 'Sign in failed.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPasswordRequest = async () => {
+    setForgotError(null);
+    setForgotMessage(null);
+
+    const normalizedEmail = forgotEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setForgotError('Enter your technician email address.');
+      return;
+    }
+
+    setIsForgotSubmitting(true);
+    try {
+      const response = await requestTechnicianPasswordReset({ email: normalizedEmail });
+      setForgotEmail(normalizedEmail);
+      setForgotMessage(response.message);
+    } catch (error) {
+      setForgotError(error instanceof Error ? error.message : 'Unable to send password reset request.');
+    } finally {
+      setIsForgotSubmitting(false);
     }
   };
 
@@ -145,7 +180,15 @@ export default function TechnicianLoginPage() {
                   <Label htmlFor="tech-password" className="block text-sm font-medium text-slate-700">
                     Password
                   </Label>
-                  <Dialog>
+                  <Dialog
+                    open={isForgotPasswordOpen}
+                    onOpenChange={(open) => {
+                      setIsForgotPasswordOpen(open);
+                      if (open) {
+                        resetForgotPasswordState();
+                      }
+                    }}
+                  >
                     <DialogTrigger asChild>
                       <button
                         type="button"
@@ -158,19 +201,46 @@ export default function TechnicianLoginPage() {
                       <DialogHeader>
                         <DialogTitle>Forgot technician password</DialogTitle>
                         <DialogDescription>
-                          Technician password reset is currently handled through the admin team.
+                          Send a password reset request to the admin team. They will see it in the technician account portal and can update your password there.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-3 text-sm text-muted-foreground">
-                        <p>If you still have access, sign in and update your password from your technician profile.</p>
-                        <p>If you are locked out, contact admin to restore access or approve a new technician account.</p>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="forgot-tech-email">Technician Email</Label>
+                          <Input
+                            id="forgot-tech-email"
+                            type="email"
+                            value={forgotEmail}
+                            onChange={(event) => setForgotEmail(event.target.value)}
+                            autoComplete="email"
+                            placeholder="tech@sm2dispatch.com"
+                          />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Use the email tied to your technician account. If that account exists, the admin portal will receive your request immediately.
+                        </p>
+                        {forgotMessage && (
+                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                            {forgotMessage}
+                          </div>
+                        )}
+                        {forgotError && (
+                          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            {forgotError}
+                          </div>
+                        )}
                       </div>
                       <DialogFooter className="sm:justify-between">
                         <Button type="button" variant="outline" asChild>
                           <Link to="/tech/signup">Create account</Link>
                         </Button>
-                        <Button type="button" asChild className="bg-[#3b8d4f] hover:bg-[#2f7641]">
-                          <Link to="/admin/login">Contact admin</Link>
+                        <Button
+                          type="button"
+                          onClick={handleForgotPasswordRequest}
+                          disabled={isForgotSubmitting}
+                          className="bg-[#3b8d4f] hover:bg-[#2f7641]"
+                        >
+                          {isForgotSubmitting ? 'Sending...' : 'Notify admin'}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -185,7 +255,7 @@ export default function TechnicianLoginPage() {
                     onChange={(event) => setPassword(event.target.value)}
                     autoComplete="current-password"
                     required
-                    placeholder="••••••••"
+                    placeholder="********"
                     className="w-full rounded-lg border border-slate-200 px-4 py-3 pr-12 text-base outline-none transition-all focus-visible:border-[#3b8d4f] focus-visible:ring-2 focus-visible:ring-[#3b8d4f]/20"
                   />
                   <button
@@ -242,7 +312,7 @@ export default function TechnicianLoginPage() {
                   to="/admin/login"
                   className="ml-1 font-semibold text-[#008080] transition-colors hover:text-[#006666]"
                 >
-                  Go to admin login →
+                  Go to admin login {'->'}
                 </Link>
               </p>
             </footer>

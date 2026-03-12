@@ -30,6 +30,7 @@ from app.models.quickbooks_connection import QuickBooksConnection
 from app.models.quickbooks_tax_code import QuickBooksTaxCode
 from app.models.service_catalog import ServiceCatalog
 from app.models.technician import Technician
+from app.models.technician_password_reset_request import TechnicianPasswordResetRequest
 
 
 class QuickBooksInvoiceApiTests(unittest.TestCase):
@@ -61,6 +62,7 @@ class QuickBooksInvoiceApiTests(unittest.TestCase):
             db.query(QuickBooksConnection).delete()
             db.query(PriorityRule).delete()
             db.query(Job).delete()
+            db.query(TechnicianPasswordResetRequest).delete()
             db.query(Technician).delete()
             db.query(Dealership).delete()
             db.commit()

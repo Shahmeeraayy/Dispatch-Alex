@@ -45,6 +45,30 @@ const QUICK_RANGE_LABEL: Record<QuickRange, string> = {
 const numberFmt = new Intl.NumberFormat('en-US');
 const percentFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
 const currencyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const sectionCardClass = 'overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]';
+const sectionHeaderClass = 'border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] p-6';
+
+function metricCardClass(tone: 'cyan' | 'emerald' | 'amber' | 'violet' | 'rose'): string {
+  return cn(
+    'overflow-hidden rounded-[24px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+    tone === 'cyan' && 'border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))]',
+    tone === 'emerald' && 'border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))]',
+    tone === 'amber' && 'border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))]',
+    tone === 'violet' && 'border-violet-400/15 bg-[linear-gradient(180deg,rgba(30,23,49,0.96),rgba(18,16,33,0.96))]',
+    tone === 'rose' && 'border-rose-400/15 bg-[linear-gradient(180deg,rgba(42,16,25,0.96),rgba(28,15,23,0.96))]',
+  );
+}
+
+function metricIconClass(tone: 'cyan' | 'emerald' | 'amber' | 'violet' | 'rose'): string {
+  return cn(
+    'rounded-2xl border p-3',
+    tone === 'cyan' && 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+    tone === 'emerald' && 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
+    tone === 'amber' && 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+    tone === 'violet' && 'border-violet-300/20 bg-violet-300/10 text-violet-100',
+    tone === 'rose' && 'border-rose-300/20 bg-rose-300/10 text-rose-100',
+  );
+}
 
 function toDateInputValue(value: Date): string {
   const y = value.getFullYear();
@@ -243,328 +267,401 @@ export default function ReportsPage() {
   const kpis = overview?.kpis;
 
   return (
-    <div className="flex flex-col h-full space-y-6">
-      <div className="space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Reports</h1>
-            <p className="text-sm text-muted-foreground font-medium">Operational and financial performance overview</p>
-          </div>
+    <div className="relative mx-auto max-w-[1700px] pb-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[380px] rounded-[34px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_34%),radial-gradient(circle_at_top_right,rgba(52,211,153,0.08),rgba(52,211,153,0)_30%)]" />
+      <div className="pointer-events-none absolute left-8 top-8 h-40 w-40 rounded-full bg-cyan-400/8 blur-3xl" />
+      <div className="pointer-events-none absolute right-10 top-20 h-48 w-48 rounded-full bg-emerald-400/8 blur-3xl" />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="font-medium">
-              {QUICK_RANGE_LABEL[quickRange]}
-            </Badge>
-            <span className="text-xs text-muted-foreground">Range: {activeRangeLabel}</span>
-            <span className="text-xs text-muted-foreground">Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}</span>
+      <div className="relative space-y-6">
+        <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+          <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                <Briefcase className="h-3.5 w-3.5" />
+                Operational Analytics
+              </div>
+              <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                Reports
+                <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
+                  command deck
+                </span>
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                Monitor dispatch throughput, technician utilization, invoicing performance, and partner activity from one centralized reporting surface.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-cyan-100">
+                {QUICK_RANGE_LABEL[quickRange]}
+              </Badge>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
+                Range: {activeRangeLabel}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
+                Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}
+              </span>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <Card className="p-4 border-border/70 shadow-sm">
-          <div className="grid grid-cols-1 xl:grid-cols-[170px_1fr_auto_auto] gap-3 items-end">
-            <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Quick range</p>
-              <Select value={quickRange} onValueChange={(value) => handleQuickRangeChange(value as QuickRange)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="last_7_days">{QUICK_RANGE_LABEL.last_7_days}</SelectItem>
-                  <SelectItem value="last_30_days">{QUICK_RANGE_LABEL.last_30_days}</SelectItem>
-                  <SelectItem value="this_month">{QUICK_RANGE_LABEL.this_month}</SelectItem>
-                </SelectContent>
-              </Select>
+        <Card className={sectionCardClass}>
+          <div className={sectionHeaderClass}>
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[180px_1fr_auto_auto_auto] xl:items-end">
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Quick Range</p>
+                <Select value={quickRange} onValueChange={(value) => handleQuickRangeChange(value as QuickRange)}>
+                  <SelectTrigger className="h-10 border-white/10 bg-white/[0.04] text-slate-100">
+                    <SelectValue placeholder="Range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="last_7_days">{QUICK_RANGE_LABEL.last_7_days}</SelectItem>
+                    <SelectItem value="last_30_days">{QUICK_RANGE_LABEL.last_30_days}</SelectItem>
+                    <SelectItem value="this_month">{QUICK_RANGE_LABEL.this_month}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Custom Range</p>
+                <div className="flex min-h-10 flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                  <Calendar className="h-4 w-4 text-slate-400" />
+                  <Input
+                    type="date"
+                    value={fromDate}
+                    onChange={(event) => setFromDate(event.target.value)}
+                    className="h-7 min-w-[130px] border-0 bg-transparent px-1 text-xs text-slate-100 shadow-none focus-visible:ring-0"
+                  />
+                  <span className="text-xs text-slate-400">to</span>
+                  <Input
+                    type="date"
+                    value={toDate}
+                    onChange={(event) => setToDate(event.target.value)}
+                    className="h-7 min-w-[130px] border-0 bg-transparent px-1 text-xs text-slate-100 shadow-none focus-visible:ring-0"
+                  />
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                className="h-10 rounded-full bg-[#2F8E92] px-5 text-white shadow-[0_12px_30px_rgba(47,142,146,0.28)] hover:bg-[#267276]"
+                onClick={handleRefresh}
+                disabled={!canRunRange || loading}
+              >
+                {loading ? 'Applying...' : 'Apply Filters'}
+              </Button>
+
+              <Button variant="outline" size="sm" className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={handleExport} disabled={!overview || loading}>
+                <Download className="w-4 h-4" /> Export CSV
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]"
+                onClick={handleRefresh}
+                disabled={!canRunRange || loading}
+                title="Refresh"
+              >
+                <RefreshCw className={cn('w-4 h-4 text-cyan-200', loading && 'animate-spin')} />
+                Refresh
+              </Button>
             </div>
 
-            <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Custom range</p>
-              <div className="flex items-center gap-2 h-9 border border-border rounded-md px-2 bg-background">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={fromDate}
-                  onChange={(event) => setFromDate(event.target.value)}
-                  className="h-7 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
-                />
-                <span className="text-xs text-muted-foreground">to</span>
-                <Input
-                  type="date"
-                  value={toDate}
-                  onChange={(event) => setToDate(event.target.value)}
-                  className="h-7 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
-                />
+            {!canRunRange ? (
+              <p className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-xs text-rose-200">
+                Start date must be on or before end date.
+              </p>
+            ) : null}
+          </div>
+        </Card>
+
+        {error ? (
+          <Card className="rounded-[24px] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>{error}</span>
+              <Button variant="outline" size="sm" className="border-rose-300/20 bg-transparent text-rose-100 hover:bg-rose-400/10 hover:text-white" onClick={handleRefresh}>
+                Retry
+              </Button>
+            </div>
+          </Card>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <Card className={metricCardClass('cyan')}>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Jobs Created</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{numberFmt.format(kpis?.jobs_created ?? 0)}</div>}
+                  <p className="text-sm text-slate-300">New work orders in range</p>
+                </div>
+                <div className={metricIconClass('cyan')}>
+                  <Briefcase className="w-5 h-5" />
+                </div>
               </div>
             </div>
+          </Card>
 
-            <Button
-              size="sm"
-              className="h-9 bg-[#2F8E92] text-white hover:bg-[#267276]"
-              onClick={handleRefresh}
-              disabled={!canRunRange || loading}
-            >
-              {loading ? 'Applying...' : 'Apply Filters'}
-            </Button>
-
-            <Button variant="outline" size="sm" className="h-9 gap-2" onClick={handleExport} disabled={!overview || loading}>
-              <Download className="w-4 h-4" /> Export CSV
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-2"
-              onClick={handleRefresh}
-              disabled={!canRunRange || loading}
-              title="Refresh"
-            >
-              <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-              Refresh
-            </Button>
-          </div>
-
-          {!canRunRange ? (
-            <p className="mt-2 text-xs text-destructive">Start date must be on or before end date.</p>
-          ) : null}
-        </Card>
-      </div>
-
-      {error ? (
-        <Card className="p-4 border-red-200 bg-red-50/80 text-red-700 text-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <span>{error}</span>
-            <Button variant="outline" size="sm" className="border-red-200 text-red-700 hover:text-red-800" onClick={handleRefresh}>
-              Retry
-            </Button>
-          </div>
-        </Card>
-      ) : null}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        <Card className="p-4 border-border/70 shadow-sm">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Jobs Created</span>
-            <Briefcase className="w-4 h-4" />
-          </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{numberFmt.format(kpis?.jobs_created ?? 0)}</div>}
-        </Card>
-
-        <Card className="p-4 border-border/70 shadow-sm">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Jobs Completed</span>
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{numberFmt.format(kpis?.jobs_completed ?? 0)}</div>}
-        </Card>
-
-        <Card className="p-4 border-border/70 shadow-sm">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Technician Utilization</span>
-            <Users className="w-4 h-4" />
-          </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{percentFmt.format(kpis?.technician_utilization ?? 0)}%</div>}
-        </Card>
-
-        <Card className="p-4 border-border/70 shadow-sm">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Invoice Total</span>
-            <DollarSign className="w-4 h-4" />
-          </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{currencyFmt.format(kpis?.invoice_total ?? 0)}</div>}
-        </Card>
-
-        <Card className="p-4 border-border/70 shadow-sm">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Pending Approvals</span>
-            <FileWarning className="w-4 h-4" />
-          </div>
-          {loading ? <Skeleton className="h-8 w-20 mt-3" /> : <div className="mt-3 text-2xl font-bold">{numberFmt.format(kpis?.pending_approvals ?? 0)}</div>}
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Card className="p-5 border-border/70 shadow-sm">
-          <h2 className="text-lg font-semibold">Dispatch Performance</h2>
-          <p className="text-sm text-muted-foreground mb-4">Job status distribution for selected range</p>
-          {loading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : overview?.dispatch_performance.length ? (
-            <div className="space-y-3">
-              {overview.dispatch_performance.map((row) => (
-                <div key={row.status} className="rounded-lg border border-border p-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={dispatchBadgeTone(row)}>{row.status}</Badge>
-                      <span className="text-sm text-muted-foreground">{numberFmt.format(row.count)} jobs</span>
-                    </div>
-                    <span className="text-sm font-semibold">{percentFmt.format(row.percentage)}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-[#2F8E92]"
-                      style={{ width: `${Math.max(3, Math.min(100, row.percentage))}%` }}
-                    />
-                  </div>
+          <Card className={metricCardClass('emerald')}>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Jobs Completed</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{numberFmt.format(kpis?.jobs_completed ?? 0)}</div>}
+                  <p className="text-sm text-slate-300">Closed successfully in range</p>
                 </div>
-              ))}
+                <div className={metricIconClass('emerald')}>
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+              </div>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No dispatch records in selected period.</p>
-          )}
+          </Card>
+
+          <Card className={metricCardClass('violet')}>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Technician Utilization</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{percentFmt.format(kpis?.technician_utilization ?? 0)}%</div>}
+                  <p className="text-sm text-slate-300">Field capacity actively used</p>
+                </div>
+                <div className={metricIconClass('violet')}>
+                  <Users className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className={metricCardClass('amber')}>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Invoice Total</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{currencyFmt.format(kpis?.invoice_total ?? 0)}</div>}
+                  <p className="text-sm text-slate-300">Gross invoiced in selected range</p>
+                </div>
+                <div className={metricIconClass('amber')}>
+                  <DollarSign className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className={metricCardClass('rose')}>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pending Approvals</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{numberFmt.format(kpis?.pending_approvals ?? 0)}</div>}
+                  <p className="text-sm text-slate-300">Invoices still requiring action</p>
+                </div>
+                <div className={metricIconClass('rose')}>
+                  <FileWarning className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <Card className={sectionCardClass}>
+            <div className={sectionHeaderClass}>
+              <h2 className="text-base font-semibold text-white">Dispatch Performance</h2>
+              <p className="mt-1 text-sm text-slate-300">Job status distribution for selected range</p>
+            </div>
+            <div className="p-6 pt-5">
+              {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full bg-white/10" />
+                  <Skeleton className="h-10 w-full bg-white/10" />
+                  <Skeleton className="h-10 w-full bg-white/10" />
+                </div>
+              ) : overview?.dispatch_performance.length ? (
+                <div className="space-y-3">
+                  {overview.dispatch_performance.map((row) => (
+                    <div key={row.status} className="space-y-2 rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={cn(dispatchBadgeTone(row), 'border text-xs dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100')}>{row.status}</Badge>
+                          <span className="text-sm text-slate-400">{numberFmt.format(row.count)} jobs</span>
+                        </div>
+                        <span className="text-sm font-semibold text-white">{percentFmt.format(row.percentage)}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-[#2F8E92]"
+                          style={{ width: `${Math.max(3, Math.min(100, row.percentage))}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No dispatch records in selected period.</p>
+              )}
+            </div>
+          </Card>
+
+          <Card className={sectionCardClass}>
+            <div className={sectionHeaderClass}>
+              <h2 className="text-base font-semibold text-white">Invoice Performance</h2>
+              <p className="mt-1 text-sm text-slate-300">Invoicing lifecycle states</p>
+            </div>
+            <div className="p-6 pt-5">
+              {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full bg-white/10" />
+                  <Skeleton className="h-10 w-full bg-white/10" />
+                  <Skeleton className="h-10 w-full bg-white/10" />
+                </div>
+              ) : overview?.invoice_performance.length ? (
+                <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+                  <Table>
+                    <TableHeader className="bg-white/[0.04]">
+                      <TableRow>
+                        <TableHead className="text-slate-400">State</TableHead>
+                        <TableHead className="text-right text-slate-400">Count</TableHead>
+                        <TableHead className="text-right text-slate-400">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {overview.invoice_performance.map((row) => (
+                        <TableRow key={row.state} className="border-white/6">
+                          <TableCell>
+                            <Badge variant="outline" className={cn(statusBadgeTone(row), 'border text-xs dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100')}>{row.state}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-slate-200">{numberFmt.format(row.count)}</TableCell>
+                          <TableCell className="text-right font-medium text-white">{currencyFmt.format(row.total_amount)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No invoice records in selected period.</p>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <Card className={sectionCardClass}>
+          <div className={cn(sectionHeaderClass, 'flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between')}>
+            <div>
+              <h2 className="text-base font-semibold text-white">Technician Performance</h2>
+              <p className="text-xs text-slate-400">
+                Showing {numberFmt.format(filteredTechnicianRows.length)} of {numberFmt.format(overview?.technician_performance.length ?? 0)}
+              </p>
+            </div>
+            <Input
+              value={technicianFilter}
+              onChange={(event) => setTechnicianFilter(event.target.value)}
+              placeholder="Filter technician..."
+              className="h-10 rounded-full border-white/10 bg-white/[0.04] text-slate-100 placeholder:text-slate-500 lg:w-72"
+            />
+          </div>
+          <div className="p-6 pt-5">
+            {loading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full bg-white/10" />
+                <Skeleton className="h-10 w-full bg-white/10" />
+                <Skeleton className="h-10 w-full bg-white/10" />
+              </div>
+            ) : filteredTechnicianRows.length ? (
+              <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+                <Table>
+                  <TableHeader className="bg-white/[0.04]">
+                    <TableRow>
+                      <TableHead className="text-slate-400">Technician</TableHead>
+                      <TableHead className="text-right text-slate-400">Assigned</TableHead>
+                      <TableHead className="text-right text-slate-400">Completed</TableHead>
+                      <TableHead className="text-right text-slate-400">Avg Time</TableHead>
+                      <TableHead className="text-right text-slate-400">Delays</TableHead>
+                      <TableHead className="text-right text-slate-400">Refusals</TableHead>
+                      <TableHead className="text-right text-slate-400">Revenue</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTechnicianRows.map((row) => (
+                      <TableRow key={row.id} className="border-white/6">
+                        <TableCell className="font-medium text-white">{row.name}</TableCell>
+                        <TableCell className="text-right text-slate-200">{numberFmt.format(row.jobs_assigned)}</TableCell>
+                        <TableCell className="text-right text-slate-200">{numberFmt.format(row.jobs_completed)}</TableCell>
+                        <TableCell className="text-right text-slate-200">{row.avg_completion_time}</TableCell>
+                        <TableCell className="text-right text-slate-200">{numberFmt.format(row.delays_count)}</TableCell>
+                        <TableCell className="text-right text-slate-200">{numberFmt.format(row.refusals_count)}</TableCell>
+                        <TableCell className="text-right font-medium text-white">{currencyFmt.format(row.revenue_generated)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : overview?.technician_performance.length ? (
+              <p className="text-sm text-slate-400">No technicians match the current filter.</p>
+            ) : (
+              <p className="text-sm text-slate-400">No technician records found.</p>
+            )}
+          </div>
         </Card>
 
-        <Card className="p-5 border-border/70 shadow-sm">
-          <h2 className="text-lg font-semibold">Invoice Performance</h2>
-          <p className="text-sm text-muted-foreground mb-4">Invoicing lifecycle states</p>
-          {loading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+        <Card className={sectionCardClass}>
+          <div className={cn(sectionHeaderClass, 'flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between')}>
+            <div>
+              <h2 className="text-base font-semibold text-white">Dealership Overview</h2>
+              <p className="text-xs text-slate-400">
+                Showing {numberFmt.format(filteredDealershipRows.length)} of {numberFmt.format(overview?.dealership_performance.length ?? 0)}
+              </p>
             </div>
-          ) : overview?.invoice_performance.length ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>State</TableHead>
-                    <TableHead className="text-right">Count</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {overview.invoice_performance.map((row) => (
-                    <TableRow key={row.state}>
-                      <TableCell>
-                        <Badge variant="outline" className={statusBadgeTone(row)}>{row.state}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{numberFmt.format(row.count)}</TableCell>
-                      <TableCell className="text-right font-medium">{currencyFmt.format(row.total_amount)}</TableCell>
+            <Input
+              value={dealershipFilter}
+              onChange={(event) => setDealershipFilter(event.target.value)}
+              placeholder="Filter dealership..."
+              className="h-10 rounded-full border-white/10 bg-white/[0.04] text-slate-100 placeholder:text-slate-500 lg:w-72"
+            />
+          </div>
+          <div className="p-6 pt-5">
+            {loading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full bg-white/10" />
+                <Skeleton className="h-10 w-full bg-white/10" />
+                <Skeleton className="h-10 w-full bg-white/10" />
+              </div>
+            ) : filteredDealershipRows.length ? (
+              <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+                <Table>
+                  <TableHeader className="bg-white/[0.04]">
+                    <TableRow>
+                      <TableHead className="text-slate-400">Dealership</TableHead>
+                      <TableHead className="text-right text-slate-400">Created</TableHead>
+                      <TableHead className="text-right text-slate-400">Completed</TableHead>
+                      <TableHead className="text-right text-slate-400">Avg Res. Time</TableHead>
+                      <TableHead className="text-right text-slate-400">Flags</TableHead>
+                      <TableHead className="text-right text-slate-400">Total Invoiced</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No invoice records in selected period.</p>
-          )}
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDealershipRows.map((row) => (
+                      <TableRow key={row.id} className="border-white/6">
+                        <TableCell className="font-medium text-white">{row.name}</TableCell>
+                        <TableCell className="text-right text-slate-200">{numberFmt.format(row.jobs_created)}</TableCell>
+                        <TableCell className="text-right text-slate-200">{numberFmt.format(row.jobs_completed)}</TableCell>
+                        <TableCell className="text-right text-slate-200">{row.avg_resolution_time}</TableCell>
+                        <TableCell className="text-right text-slate-200">{numberFmt.format(row.attention_flags)}</TableCell>
+                        <TableCell className="text-right font-medium text-white">{currencyFmt.format(row.invoice_total)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : overview?.dealership_performance.length ? (
+              <p className="text-sm text-slate-400">No dealerships match the current filter.</p>
+            ) : (
+              <p className="text-sm text-slate-400">No dealership records found.</p>
+            )}
+          </div>
         </Card>
       </div>
-
-      <Card className="p-5 border-border/70 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Technician Performance</h2>
-            <p className="text-xs text-muted-foreground">
-              Showing {numberFmt.format(filteredTechnicianRows.length)} of {numberFmt.format(overview?.technician_performance.length ?? 0)}
-            </p>
-          </div>
-          <Input
-            value={technicianFilter}
-            onChange={(event) => setTechnicianFilter(event.target.value)}
-            placeholder="Filter technician..."
-            className="h-9 lg:w-72"
-          />
-        </div>
-        {loading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : filteredTechnicianRows.length ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Technician</TableHead>
-                  <TableHead className="text-right">Assigned</TableHead>
-                  <TableHead className="text-right">Completed</TableHead>
-                  <TableHead className="text-right">Avg Time</TableHead>
-                  <TableHead className="text-right">Delays</TableHead>
-                  <TableHead className="text-right">Refusals</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTechnicianRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell className="text-right">{numberFmt.format(row.jobs_assigned)}</TableCell>
-                    <TableCell className="text-right">{numberFmt.format(row.jobs_completed)}</TableCell>
-                    <TableCell className="text-right">{row.avg_completion_time}</TableCell>
-                    <TableCell className="text-right">{numberFmt.format(row.delays_count)}</TableCell>
-                    <TableCell className="text-right">{numberFmt.format(row.refusals_count)}</TableCell>
-                    <TableCell className="text-right font-medium">{currencyFmt.format(row.revenue_generated)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : overview?.technician_performance.length ? (
-          <p className="text-sm text-muted-foreground">No technicians match the current filter.</p>
-        ) : (
-          <p className="text-sm text-muted-foreground">No technician records found.</p>
-        )}
-      </Card>
-
-      <Card className="p-5 border-border/70 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Dealership Overview</h2>
-            <p className="text-xs text-muted-foreground">
-              Showing {numberFmt.format(filteredDealershipRows.length)} of {numberFmt.format(overview?.dealership_performance.length ?? 0)}
-            </p>
-          </div>
-          <Input
-            value={dealershipFilter}
-            onChange={(event) => setDealershipFilter(event.target.value)}
-            placeholder="Filter dealership..."
-            className="h-9 lg:w-72"
-          />
-        </div>
-        {loading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : filteredDealershipRows.length ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Dealership</TableHead>
-                  <TableHead className="text-right">Created</TableHead>
-                  <TableHead className="text-right">Completed</TableHead>
-                  <TableHead className="text-right">Avg Res. Time</TableHead>
-                  <TableHead className="text-right">Flags</TableHead>
-                  <TableHead className="text-right">Total Invoiced</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDealershipRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell className="text-right">{numberFmt.format(row.jobs_created)}</TableCell>
-                    <TableCell className="text-right">{numberFmt.format(row.jobs_completed)}</TableCell>
-                    <TableCell className="text-right">{row.avg_resolution_time}</TableCell>
-                    <TableCell className="text-right">{numberFmt.format(row.attention_flags)}</TableCell>
-                    <TableCell className="text-right font-medium">{currencyFmt.format(row.invoice_total)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : overview?.dealership_performance.length ? (
-          <p className="text-sm text-muted-foreground">No dealerships match the current filter.</p>
-        ) : (
-          <p className="text-sm text-muted-foreground">No dealership records found.</p>
-        )}
-      </Card>
     </div>
   );
 }

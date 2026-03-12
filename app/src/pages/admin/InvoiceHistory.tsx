@@ -53,8 +53,9 @@ const INVOICE_HISTORY_EXPORT_COLUMNS = [
     'Status',
 ];
 
-type InvoiceStatusFilter = 'all' | 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+type InvoiceStatusFilter = 'all' | 'draft' | 'sent' | 'sync_failed' | 'paid' | 'overdue' | 'cancelled';
 type InvoicePeriodFilter = 'all' | 'today' | '7d' | '30d' | '90d' | 'year';
+type InvoiceDisplayStatus = Exclude<InvoiceStatusFilter, 'all'>;
 
 const toNumber = (value: string | number | null | undefined): number => {
     if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -87,6 +88,55 @@ const extractJobCodeFromInvoice = (invoice: BackendInvoice): string => {
 };
 
 const resolveTechnician = (invoice: BackendInvoice): string => invoice.technician_name?.trim() || '-';
+
+const resolveInvoiceDisplayStatus = (
+    invoice: BackendInvoice,
+): {
+    value: InvoiceDisplayStatus;
+    label: string;
+    badgeClassName: string;
+} => {
+    if (invoice.qb_sync_status === 'failed') {
+        return {
+            value: 'sync_failed',
+            label: 'Sync Failed',
+            badgeClassName: 'bg-red-500/10 text-red-500 border-red-500/20',
+        };
+    }
+    if (invoice.status === 'paid') {
+        return {
+            value: 'paid',
+            label: 'Paid',
+            badgeClassName: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+        };
+    }
+    if (invoice.status === 'sent') {
+        return {
+            value: 'sent',
+            label: 'Sent',
+            badgeClassName: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+        };
+    }
+    if (invoice.status === 'overdue') {
+        return {
+            value: 'overdue',
+            label: 'Overdue',
+            badgeClassName: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+        };
+    }
+    if (invoice.status === 'cancelled') {
+        return {
+            value: 'cancelled',
+            label: 'Cancelled',
+            badgeClassName: 'bg-red-500/10 text-red-500 border-red-500/20',
+        };
+    }
+    return {
+        value: 'draft',
+        label: 'Draft',
+        badgeClassName: 'bg-gray-500/10 text-muted-foreground border-border',
+    };
+};
 
 const resolveQuickBooksSyncPresentation = (invoice: BackendInvoice) => {
     const syncStatus = invoice.qb_sync_status || 'pending';
@@ -177,7 +227,8 @@ export default function InvoiceHistoryPage() {
             technician.includes(query) ||
             inv.invoice_number.toLowerCase().includes(query);
 
-        const matchesStatus = filterStatus === 'all' || inv.status === filterStatus;
+        const displayStatus = resolveInvoiceDisplayStatus(inv);
+        const matchesStatus = filterStatus === 'all' || displayStatus.value === filterStatus;
 
         let matchesPeriod = true;
         if (filterPeriod !== 'all') {
@@ -252,7 +303,7 @@ export default function InvoiceHistoryPage() {
         Amount: toNumber(invoice.total),
         ApprovedAt: invoice.created_at,
         ApprovedBy: 'System',
-        Status: invoice.status,
+        Status: resolveInvoiceDisplayStatus(invoice).label,
     }));
 
     const handleExport = (selectedColumns: string[], format: ExportFormat = 'csv') => {
@@ -477,6 +528,7 @@ export default function InvoiceHistoryPage() {
                                 <SelectItem value="all">All Statuses</SelectItem>
                                 <SelectItem value="draft">Draft</SelectItem>
                                 <SelectItem value="sent">Sent</SelectItem>
+                                <SelectItem value="sync_failed">Sync Failed</SelectItem>
                                 <SelectItem value="paid">Paid</SelectItem>
                                 <SelectItem value="overdue">Overdue</SelectItem>
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -528,6 +580,9 @@ export default function InvoiceHistoryPage() {
                         </TableHeader>
                         <TableBody>
                             {filteredHistory.map((inv) => (
+                                (() => {
+                                    const displayStatus = resolveInvoiceDisplayStatus(inv);
+                                    return (
                                 <TableRow key={inv.id} className="hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => handleViewInvoice(inv)}>
                                     <TableCell className="pl-6 py-4">
                                         <div className="flex flex-col">
@@ -558,16 +613,9 @@ export default function InvoiceHistoryPage() {
                                     <TableCell className="text-center">
                                         <Badge
                                             variant="outline"
-                                            className={cn(
-                                                'capitalize text-[10px] px-2 py-0.5',
-                                                inv.status === 'paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                    inv.status === 'sent' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                        inv.status === 'overdue' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                                            inv.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                                'bg-gray-500/10 text-muted-foreground border-border',
-                                            )}
+                                            className={cn('text-[10px] px-2 py-0.5', displayStatus.badgeClassName)}
                                         >
-                                            {inv.status}
+                                            {displayStatus.label}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="pr-6 text-right">
@@ -576,6 +624,8 @@ export default function InvoiceHistoryPage() {
                                         </Button>
                                     </TableCell>
                                 </TableRow>
+                                    );
+                                })()
                             ))}
                         </TableBody>
                     </Table>
@@ -585,12 +635,20 @@ export default function InvoiceHistoryPage() {
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
                 <SheetContent className="sm:max-w-xl w-full flex flex-col p-0">
                     {selectedInvoice && (
+                        (() => {
+                            const displayStatus = resolveInvoiceDisplayStatus(selectedInvoice);
+                            return (
                         <>
                             <div className="p-6 bg-muted/30 border-b border-border">
                                 <SheetHeader>
                                     <div className="flex items-center justify-between mb-4">
-                                        <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                                            <CheckCircle2 className="w-3 h-3 mr-1" /> {selectedInvoice.status}
+                                        <Badge className={cn('border', displayStatus.badgeClassName)}>
+                                            {displayStatus.value === 'sync_failed' ? (
+                                                <AlertTriangle className="w-3 h-3 mr-1" />
+                                            ) : (
+                                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                            )}
+                                            {displayStatus.label}
                                         </Badge>
                                         <span className="text-xs text-muted-foreground">Source: Backend</span>
                                     </div>
@@ -684,6 +742,8 @@ export default function InvoiceHistoryPage() {
                                 </div>
                             </ScrollArea>
                         </>
+                            );
+                        })()
                     )}
                 </SheetContent>
             </Sheet>

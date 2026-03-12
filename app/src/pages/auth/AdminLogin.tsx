@@ -27,30 +27,30 @@ const shellBackgroundStyle: CSSProperties = {
 
 const meshPatternStyle: CSSProperties = {
   backgroundImage:
-    'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
+    'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
   backgroundSize: '120px 120px',
   backgroundPosition: '-1px -1px',
 };
 
 const spotlightStyle: CSSProperties = {
   background:
-    'radial-gradient(circle at top, rgba(255,255,255,0.22), rgba(255,255,255,0) 58%)',
+    'radial-gradient(circle at top, rgba(255,255,255,0.18), rgba(255,255,255,0) 58%)',
 };
 
 const commandPillars = [
   {
     title: 'Live Oversight',
-    detail: 'Technicians, jobs, approvals, and escalation paths aligned in one admin view.',
+    detail: 'Technicians, jobs, and escalations stay visible.',
     icon: LayoutDashboard,
   },
   {
-    title: 'Approval Flow',
-    detail: 'Keep invoice review, dispatch timing, and technician access requests moving fast.',
+    title: 'Approval Velocity',
+    detail: 'Review queues move faster with one clean surface.',
     icon: CheckCircle2,
   },
   {
-    title: 'Secure Control',
-    detail: 'Run the command layer with centralized credentials and cleaner operator handoff.',
+    title: 'Access Control',
+    detail: 'Technician accounts and admin actions stay protected.',
     icon: ShieldCheck,
   },
 ] as const;
@@ -62,24 +62,25 @@ const controlSignals = [
 ] as const;
 
 const workloadBars = [
-  { label: 'Job board', width: '88%', tint: 'from-cyan-300 to-cyan-500' },
-  { label: 'Technician flow', width: '74%', tint: 'from-emerald-300 to-emerald-500' },
-  { label: 'Invoice review', width: '61%', tint: 'from-sky-300 to-sky-500' },
-  { label: 'Access control', width: '83%', tint: 'from-teal-300 to-teal-500' },
+  { label: 'Dispatch board', width: '89%', tint: 'from-cyan-300 to-sky-400' },
+  { label: 'Technician flow', width: '76%', tint: 'from-emerald-300 to-emerald-500' },
+  { label: 'Invoice review', width: '64%', tint: 'from-sky-300 to-blue-500' },
 ] as const;
 
 const portalChecks = [
   {
     title: 'Protected admin surface',
-    detail: 'Role-aware access into dispatch, reporting, and settings.',
+    detail: 'Dispatch, tech accounts, reports, and settings in one secure layer.',
     icon: ShieldCheck,
   },
   {
-    title: 'Clean technician handoff',
-    detail: 'Jump into the technician portal without losing the control-center feel.',
-    icon: ArrowRight,
+    title: 'Polished across devices',
+    detail: 'Built to read cleanly on phones, laptops, and operations desks.',
+    icon: Sparkles,
   },
 ] as const;
+
+const capabilityPills = ['Dispatch control', 'Tech accounts', 'Invoice approvals'] as const;
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
@@ -111,38 +112,41 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#03131b] text-white antialiased" style={shellBackgroundStyle}>
+    <div
+      className="relative min-h-[100svh] overflow-x-hidden bg-[#03131b] text-white antialiased lg:overflow-hidden"
+      style={shellBackgroundStyle}
+    >
       <div className="pointer-events-none absolute inset-0 opacity-30" style={meshPatternStyle} />
-      <div className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full bg-cyan-400/18 blur-3xl" />
+      <div className="pointer-events-none absolute -left-20 top-16 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 h-96 w-96 rounded-full bg-teal-300/12 blur-3xl" />
 
-      <main className="relative mx-auto min-h-screen max-w-[1600px] px-4 py-4 sm:px-6 lg:flex lg:items-stretch lg:gap-6 lg:px-8 lg:py-6">
-        <section className="relative flex flex-col justify-between overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:p-8 lg:w-[58%] lg:p-10">
+      <main className="relative mx-auto flex min-h-[100svh] max-w-[1560px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:grid lg:h-[100svh] lg:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)] lg:gap-5 lg:px-6 lg:py-5">
+        <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.05] p-5 shadow-[0_28px_110px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:p-7 lg:flex lg:min-h-0 lg:flex-col lg:justify-between lg:p-8">
           <div className="pointer-events-none absolute inset-0 opacity-60" style={spotlightStyle} />
 
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-3 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-100">
+            <div className="inline-flex items-center gap-3 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100 sm:text-xs">
               <Sparkles className="h-4 w-4" />
               Dispatch Command Center
             </div>
 
-            <div className="mt-8 max-w-3xl">
-              <p className="text-sm font-medium uppercase tracking-[0.32em] text-cyan-100/70">
+            <div className="mt-6 max-w-3xl">
+              <p className="text-xs font-medium uppercase tracking-[0.34em] text-cyan-100/68 sm:text-sm">
                 SM2 Electronics
               </p>
-              <h1 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl lg:text-6xl">
-                Run dispatch, approvals, and technician access like an actual control room.
+              <h1 className="mt-4 max-w-4xl text-[clamp(2.65rem,4.3vw,5.15rem)] font-semibold leading-[0.93] tracking-[-0.06em] text-white">
+                Command dispatch, approvals, and technician access from one premium operations hub.
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-slate-200/78 sm:text-lg">
-                One admin surface for live field operations, queue management, technician account handling, and back-office decisions that should feel fast instead of improvised.
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200/78 sm:text-base lg:text-[1.02rem]">
+                A sharper admin surface for live field work, technician management, and back-office decisions that should look deliberate on every screen.
               </p>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-2.5">
               {controlSignals.map((signal) => (
                 <div
                   key={signal.label}
-                  className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-slate-100"
+                  className="inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-xs text-slate-100 sm:text-sm"
                 >
                   <span className={`h-2.5 w-2.5 rounded-full ${signal.tone} animate-pulse`} />
                   <span className="text-slate-300/75">{signal.label}</span>
@@ -151,147 +155,146 @@ export default function AdminLoginPage() {
               ))}
             </div>
 
-            <div className="mt-10 grid gap-4 xl:grid-cols-3">
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
               {commandPillars.map((pillar) => {
                 const Icon = pillar.icon;
                 return (
                   <div
                     key={pillar.title}
-                    className="rounded-[24px] border border-white/10 bg-slate-950/25 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm"
+                    className="rounded-[24px] border border-white/10 bg-slate-950/20 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm"
                   >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-300/12 text-cyan-100">
-                      <Icon className="h-5 w-5" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-300/12 text-cyan-100">
+                      <Icon className="h-4 w-4" />
                     </div>
-                    <h2 className="mt-5 text-xl font-semibold tracking-tight text-white">{pillar.title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-300/78">{pillar.detail}</p>
+                    <h2 className="mt-4 text-lg font-semibold tracking-tight text-white">{pillar.title}</h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-300/76">{pillar.detail}</p>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div className="relative z-10 mt-10 rounded-[30px] border border-white/10 bg-slate-950/35 p-4 shadow-[0_20px_80px_rgba(2,8,20,0.38)] backdrop-blur-lg sm:p-5">
-            <div className="flex flex-col gap-4 lg:flex-row">
-              <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-5 lg:w-[62%]">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-100/70">
-                      Operations Surface
-                    </p>
-                    <h2 className="mt-2 text-2xl font-semibold text-white">Command Board</h2>
-                  </div>
-                  <div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-medium text-emerald-100">
-                    Live admin layer
-                  </div>
-                </div>
-
-                <div className="mt-6 space-y-4">
-                  {workloadBars.map((bar) => (
-                    <div key={bar.label}>
-                      <div className="mb-2 flex items-center justify-between text-sm text-slate-300/80">
-                        <span>{bar.label}</span>
-                        <span>{bar.width}</span>
-                      </div>
-                      <div className="h-3 rounded-full bg-white/8">
-                        <div
-                          className={`h-3 rounded-full bg-gradient-to-r ${bar.tint}`}
-                          style={{ width: bar.width }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-300/65">Dispatch</p>
-                    <p className="mt-3 text-lg font-semibold text-white">Realtime board</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-300/65">Approvals</p>
-                    <p className="mt-3 text-lg font-semibold text-white">Fast review</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-300/65">Access</p>
-                    <p className="mt-3 text-lg font-semibold text-white">Operator control</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 lg:w-[38%]">
-                <div className="rounded-[26px] border border-white/10 bg-gradient-to-br from-cyan-300/14 to-transparent p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-cyan-100">
-                      <Bell className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.25em] text-slate-300/70">Queue Watch</p>
-                      <p className="mt-1 text-lg font-semibold text-white">Priority handoffs stay visible</p>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-300/78">
-                    Password reset requests, technician approvals, and invoice bottlenecks can be surfaced without the admin dashboard feeling flat or generic.
+          <div className="relative z-10 mt-6 hidden gap-4 lg:grid lg:min-h-0 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/30 p-5 shadow-[0_18px_60px_rgba(2,8,20,0.26)] backdrop-blur-lg">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100/68">
+                    Operations Surface
                   </p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">Command Board</h2>
                 </div>
+                <div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-medium text-emerald-100">
+                  Live admin layer
+                </div>
+              </div>
 
-                <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-300/12 text-emerald-100">
-                      <BarChart3 className="h-5 w-5" />
+              <div className="mt-5 space-y-4">
+                {workloadBars.map((bar) => (
+                  <div key={bar.label}>
+                    <div className="mb-2 flex items-center justify-between text-sm text-slate-300/80">
+                      <span>{bar.label}</span>
+                      <span>{bar.width}</span>
                     </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.25em] text-slate-300/70">Operator Confidence</p>
-                      <p className="mt-1 text-lg font-semibold text-white">Built for fast decisions</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
-                      <span>Tech management</span>
-                      <span className="font-semibold text-cyan-100">Centralized</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
-                      <span>Invoice approvals</span>
-                      <span className="font-semibold text-emerald-100">Streamlined</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
-                      <span>Dispatch flow</span>
-                      <span className="font-semibold text-teal-100">Visible</span>
+                    <div className="h-2.5 rounded-full bg-white/8">
+                      <div
+                        className={`h-2.5 rounded-full bg-gradient-to-r ${bar.tint}`}
+                        style={{ width: bar.width }}
+                      />
                     </div>
                   </div>
+                ))}
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300/65">Dispatch</p>
+                  <p className="mt-2 text-sm font-semibold text-white">Realtime board</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300/65">Approvals</p>
+                  <p className="mt-2 text-sm font-semibold text-white">Fast review</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300/65">Access</p>
+                  <p className="mt-2 text-sm font-semibold text-white">Operator control</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-4 text-sm text-slate-300/78 sm:flex-row sm:items-center sm:justify-between">
-              <p>Administrative workspace for SM2 field operations, technician access, and dispatch coordination.</p>
-              <p className="text-cyan-100/70">&copy; {new Date().getFullYear()} SM2 Electronics</p>
+            <div className="grid gap-4">
+              <div className="rounded-[28px] border border-white/10 bg-gradient-to-br from-cyan-300/14 to-transparent p-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-cyan-100">
+                    <Bell className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-300/70">Queue Watch</p>
+                    <p className="mt-1 text-lg font-semibold text-white">Priority handoffs stay visible</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-300/78">
+                  Password reset requests, technician approvals, and invoice bottlenecks stay clear without turning the page into a wall of boxes.
+                </p>
+              </div>
+
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-300/12 text-emerald-100">
+                    <BarChart3 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-300/70">Operator Pulse</p>
+                    <p className="mt-1 text-lg font-semibold text-white">Built for fast decisions</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-2.5">
+                  <div className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
+                    <span>Tech management</span>
+                    <span className="font-semibold text-cyan-100">Centralized</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
+                    <span>Invoice approvals</span>
+                    <span className="font-semibold text-emerald-100">Streamlined</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
+                    <span>Field visibility</span>
+                    <span className="font-semibold text-teal-100">Realtime</span>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div className="relative z-10 mt-6 flex flex-col gap-2 border-t border-white/10 pt-4 text-sm text-slate-300/76 sm:flex-row sm:items-center sm:justify-between">
+            <p>Administrative workspace for dispatch coordination, technician access, and approvals.</p>
+            <p className="text-cyan-100/70">&copy; {new Date().getFullYear()} SM2 Electronics</p>
           </div>
         </section>
 
-        <section className="mt-6 flex items-center justify-center lg:mt-0 lg:w-[42%]">
-          <div className="relative w-full max-w-[560px]">
-            <div className="absolute inset-3 rounded-[34px] bg-gradient-to-br from-cyan-300/30 via-white/10 to-teal-400/10 blur-3xl" />
+        <section className="relative flex items-center justify-center lg:min-h-0">
+          <div className="relative w-full max-w-[560px] lg:max-w-[540px]">
+            <div className="absolute inset-3 rounded-[34px] bg-gradient-to-br from-cyan-300/28 via-white/10 to-teal-400/10 blur-3xl" />
 
-            <div className="relative overflow-hidden rounded-[34px] border border-white/12 bg-[#f6f8fb]/95 p-6 text-slate-900 shadow-[0_30px_120px_rgba(0,0,0,0.4)] backdrop-blur-xl sm:p-8">
+            <div className="relative overflow-hidden rounded-[34px] border border-white/12 bg-[#f5f8fb]/95 p-5 text-slate-900 shadow-[0_30px_120px_rgba(0,0,0,0.38)] backdrop-blur-xl sm:p-7 lg:p-8">
               <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.22),rgba(255,255,255,0)_72%)]" />
 
               <div className="relative">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 shadow-sm">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 shadow-sm">
                       <ShieldCheck className="h-3.5 w-3.5 text-[#008c88]" />
                       Admin Portal
                     </div>
-                    <h2 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-[2.15rem]">
-                      Sign in to the control layer.
+                    <h2 className="mt-4 text-[clamp(2rem,3.1vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-slate-950">
+                      Sign in to the admin control layer.
                     </h2>
                     <p className="mt-3 max-w-md text-sm leading-6 text-slate-500 sm:text-[15px]">
                       Access dispatch oversight, technician management, reporting, invoicing, and settings from one protected workspace.
                     </p>
                   </div>
 
-                  <div className="rounded-[22px] border border-slate-200 bg-white/75 p-3 shadow-sm">
+                  <div className="rounded-[22px] border border-slate-200 bg-white/78 p-3 shadow-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
                       Status
                     </p>
@@ -302,9 +305,20 @@ export default function AdminLoginPage() {
                   </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-                  <div className="rounded-[28px] border border-slate-200 bg-white/80 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:p-6">
-                    <div className="space-y-5">
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {capabilityPills.map((capability) => (
+                    <span
+                      key={capability}
+                      className="rounded-full border border-slate-200 bg-white/78 px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm"
+                    >
+                      {capability}
+                    </span>
+                  ))}
+                </div>
+
+                <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                  <div className="rounded-[28px] border border-slate-200 bg-white/82 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:p-6">
+                    <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="admin-email" className="block text-sm font-semibold text-slate-700">
                           Email Address
@@ -317,7 +331,7 @@ export default function AdminLoginPage() {
                           autoComplete="email"
                           required
                           placeholder="admin@sm2dispatch.com"
-                          className="h-14 rounded-2xl border-slate-200 bg-white px-4 text-base shadow-sm transition-all focus-visible:border-[#008c88] focus-visible:ring-[#008c88]/20"
+                          className="h-13 rounded-2xl border-slate-200 bg-white px-4 text-base shadow-sm transition-all focus-visible:border-[#008c88] focus-visible:ring-[#008c88]/20"
                         />
                       </div>
 
@@ -326,7 +340,7 @@ export default function AdminLoginPage() {
                           <Label htmlFor="admin-password" className="block text-sm font-semibold text-slate-700">
                             Password
                           </Label>
-                          <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
                             Private session
                           </span>
                         </div>
@@ -340,7 +354,7 @@ export default function AdminLoginPage() {
                             autoComplete="current-password"
                             required
                             placeholder="********"
-                            className="h-14 rounded-2xl border-slate-200 bg-white px-4 pr-12 text-base shadow-sm transition-all focus-visible:border-[#008c88] focus-visible:ring-[#008c88]/20"
+                            className="h-13 rounded-2xl border-slate-200 bg-white px-4 pr-12 text-base shadow-sm transition-all focus-visible:border-[#008c88] focus-visible:ring-[#008c88]/20"
                           />
                           <button
                             type="button"
@@ -355,7 +369,7 @@ export default function AdminLoginPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-4 rounded-[24px] border border-slate-200/80 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-3 rounded-[24px] border border-slate-200/90 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <label className="flex items-center">
                       <input
                         id="remember-me"
@@ -388,7 +402,7 @@ export default function AdminLoginPage() {
                   </Button>
                 </form>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {portalChecks.map((check) => {
                     const Icon = check.icon;
                     return (
@@ -403,7 +417,7 @@ export default function AdminLoginPage() {
                   })}
                 </div>
 
-                <div className="mt-6 rounded-[26px] border border-slate-200 bg-gradient-to-r from-slate-950 to-slate-900 px-5 py-4 text-white shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
+                <div className="mt-5 rounded-[26px] border border-slate-200 bg-gradient-to-r from-slate-950 to-slate-900 px-5 py-4 text-white shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-100/70">

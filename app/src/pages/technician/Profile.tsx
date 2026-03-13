@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import TechnicianBottomNav from '@/components/common/technician-bottom-nav';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     fetchAdminTechnicians,
@@ -50,50 +51,6 @@ type OutOfOfficeRangeDraft = {
     end_date: string;
     note?: string;
 };
-
-function BottomNav({
-    activeTab,
-    routeBase,
-}: {
-    activeTab: 'jobs' | 'current-job' | 'history' | 'profile';
-    routeBase: string;
-}) {
-    const navigate = useNavigate();
-    const tabs = [
-        { id: 'jobs', label: 'Jobs', icon: Briefcase, path: `${routeBase}/jobs` },
-        { id: 'current-job', label: 'Current Job', icon: Calendar, path: `${routeBase}/current-job` },
-        { id: 'history', label: 'History', icon: Clock, path: `${routeBase}/history` },
-        { id: 'profile', label: 'Profile', icon: User, path: `${routeBase}/profile` },
-    ] as const;
-
-    return (
-        <div className="safe-area-bottom fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#08111f]/95 shadow-2xl backdrop-blur-xl">
-            <div className="mx-auto w-full px-3 py-2 sm:px-4">
-                <div className="flex items-center justify-around gap-1">
-                    {tabs.map((tab) => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => navigate(tab.path)}
-                                className={cn(
-                                    'flex flex-1 flex-col items-center justify-center gap-1 rounded-xl px-3 py-2.5 transition-all duration-200 min-h-[60px]',
-                                    isActive
-                                        ? 'bg-[#2F8E92]/15 text-cyan-200'
-                                        : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200',
-                                )}
-                            >
-                                <Icon className={cn('w-5 h-5', isActive && 'scale-110')} />
-                                <span className={cn('text-[11px] font-semibold', isActive && 'font-bold')}>{tab.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-        </div>
-    );
-}
 
 function hasOverlap(ranges: OutOfOfficeRangeDraft[]): boolean {
     const normalized = ranges
@@ -797,7 +754,7 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            <BottomNav activeTab="profile" routeBase={routeBase} />
+            <TechnicianBottomNav activeTab="profile" routeBase={routeBase} />
         </div>
     );
 }

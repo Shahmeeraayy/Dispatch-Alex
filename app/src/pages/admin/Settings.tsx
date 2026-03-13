@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     AlertCircle,
     Pencil,
@@ -141,8 +141,8 @@ const sectionFooterClass = 'border-t border-white/8 bg-white/[0.03] py-4';
 
 export default function SettingsPage() {
     const { hasBackendAdminToken } = useAuth();
-    const [refreshSeed, setRefreshSeed] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [savedInvoiceCompany, setSavedInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [invoiceCompany, setInvoiceCompany] = useState<InvoiceCompanyProfile>(() => loadInvoiceCompanyProfile());
     const [priorityRules, setPriorityRules] = useState<PriorityRule[]>([]);
@@ -164,189 +164,122 @@ export default function SettingsPage() {
     const MOCK_DEALERSHIPS = dealershipOptions.length > 0 ? dealershipOptions : FALLBACK_DEALERSHIPS;
 
     const { theme, setTheme } = useTheme();
-    useEffect(() => {
-        const handleAdminRefresh = () => {
-            setRefreshSeed((current) => current + 1);
-        };
+    const refreshSettingsData = useCallback(async () => {
+        const localProfile = loadInvoiceCompanyProfile();
+        setSavedInvoiceCompany(localProfile);
+        setInvoiceCompany(localProfile);
 
-        window.addEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
-        return () => {
-            window.removeEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
-        };
-    }, []);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const loadInvoiceBrandingSettings = async () => {
-            const localProfile = loadInvoiceCompanyProfile();
-            setSavedInvoiceCompany(localProfile);
-            setInvoiceCompany(localProfile);
-
-            const adminToken = getStoredAdminToken();
-            if (!hasBackendAdminToken || !adminToken) {
-                return;
-            }
-
-            try {
-                const backendProfileRaw = await fetchAdminInvoiceBrandingSettings(adminToken);
-                if (cancelled) {
-                    return;
-                }
-
-                const backendProfile = normalizeInvoiceCompanyProfile({
-                    logo_url: backendProfileRaw.logo_url ?? undefined,
-                    name: backendProfileRaw.name,
-                    street_address: backendProfileRaw.street_address,
-                    city: backendProfileRaw.city,
-                    state: backendProfileRaw.state,
-                    zip_code: backendProfileRaw.zip_code,
-                    phone: backendProfileRaw.phone,
-                    email: backendProfileRaw.email,
-                    website: backendProfileRaw.website,
-                });
-
-                setSavedInvoiceCompany(backendProfile);
-                setInvoiceCompany(backendProfile);
-                saveInvoiceCompanyProfile(backendProfile);
-            } catch {
-                // Keep local storage profile as fallback when backend is unavailable.
-            }
-        };
-
-        void loadInvoiceBrandingSettings();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [hasBackendAdminToken, refreshSeed]);
-
-    useEffect(() => {
         const adminToken = getStoredAdminToken();
         if (!hasBackendAdminToken || !adminToken) {
-            setSavedAdminCredentials(getDefaultAdminCredentialValues());
+            const fallbackValues = getDefaultAdminCredentialValues();
+            setSavedAdminCredentials(fallbackValues);
             setAdminCredentialForm((prev) => ({
                 ...prev,
-                ...getDefaultAdminCredentialValues(),
+                ...fallbackValues,
             }));
+            setDealershipOptions([]);
+            setServiceOptions([]);
+            setPriorityRules([]);
             return;
         }
 
-        let cancelled = false;
-        const loadAdminCredentials = async () => {
-            try {
-                const settings: BackendAdminCredentialSettings = await fetchAdminCredentialSettings(adminToken);
-                if (cancelled) {
-                    return;
-                }
+        setRefreshing(true);
+        try {
+            const [
+                brandingResult,
+                credentialsResult,
+                dealershipsResult,
+                servicesResult,
+                rulesResult,
+            ] = await Promise.allSettled([
+                fetchAdminInvoiceBrandingSettings(adminToken),
+                fetchAdminCredentialSettings(adminToken),
+                fetchAdminDealerships(adminToken),
+                fetchAdminServices(adminToken, true),
+                fetchAdminPriorityRules(adminToken),
+            ]);
 
+            if (brandingResult.status === 'fulfilled') {
+                const backendProfile = normalizeInvoiceCompanyProfile({
+                    logo_url: brandingResult.value.logo_url ?? undefined,
+                    name: brandingResult.value.name,
+                    street_address: brandingResult.value.street_address,
+                    city: brandingResult.value.city,
+                    state: brandingResult.value.state,
+                    zip_code: brandingResult.value.zip_code,
+                    phone: brandingResult.value.phone,
+                    email: brandingResult.value.email,
+                    website: brandingResult.value.website,
+                });
+                setSavedInvoiceCompany(backendProfile);
+                setInvoiceCompany(backendProfile);
+                saveInvoiceCompanyProfile(backendProfile);
+            }
+
+            if (credentialsResult.status === 'fulfilled') {
                 const nextValues = {
-                    adminEmail: settings.admin_email,
+                    adminEmail: credentialsResult.value.admin_email,
                 };
                 setSavedAdminCredentials(nextValues);
                 setAdminCredentialForm((prev) => ({
                     ...prev,
                     ...nextValues,
                 }));
-            } catch {
-                if (!cancelled) {
-                    const fallbackValues = getDefaultAdminCredentialValues();
-                    setSavedAdminCredentials(fallbackValues);
-                    setAdminCredentialForm((prev) => ({
-                        ...prev,
-                        ...fallbackValues,
-                    }));
-                }
+            } else {
+                const fallbackValues = getDefaultAdminCredentialValues();
+                setSavedAdminCredentials(fallbackValues);
+                setAdminCredentialForm((prev) => ({
+                    ...prev,
+                    ...fallbackValues,
+                }));
             }
-        };
 
-        void loadAdminCredentials();
-        return () => {
-            cancelled = true;
-        };
-    }, [hasBackendAdminToken, refreshSeed]);
-
-    useEffect(() => {
-        const adminToken = getStoredAdminToken();
-        if (!hasBackendAdminToken || !adminToken) {
-            setDealershipOptions([]);
-            return;
-        }
-
-        let cancelled = false;
-        const loadDealerships = async () => {
-            try {
-                const rows = await fetchAdminDealerships(adminToken);
-                if (cancelled) return;
+            if (dealershipsResult.status === 'fulfilled') {
                 setDealershipOptions(
-                    rows
+                    dealershipsResult.value
                         .map(mapBackendDealershipOption)
                         .filter((row) => row.name.length > 0),
                 );
-            } catch {
-                if (!cancelled) setDealershipOptions([]);
+            } else {
+                setDealershipOptions([]);
             }
-        };
 
-        void loadDealerships();
-        return () => {
-            cancelled = true;
-        };
-    }, [hasBackendAdminToken, refreshSeed]);
-
-    useEffect(() => {
-        const adminToken = getStoredAdminToken();
-        if (!hasBackendAdminToken || !adminToken) {
-            setServiceOptions([]);
-            return;
-        }
-
-        let cancelled = false;
-        const loadServices = async () => {
-            try {
-                const rows = await fetchAdminServices(adminToken, true);
-                if (cancelled) return;
-                const next = rows
+            if (servicesResult.status === 'fulfilled') {
+                const next = servicesResult.value
                     .map((row: BackendServiceCatalogItem) => ({
                         id: row.id,
                         name: row.name?.trim() || '',
                     }))
                     .filter((row) => row.name.length > 0);
                 setServiceOptions(next);
-            } catch {
-                if (!cancelled) setServiceOptions([]);
+            } else {
+                setServiceOptions([]);
             }
-        };
 
-        void loadServices();
-        return () => {
-            cancelled = true;
-        };
-    }, [hasBackendAdminToken, refreshSeed]);
+            if (rulesResult.status === 'fulfilled') {
+                setPriorityRules(rulesResult.value.map(mapBackendPriorityRule));
+            } else {
+                setPriorityRules([]);
+            }
+        } finally {
+            setRefreshing(false);
+        }
+    }, [hasBackendAdminToken]);
 
     useEffect(() => {
-        const adminToken = getStoredAdminToken();
-        if (!hasBackendAdminToken || !adminToken) {
-            setPriorityRules([]);
-            return;
-        }
+        void refreshSettingsData();
+    }, [refreshSettingsData]);
 
-        let cancelled = false;
-        const loadPriorityRules = async () => {
-            try {
-                const rows = await fetchAdminPriorityRules(adminToken);
-                if (cancelled) return;
-                setPriorityRules(rows.map(mapBackendPriorityRule));
-            } catch {
-                if (!cancelled) setPriorityRules([]);
-            }
+    useEffect(() => {
+        const handleAdminRefresh = () => {
+            void refreshSettingsData();
         };
 
-        void loadPriorityRules();
+        window.addEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
         return () => {
-            cancelled = true;
+            window.removeEventListener(ADMIN_REFRESH_EVENT, handleAdminRefresh);
         };
-    }, [hasBackendAdminToken, refreshSeed]);
+    }, [refreshSettingsData]);
 
     const saveInvoiceBrandingSettings = async (successMessage: string): Promise<boolean> => {
         const normalizedCompanyProfile: InvoiceCompanyProfile = normalizeInvoiceCompanyProfile(invoiceCompany);
@@ -604,9 +537,10 @@ export default function SettingsPage() {
                                 variant="outline"
                                 size="sm"
                                 className="h-10 gap-2 rounded-full border-white/12 bg-white/[0.04] px-4 text-slate-100 shadow-none hover:bg-white/[0.08] hover:text-white"
-                                onClick={() => setRefreshSeed((current) => current + 1)}
+                                onClick={() => void refreshSettingsData()}
+                                disabled={refreshing}
                             >
-                                <RefreshCw className="w-4 h-4 text-cyan-200" />
+                                <RefreshCw className={cn('w-4 h-4 text-cyan-200', refreshing && 'animate-spin')} />
                                 Refresh
                             </Button>
                         </div>

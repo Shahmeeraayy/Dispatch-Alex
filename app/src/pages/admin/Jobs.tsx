@@ -1884,7 +1884,7 @@ export default function JobsPage() {
                 <div className="pointer-events-none absolute left-8 top-8 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
                 <div className="pointer-events-none absolute right-10 top-10 h-44 w-44 rounded-full bg-blue-400/8 blur-3xl" />
 
-                <div className="relative grid gap-6 p-6 xl:grid-cols-[1.25fr_0.9fr] xl:p-8">
+                <div className="relative flex flex-col gap-6 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
                     <div>
                         <div
                             className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100"
@@ -1926,20 +1926,20 @@ export default function JobsPage() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-3 sm:flex-row xl:flex-col xl:items-stretch">
+                    <div className="flex flex-wrap items-center gap-3 xl:justify-end">
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-11 justify-center gap-2 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-slate-100 shadow-none hover:bg-white/[0.08] hover:text-white"
+                            className="h-11 gap-2 rounded-2xl border-white/10 bg-white/[0.04] px-4 text-slate-100 shadow-none hover:bg-white/[0.08] hover:text-white"
                             onClick={() => refreshJobs({ showErrorToast: true, background: false })}
                             disabled={loading}
                         >
-                            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+                            <RefreshCw className={cn('h-4 w-4 text-slate-300', loading && 'animate-spin')} />
                             Refresh
                         </Button>
                         <Button
                             size="sm"
-                            className="h-11 justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0ca6a6] to-[#149fcb] px-4 text-white shadow-[0_18px_44px_rgba(12,166,166,0.22)] hover:from-[#11b5b5] hover:to-[#1aaedf]"
+                            className="h-11 gap-2 rounded-2xl bg-gradient-to-r from-[#0ca6a6] to-[#149fcb] px-4 text-white shadow-[0_18px_44px_rgba(12,166,166,0.22)] hover:from-[#11b5b5] hover:to-[#1aaedf]"
                             onClick={() => setCreateJobOpen(true)}
                         >
                             <Plus className="h-4 w-4" />
@@ -1948,7 +1948,7 @@ export default function JobsPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-11 justify-center gap-2 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-slate-100 shadow-none hover:bg-white/[0.08] hover:text-white"
+                            className="h-11 gap-2 rounded-2xl border-white/10 bg-white/[0.04] px-4 text-slate-100 shadow-none hover:bg-white/[0.08] hover:text-white"
                             onClick={() => setExportModalOpen(true)}
                         >
                             <Download className="h-4 w-4 text-slate-300" />

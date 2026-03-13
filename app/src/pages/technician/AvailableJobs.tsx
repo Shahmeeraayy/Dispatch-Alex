@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import OverflowText from '@/components/common/overflow-text';
+import TechnicianBottomNav from '@/components/common/technician-bottom-nav';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -202,54 +203,6 @@ function JobCard({
                         <ArrowRight className="w-5 h-5 mr-2" />
                         Open Current Job
                     </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function BottomNav({
-    activeTab,
-    routeBase,
-}: {
-    activeTab: 'jobs' | 'current-job' | 'history' | 'profile';
-    routeBase: string;
-}) {
-    const navigate = useNavigate();
-
-    const tabs = [
-        { id: 'jobs', label: 'Jobs', icon: Briefcase, path: `${routeBase}/jobs` },
-        { id: 'current-job', label: 'Current Job', icon: Calendar, path: `${routeBase}/current-job` },
-        { id: 'history', label: 'History', icon: Clock, path: `${routeBase}/history` },
-        { id: 'profile', label: 'Profile', icon: User, path: `${routeBase}/profile` },
-    ] as const;
-
-    return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-2xl z-50 safe-area-bottom">
-            <div className="max-w-2xl mx-auto px-2 py-2">
-                <div className="flex items-center justify-around gap-1">
-                    {tabs.map((tab) => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.id;
-
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => navigate(tab.path)}
-                                className={cn(
-                                    "flex flex-col items-center justify-center gap-1 px-4 py-2.5 rounded-xl transition-all duration-200 flex-1",
-                                    isActive
-                                        ? "bg-[#2F8E92]/10 dark:bg-[#2F8E92]/20 text-[#2F8E92] dark:text-teal-400"
-                                        : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                                )}
-                            >
-                                <Icon className={cn("w-5 h-5", isActive && "scale-110")} />
-                                <span className={cn("text-xs font-semibold", isActive && "font-bold")}>
-                                    {tab.label}
-                                </span>
-                            </button>
-                        );
-                    })}
                 </div>
             </div>
         </div>
@@ -529,7 +482,7 @@ export default function AvailableJobsPage() {
             </div>
 
             {/* Bottom Navigation */}
-            <BottomNav activeTab="jobs" routeBase={routeBase} />
+            <TechnicianBottomNav activeTab="jobs" routeBase={routeBase} />
         </div>
     );
 }

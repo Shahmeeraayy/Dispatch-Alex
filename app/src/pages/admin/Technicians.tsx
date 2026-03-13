@@ -250,15 +250,15 @@ const mapBackendTechnician = (item: BackendTechnicianListItem, index: number): T
 // --- Components ---
 
 function StatusBadge({ status }: { status: 'active' | 'inactive' }) {
-    if (status === 'active') return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 shadow-none">Active</Badge>;
-    return <Badge variant="outline" className="text-gray-500 border-gray-200">Inactive</Badge>;
+    if (status === 'active') return <Badge className="border border-cyan-300/20 bg-cyan-300/12 text-cyan-100 hover:bg-cyan-300/12 shadow-none">Active</Badge>;
+    return <Badge variant="outline" className="border-white/10 bg-white/[0.03] text-slate-400">Inactive</Badge>;
 }
 
 function ProfileStat({
     label,
     value,
     hint,
-    valueClassName = 'text-gray-900',
+    valueClassName = 'text-white',
 }: {
     label: string;
     value: string;
@@ -266,10 +266,10 @@ function ProfileStat({
     valueClassName?: string;
 }) {
     return (
-        <div className="rounded-lg border border-gray-200 bg-gray-50/70 p-3">
-            <p className="text-[11px] uppercase tracking-wider text-gray-500">{label}</p>
+        <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">{label}</p>
             <p className={cn('mt-1 text-lg font-semibold leading-none', valueClassName)}>{value}</p>
-            {hint ? <p className="mt-1 text-[11px] text-gray-500">{hint}</p> : null}
+            {hint ? <p className="mt-1 text-[11px] text-slate-500">{hint}</p> : null}
         </div>
     );
 }
@@ -893,7 +893,7 @@ export default function TechniciansPage() {
                             <User className="h-3.5 w-3.5" />
                             Field Workforce
                         </div>
-                        <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                        <h1 className="mt-5 text-[clamp(2rem,3.4vw,3.2rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
                             Technicians
                             <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
                                 workforce board
@@ -902,6 +902,17 @@ export default function TechniciansPage() {
                         <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
                             Manage technician profiles, schedules, zones, skills, and availability across the active dispatch network.
                         </p>
+                        <div className="mt-5 flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-cyan-100">
+                                {totalTechCount} technicians
+                            </Badge>
+                            <Badge variant="outline" className="border-amber-300/20 bg-amber-300/10 px-3 py-1 text-amber-100">
+                                {busyTechniciansCount} busy now
+                            </Badge>
+                            <Badge variant="outline" className="border-white/10 bg-white/[0.04] px-3 py-1 text-slate-300">
+                                {zoneFilterOptions.length} zones
+                            </Badge>
+                        </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-3">
                     <Button variant="outline" size="sm" onClick={() => void fetchTechs()} className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" disabled={loading}>
@@ -960,104 +971,114 @@ export default function TechniciansPage() {
                 </div>
             </section>
 
-            <Card className={sectionCardClass}>
-                <div className="grid grid-cols-2 lg:grid-cols-4">
-                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-white/10">
-                        <p className="text-xs uppercase tracking-wider text-slate-400">Total Technicians</p>
-                        <p className="text-2xl font-semibold text-white mt-1">{totalTechCount}</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <Card className="overflow-hidden rounded-[24px] border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <div className="p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total Technicians</p>
+                        <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{totalTechCount}</p>
+                        <p className="mt-2 text-sm text-slate-300">Visible workforce profiles</p>
                     </div>
-                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-white/10">
-                        <p className="text-xs uppercase tracking-wider text-slate-400">Active</p>
-                        <p className="text-2xl font-semibold text-cyan-100 mt-1">{activeTechCount}</p>
+                </Card>
+                <Card className="overflow-hidden rounded-[24px] border border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <div className="p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active</p>
+                        <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{activeTechCount}</p>
+                        <p className="mt-2 text-sm text-slate-300">Ready for dispatch</p>
                     </div>
-                    <div className="p-4 lg:border-r border-white/10">
-                        <p className="text-xs uppercase tracking-wider text-slate-400">Inactive</p>
-                        <p className="text-2xl font-semibold text-slate-300 mt-1">{inactiveTechCount}</p>
+                </Card>
+                <Card className="overflow-hidden rounded-[24px] border border-violet-400/15 bg-[linear-gradient(180deg,rgba(30,23,49,0.96),rgba(18,16,33,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <div className="p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Inactive</p>
+                        <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{inactiveTechCount}</p>
+                        <p className="mt-2 text-sm text-slate-300">Profiles temporarily unavailable</p>
                     </div>
-                    <div className="p-4">
-                        <p className="text-xs uppercase tracking-wider text-slate-400">Assigned Jobs</p>
-                        <p className="text-2xl font-semibold text-amber-100 mt-1">{assignedJobsCount}</p>
-                        <p className="text-xs text-slate-400 mt-1">{busyTechniciansCount} technicians currently assigned</p>
+                </Card>
+                <Card className="overflow-hidden rounded-[24px] border border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <div className="p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Assigned Jobs</p>
+                        <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{assignedJobsCount}</p>
+                        <p className="mt-2 text-sm text-slate-300">{busyTechniciansCount} technicians currently assigned</p>
                     </div>
-                </div>
-            </Card>
+                </Card>
+            </div>
 
             {/* 2. Filter Bar */}
             <Card className={sectionCardClass}>
                 <div className={sectionHeaderClass}>
-                <div className="flex flex-col lg:flex-row gap-4 items-center">
-                    <div className="relative flex-1 w-full lg:w-auto min-w-0 lg:min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                            placeholder="Search technician, code, phone, zone, or skill..."
-                            className="h-11 rounded-full border-white/10 bg-white/[0.04] pl-9 text-slate-100 placeholder:text-slate-500 focus:bg-white/[0.06] transition-all"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                        />
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+                            <div>
+                                <h2 className="text-base font-semibold text-white">Technician Filters</h2>
+                                <p className="mt-1 text-sm text-slate-300">Search by technician identity, routing zone, or skill coverage.</p>
+                            </div>
+                            <Badge variant="outline" className="w-fit border-white/10 bg-white/[0.03] text-slate-300">
+                                Showing {filteredTechs.length} of {totalTechCount}
+                            </Badge>
+                        </div>
+                        <div className="flex flex-col lg:flex-row gap-4 items-center">
+                            <div className="relative flex-1 w-full lg:w-auto min-w-0 lg:min-w-[300px]">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Input
+                                    placeholder="Search technician, code, phone, zone, or skill..."
+                                    className="h-11 rounded-full border-white/10 bg-white/[0.04] pl-9 text-slate-100 placeholder:text-slate-500 focus:bg-white/[0.06] transition-all"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                    <SelectTrigger className="h-11 w-full sm:w-[140px] border-white/10 bg-white/[0.04] text-slate-100">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Status</SelectItem>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="inactive">Inactive</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={filterZone} onValueChange={setFilterZone}>
+                                    <SelectTrigger className="h-11 w-full sm:w-[160px] border-white/10 bg-white/[0.04] text-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <MapPin className="w-4 h-4" />
+                                            <SelectValue placeholder="Zone" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Zone</SelectItem>
+                                        {zoneFilterOptions.map((zone) => (
+                                            <SelectItem key={zone} value={zone}>
+                                                {zone}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={filterSkill} onValueChange={setFilterSkill}>
+                                    <SelectTrigger className="h-11 w-full sm:w-[170px] border-white/10 bg-white/[0.04] text-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <Briefcase className="w-4 h-4" />
+                                            <SelectValue placeholder="Skills" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Skills</SelectItem>
+                                        {skillFilterOptions.map((skill) => (
+                                            <SelectItem key={skill} value={skill}>
+                                                {skill}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {hasActiveFilters ? (
+                                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-slate-400 hover:text-slate-200">
+                                        Clear Filters
+                                    </Button>
+                                ) : null}
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-                        <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className="h-11 w-full sm:w-[140px] border-white/10 bg-white/[0.04] text-slate-100">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Select value={filterZone} onValueChange={setFilterZone}>
-                            <SelectTrigger className="h-11 w-full sm:w-[160px] border-white/10 bg-white/[0.04] text-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="w-4 h-4" />
-                                    <SelectValue placeholder="Zone" />
-                                </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Zone</SelectItem>
-                                {zoneFilterOptions.map((zone) => (
-                                    <SelectItem key={zone} value={zone}>
-                                        {zone}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={filterSkill} onValueChange={setFilterSkill}>
-                            <SelectTrigger className="h-11 w-full sm:w-[170px] border-white/10 bg-white/[0.04] text-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <Briefcase className="w-4 h-4" />
-                                    <SelectValue placeholder="Skills" />
-                                </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Skills</SelectItem>
-                                {skillFilterOptions.map((skill) => (
-                                    <SelectItem key={skill} value={skill}>
-                                        {skill}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                        <div className="h-6 w-px bg-white/10 mx-2" />
-
-                        <Badge variant="secondary" className="cursor-pointer border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
-                            Active ({activeTechCount})
-                        </Badge>
-                        <Badge variant="secondary" className="cursor-pointer border border-amber-300/20 bg-amber-300/10 text-amber-100">
-                            Assigned Jobs ({assignedJobsCount})
-                        </Badge>
-                        <Badge variant="outline" className="border-white/10 bg-white/[0.03] text-slate-300">
-                            Showing {filteredTechs.length} of {totalTechCount}
-                        </Badge>
-                        {hasActiveFilters ? (
-                            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-slate-400 hover:text-slate-200">
-                                Clear Filters
-                            </Button>
-                        ) : null}
-                    </div>
-                </div>
                 </div>
             </Card>
 
@@ -1083,13 +1104,11 @@ export default function TechniciansPage() {
                     <Table>
                         <TableHeader className="bg-white/[0.04] sticky top-0 z-10">
                             <TableRow>
-                                <TableHead className="pl-6 w-[200px] text-slate-400">Technician</TableHead>
-                                <TableHead className="w-[120px] text-slate-400">Code</TableHead>
-                                <TableHead className="w-[140px] text-slate-400">Phone</TableHead>
+                                <TableHead className="pl-6 w-[280px] text-slate-400">Technician</TableHead>
                                 <TableHead className="w-[100px] text-slate-400">Status</TableHead>
                                 <TableHead className="w-[120px] text-slate-400">Active Jobs</TableHead>
-                                <TableHead className="w-[200px] text-slate-400">Zones</TableHead>
-                                <TableHead className="w-[200px] text-slate-400">Skills</TableHead>
+                                <TableHead className="w-[180px] text-slate-400">Zones</TableHead>
+                                <TableHead className="w-[180px] text-slate-400">Skills</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -1103,6 +1122,11 @@ export default function TechniciansPage() {
                                     <TableCell className="pl-6">
                                         <div className="flex flex-col gap-1">
                                             <span className="font-medium text-white group-hover:text-cyan-100">{tech.name}</span>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <span className="font-mono">{tech.tech_code}</span>
+                                                <span>•</span>
+                                                <span>{formatPhoneForDisplay(tech.phone)}</span>
+                                            </div>
                                             {tech.has_pending_email_change_request ? (
                                                 <Badge
                                                     variant="outline"
@@ -1113,8 +1137,6 @@ export default function TechniciansPage() {
                                             ) : null}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs text-slate-500">{tech.tech_code}</TableCell>
-                                    <TableCell className="text-slate-400 text-sm">{formatPhoneForDisplay(tech.phone)}</TableCell>
                                     <TableCell>
                                         <StatusBadge status={tech.status} />
                                     </TableCell>
@@ -1133,18 +1155,18 @@ export default function TechniciansPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1">
-                                            {tech.zones.slice(0, 2).map(z => (
+                                            {tech.zones.slice(0, 1).map(z => (
                                                 <Badge key={z} variant="secondary" className="text-[10px] h-5 px-1.5 border border-white/10 bg-white/[0.04] text-slate-300">{z}</Badge>
                                             ))}
-                                            {tech.zones.length > 2 && <span className="text-[10px] text-slate-500">+{tech.zones.length - 2}</span>}
+                                            {tech.zones.length > 1 && <span className="text-[10px] text-slate-500">+{tech.zones.length - 1}</span>}
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1">
-                                            {tech.skills.slice(0, 2).map(s => (
+                                            {tech.skills.slice(0, 1).map(s => (
                                                 <Badge key={s} variant="secondary" className="text-[10px] h-5 px-1.5 border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">{s}</Badge>
                                             ))}
-                                            {tech.skills.length > 2 && <span className="text-[10px] text-slate-500">+{tech.skills.length - 2}</span>}
+                                            {tech.skills.length > 1 && <span className="text-[10px] text-slate-500">+{tech.skills.length - 1}</span>}
                                         </div>
                                     </TableCell>
                                     <TableCell>

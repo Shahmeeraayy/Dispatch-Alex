@@ -720,84 +720,117 @@ export default function ServicesPage() {
 
                 <Card className={sectionCardClass}>
                     <div className={sectionHeaderClass}>
-                <div className="flex flex-col lg:flex-row gap-4 items-center">
-                    <div className="relative flex-1 w-full lg:w-auto min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                            placeholder="Search by service code or name..."
-                            className="h-11 rounded-full border-white/10 bg-white/[0.04] pl-9 text-slate-100 placeholder:text-slate-500 transition-all focus:bg-white/[0.06]"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto">
-                        <Select value={filterQuickBooksType} onValueChange={setFilterQuickBooksType}>
-                            <SelectTrigger className="h-11 w-[180px] border-white/10 bg-white/[0.04] text-slate-100">
-                                <SelectValue placeholder="QuickBooks Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All QB Types</SelectItem>
-                                {availableQuickBooksTypes.map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                        {type}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                            <div>
+                                <h2 className="text-base font-semibold text-white">Catalog Filters</h2>
+                                <p className="mt-1 text-sm text-slate-300">
+                                    Narrow the service catalog by QuickBooks type, business category, or default pricing range.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-cyan-100">
+                                    {filteredServices.length} visible
+                                </Badge>
+                                <Badge variant="outline" className="border-white/10 bg-white/[0.04] px-3 py-1 text-slate-300">
+                                    {availableQuickBooksTypes.length} QB types
+                                </Badge>
+                            </div>
+                        </div>
 
-                        <Select value={filterCategory} onValueChange={(value) => setFilterCategory(value as BusinessCategoryFilter)}>
-                            <SelectTrigger className="h-11 w-[180px] border-white/10 bg-white/[0.04] text-slate-100">
-                                <SelectValue placeholder="Business Category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Business Categories</SelectItem>
-                                <SelectItem value="ppf">PPF</SelectItem>
-                                <SelectItem value="window_tint">Window Tint</SelectItem>
-                                <SelectItem value="engine_immobilizers">Engine immobilizers</SelectItem>
-                                <SelectItem value="remote_starters">Remote starters</SelectItem>
-                                <SelectItem value="vehicle_tracking_systems">Vehicle tracking systems</SelectItem>
-                                <SelectItem value="windshield_repair">Windshield repair</SelectItem>
-                                <SelectItem value="windshield_replacement">Windshield replacement</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center">
+                            <div className="relative flex-1 min-w-[300px]">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Input
+                                    placeholder="Search by service code or name..."
+                                    className="h-11 rounded-full border-white/10 bg-white/[0.04] pl-9 text-slate-100 placeholder:text-slate-500 transition-all focus:bg-white/[0.06]"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto">
+                                <Select value={filterQuickBooksType} onValueChange={setFilterQuickBooksType}>
+                                    <SelectTrigger className="h-11 w-[180px] border-white/10 bg-white/[0.04] text-slate-100">
+                                        <SelectValue placeholder="QuickBooks Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All QB Types</SelectItem>
+                                        {availableQuickBooksTypes.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {type}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="h-11 w-[180px] justify-start border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]">
-                                    Prices
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-[260px] border-white/10 bg-[#091827] p-3 text-slate-100">
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-slate-400">Min Price</Label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="Min Price"
-                                        value={minPrice}
-                                        onChange={(e) => setMinPrice(e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2 mt-3">
-                                    <Label className="text-xs text-slate-400">Max Price</Label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="Max Price"
-                                        value={maxPrice}
-                                        onChange={(e) => setMaxPrice(e.target.value)}
-                                    />
-                                </div>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
+                                <Select value={filterCategory} onValueChange={(value) => setFilterCategory(value as BusinessCategoryFilter)}>
+                                    <SelectTrigger className="h-11 w-[180px] border-white/10 bg-white/[0.04] text-slate-100">
+                                        <SelectValue placeholder="Business Category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Business Categories</SelectItem>
+                                        <SelectItem value="ppf">PPF</SelectItem>
+                                        <SelectItem value="window_tint">Window Tint</SelectItem>
+                                        <SelectItem value="engine_immobilizers">Engine immobilizers</SelectItem>
+                                        <SelectItem value="remote_starters">Remote starters</SelectItem>
+                                        <SelectItem value="vehicle_tracking_systems">Vehicle tracking systems</SelectItem>
+                                        <SelectItem value="windshield_repair">Windshield repair</SelectItem>
+                                        <SelectItem value="windshield_replacement">Windshield replacement</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" className="h-11 w-[180px] justify-start border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]">
+                                            Prices
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="w-[260px] border-white/10 bg-[#091827] p-3 text-slate-100">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-slate-400">Min Price</Label>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="Min Price"
+                                                value={minPrice}
+                                                onChange={(e) => setMinPrice(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2 mt-3">
+                                            <Label className="text-xs text-slate-400">Max Price</Label>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="Max Price"
+                                                value={maxPrice}
+                                                onChange={(e) => setMaxPrice(e.target.value)}
+                                            />
+                                        </div>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </div>
                     </div>
                 </Card>
 
-                <div className={cn(sectionCardClass, 'flex-1 flex flex-col')}>
+                <Card className={cn(sectionCardClass, 'flex-1 flex flex-col')}>
+                <div className={cn(sectionHeaderClass, 'flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between')}>
+                    <div>
+                        <h2 className="text-base font-semibold text-white">Service Catalog</h2>
+                        <p className="mt-1 text-sm text-slate-300">
+                            Browse active and archived services, review QuickBooks links, and open item detail for maintenance actions.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-emerald-100">
+                            {activeServicesCount} active
+                        </Badge>
+                        <Badge variant="outline" className="border-white/10 bg-white/[0.04] px-3 py-1 text-slate-300">
+                            {archivedServicesCount} archived
+                        </Badge>
+                    </div>
+                </div>
                 {loading ? (
                     <div className="p-4 space-y-4">
                         {Array.from({ length: 5 }).map((_, i) => (
@@ -814,73 +847,75 @@ export default function ServicesPage() {
                         <Button variant="outline" className="mt-4 border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => { setSearchQuery(''); setFilterQuickBooksType('all'); setFilterCategory('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</Button>
                     </div>
                 ) : (
-                    <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-white/[0.04]">
-                            <TableRow>
-                                <TableHead className="pl-6 w-[150px] text-slate-400">Service Code</TableHead>
-                                <TableHead className="min-w-[260px] text-slate-400">Service Name</TableHead>
-                                <TableHead className="w-[150px] text-slate-400">QB ID</TableHead>
-                                <TableHead className="w-[140px] text-slate-400">SKU</TableHead>
-                                <TableHead className="w-[120px] text-slate-400">Category</TableHead>
-                                <TableHead className="w-[120px] text-right pr-6 text-slate-400">Default Price</TableHead>
-                                <TableHead className="w-[100px] text-center text-slate-400">Status</TableHead>
-                                <TableHead className="w-[180px] text-right text-slate-400">Last Updated</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredServices.map((service) => (
-                                <TableRow
-                                    key={service.id}
-                                    className="group cursor-pointer border-white/6 transition-colors hover:bg-white/[0.03]"
-                                    onClick={() => handleOpenDrawer(service)}
-                                >
-                                    <TableCell className="pl-6 font-semibold text-white">{service.code}</TableCell>
-                                    <TableCell className="font-medium text-slate-200">
-                                        <OverflowText text={service.name} className="max-w-[28rem]" />
-                                    </TableCell>
-                                    <TableCell className="font-mono text-xs text-slate-400">{service.qb_item_id || '-'}</TableCell>
-                                    <TableCell className="font-mono text-xs text-slate-400">{service.sku || '-'}</TableCell>
-                                    <TableCell className="text-slate-300">{service.category}</TableCell>
-                                    <TableCell className="text-right pr-6 font-mono text-slate-300">
-                                        ${service.default_price.toFixed(2)}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <StatusBadge status={service.status} />
-                                    </TableCell>
-                                    <TableCell className="text-right text-xs text-slate-400 font-mono">
-                                        {new Date(service.updated_at).toLocaleDateString()}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
-                                                    <DropdownMenuItem onClick={() => handleOpenEditModal(service)}>
-                                                        <Edit2 className="w-4 h-4 mr-2" /> Edit Service
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => handleArchiveToggle(service)} className={service.status === 'active' ? "text-rose-200" : ""}>
-                                                        {service.status === 'active' ? (
-                                                            <><Archive className="w-4 h-4 mr-2" /> Archive</>
-                                                        ) : (
-                                                            <><CheckCircle2 className="w-4 h-4 mr-2" /> Unarchive</>
-                                                        )}
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </TableCell>
+                    <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+                        <Table>
+                            <TableHeader className="sticky top-0 z-10 bg-white/[0.04]">
+                                <TableRow>
+                                    <TableHead className="pl-6 w-[150px] text-slate-400">Service Code</TableHead>
+                                    <TableHead className="min-w-[260px] text-slate-400">Service Name</TableHead>
+                                    <TableHead className="w-[150px] text-slate-400">QB ID</TableHead>
+                                    <TableHead className="w-[140px] text-slate-400">SKU</TableHead>
+                                    <TableHead className="w-[120px] text-slate-400">Category</TableHead>
+                                    <TableHead className="w-[120px] text-right pr-6 text-slate-400">Default Price</TableHead>
+                                    <TableHead className="w-[100px] text-center text-slate-400">Status</TableHead>
+                                    <TableHead className="w-[180px] text-right text-slate-400">Last Updated</TableHead>
+                                    <TableHead className="w-[50px]"></TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredServices.map((service) => (
+                                    <TableRow
+                                        key={service.id}
+                                        className="group cursor-pointer border-white/6 transition-colors hover:bg-white/[0.03]"
+                                        onClick={() => handleOpenDrawer(service)}
+                                    >
+                                        <TableCell className="pl-6 font-semibold text-white">{service.code}</TableCell>
+                                        <TableCell className="font-medium text-slate-200">
+                                            <OverflowText text={service.name} className="max-w-[28rem]" />
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs text-slate-400">{service.qb_item_id || '-'}</TableCell>
+                                        <TableCell className="font-mono text-xs text-slate-400">{service.sku || '-'}</TableCell>
+                                        <TableCell className="text-slate-300">{service.category}</TableCell>
+                                        <TableCell className="text-right pr-6 font-mono text-slate-300">
+                                            ${service.default_price.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <StatusBadge status={service.status} />
+                                        </TableCell>
+                                        <TableCell className="text-right text-xs text-slate-400 font-mono">
+                                            {new Date(service.updated_at).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="w-4 h-4 text-slate-400" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
+                                                        <DropdownMenuItem onClick={() => handleOpenEditModal(service)}>
+                                                            <Edit2 className="w-4 h-4 mr-2" /> Edit Service
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => handleArchiveToggle(service)} className={service.status === 'active' ? "text-rose-200" : ""}>
+                                                            {service.status === 'active' ? (
+                                                                <><Archive className="w-4 h-4 mr-2" /> Archive</>
+                                                            ) : (
+                                                                <><CheckCircle2 className="w-4 h-4 mr-2" /> Unarchive</>
+                                                            )}
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 )}
-                </div>
+                </Card>
 
             {/* 6. Add/Edit Service Modal */}
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>

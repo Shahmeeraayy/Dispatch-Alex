@@ -1100,128 +1100,153 @@ export default function TechniciansPage() {
                         <Button variant="outline" className="mt-4 border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={clearFilters}>Clear Filters</Button>
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
-                    <Table>
-                        <TableHeader className="bg-white/[0.04] sticky top-0 z-10">
-                            <TableRow>
-                                <TableHead className="pl-6 w-[280px] text-slate-400">Technician</TableHead>
-                                <TableHead className="w-[100px] text-slate-400">Status</TableHead>
-                                <TableHead className="w-[120px] text-slate-400">Active Jobs</TableHead>
-                                <TableHead className="w-[180px] text-slate-400">Zones</TableHead>
-                                <TableHead className="w-[180px] text-slate-400">Skills</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredTechs.map((tech) => (
-                                <TableRow
-                                    key={tech.id}
-                                    className="group border-white/6 hover:bg-white/[0.03] cursor-pointer transition-colors"
-                                    onClick={() => handleOpenProfile(tech)}
-                                >
-                                    <TableCell className="pl-6">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="font-medium text-white group-hover:text-cyan-100">{tech.name}</span>
-                                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                <span className="font-mono">{tech.tech_code}</span>
-                                                <span>•</span>
-                                                <span>{formatPhoneForDisplay(tech.phone)}</span>
-                                            </div>
-                                            {tech.has_pending_email_change_request ? (
+                    <div className="overflow-hidden">
+                        <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-6 py-5">
+                            <div className="space-y-2">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician Board</div>
+                                <div className="text-sm text-slate-200">Active workforce records with status, routing zones, and current dispatch readiness.</div>
+                            </div>
+                            <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                {filteredTechs.length} visible
+                            </Badge>
+                        </div>
+                        <div className="overflow-auto">
+                            <Table className="min-w-[1080px]">
+                                <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+                                    <TableRow className="border-white/0 hover:bg-transparent">
+                                        <TableHead className="pl-6 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Status</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Active Jobs</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Zones</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Skills</TableHead>
+                                        <TableHead className="w-[64px] pr-6 text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Open</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredTechs.map((tech, index) => (
+                                        <TableRow
+                                            key={tech.id}
+                                            className={cn(
+                                                'group cursor-pointer border-b border-white/6 transition-colors hover:bg-white/[0.045]',
+                                                index % 2 === 1 && 'bg-white/[0.015]',
+                                            )}
+                                            onClick={() => handleOpenProfile(tech)}
+                                        >
+                                            <TableCell className="pl-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-300/18 bg-cyan-300/[0.08] text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-100">
+                                                        {tech.name.substring(0, 2)}
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <div className="text-sm font-semibold tracking-[-0.03em] text-white transition-colors group-hover:text-cyan-100">
+                                                            {tech.name}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                            <span className="font-mono">{tech.tech_code}</span>
+                                                            <span>&bull;</span>
+                                                            <span>{formatPhoneForDisplay(tech.phone)}</span>
+                                                        </div>
+                                                        {tech.has_pending_email_change_request ? (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="w-fit border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] text-amber-100"
+                                                            >
+                                                                Pending Email Change
+                                                            </Badge>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <StatusBadge status={tech.status} />
+                                            </TableCell>
+                                            <TableCell className="py-4">
                                                 <Badge
                                                     variant="outline"
-                                                    className="w-fit text-[10px] h-5 px-1.5 border-amber-300/20 bg-amber-300/10 text-amber-100"
+                                                    className={cn(
+                                                        'min-w-8 justify-center rounded-full px-2.5 py-1 text-[10px] shadow-none',
+                                                        tech.current_jobs_count > 0
+                                                            ? 'border-amber-300/20 bg-amber-300/10 text-amber-100'
+                                                            : 'border-white/10 bg-white/[0.03] text-slate-400',
+                                                    )}
                                                 >
-                                                    Pending Email Change
+                                                    {tech.current_jobs_count}
                                                 </Badge>
-                                            ) : null}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <StatusBadge status={tech.status} />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="outline"
-                                            className={cn(
-                                                "shadow-none min-w-8 justify-center",
-                                                tech.current_jobs_count > 0
-                                                    ? 'border-amber-300/20 bg-amber-300/10 text-amber-100'
-                                                    : 'border-white/10 bg-white/[0.03] text-slate-400',
-                                            )}
-                                        >
-                                            {tech.current_jobs_count}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-wrap gap-1">
-                                            {tech.zones.slice(0, 1).map(z => (
-                                                <Badge key={z} variant="secondary" className="text-[10px] h-5 px-1.5 border border-white/10 bg-white/[0.04] text-slate-300">{z}</Badge>
-                                            ))}
-                                            {tech.zones.length > 1 && <span className="text-[10px] text-slate-500">+{tech.zones.length - 1}</span>}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-wrap gap-1">
-                                            {tech.skills.slice(0, 1).map(s => (
-                                                <Badge key={s} variant="secondary" className="text-[10px] h-5 px-1.5 border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">{s}</Badge>
-                                            ))}
-                                            {tech.skills.length > 1 && <span className="text-[10px] text-slate-500">+{tech.skills.length - 1}</span>}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-white/0 hover:border-white/10 hover:bg-white/[0.04]">
-                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
-                                                    <DropdownMenuItem onClick={() => handleOpenProfile(tech)}>View Profile</DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => openEditTechModal(tech)}>Edit Technician</DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className={tech.status === 'active' ? 'text-rose-200' : 'text-cyan-100'}
-                                                        onClick={() => {
-                                                            if (tech.status === 'active') {
-                                                                if (tech.current_jobs_count > 0) {
-                                                                    alert('Cannot deactivate technician with active assigned jobs.');
-                                                                    return;
-                                                                }
-                                                                setSelectedTech(tech);
-                                                                setTechDraft(cloneTech(tech));
-                                                                setConfirmDeactivateOpen(true);
-                                                                return;
-                                                            }
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    {tech.zones.slice(0, 1).map((zone) => (
+                                                        <Badge key={zone} variant="secondary" className="h-5 border border-white/10 bg-white/[0.04] px-2 py-0 text-[10px] text-slate-300">
+                                                            {zone}
+                                                        </Badge>
+                                                    ))}
+                                                    {tech.zones.length > 1 ? <span className="text-[10px] text-slate-500">+{tech.zones.length - 1}</span> : null}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    {tech.skills.slice(0, 1).map((skill) => (
+                                                        <Badge key={skill} variant="secondary" className="h-5 border border-cyan-300/20 bg-cyan-300/10 px-2 py-0 text-[10px] text-cyan-100">
+                                                            {skill}
+                                                        </Badge>
+                                                    ))}
+                                                    {tech.skills.length > 1 ? <span className="text-[10px] text-slate-500">+{tech.skills.length - 1}</span> : null}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="pr-6 text-right">
+                                                <div onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl border border-white/10 bg-white/[0.03] text-slate-300 opacity-0 transition-all hover:bg-white/[0.08] hover:text-white group-hover:opacity-100">
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
+                                                            <DropdownMenuItem onClick={() => handleOpenProfile(tech)}>View Profile</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => openEditTechModal(tech)}>Edit Technician</DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className={tech.status === 'active' ? 'text-rose-200' : 'text-cyan-100'}
+                                                                onClick={() => {
+                                                                    if (tech.status === 'active') {
+                                                                        if (tech.current_jobs_count > 0) {
+                                                                            alert('Cannot deactivate technician with active assigned jobs.');
+                                                                            return;
+                                                                        }
+                                                                        setSelectedTech(tech);
+                                                                        setTechDraft(cloneTech(tech));
+                                                                        setConfirmDeactivateOpen(true);
+                                                                        return;
+                                                                    }
 
-                                                            const updated = { ...tech, status: 'active' as const };
-                                                            setTechs((prev) => {
-                                                                const next = prev.map((t) => (t.id === updated.id ? updated : t));
-                                                                persistTechniciansToStorage(next);
-                                                                return next;
-                                                            });
-                                                            if (selectedTech?.id === updated.id) {
-                                                                setSelectedTech(updated);
-                                                                setTechDraft(cloneTech(updated));
-                                                            }
-                                                            appendAuditLog(
-                                                                'technician.status_changed',
-                                                                `Technician ${updated.name} activated`,
-                                                                { tech_id: updated.id, tech_code: updated.tech_code, new_status: 'active' }
-                                                            );
-                                                        }}
-                                                    >
-                                                        {tech.status === 'active' ? 'Deactivate' : 'Activate'}
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                                                                    const updated = { ...tech, status: 'active' as const };
+                                                                    setTechs((prev) => {
+                                                                        const next = prev.map((t) => (t.id === updated.id ? updated : t));
+                                                                        persistTechniciansToStorage(next);
+                                                                        return next;
+                                                                    });
+                                                                    if (selectedTech?.id === updated.id) {
+                                                                        setSelectedTech(updated);
+                                                                        setTechDraft(cloneTech(updated));
+                                                                    }
+                                                                    appendAuditLog(
+                                                                        'technician.status_changed',
+                                                                        `Technician ${updated.name} activated`,
+                                                                        { tech_id: updated.id, tech_code: updated.tech_code, new_status: 'active' }
+                                                                    );
+                                                                }}
+                                                            >
+                                                                {tech.status === 'active' ? 'Deactivate' : 'Activate'}
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
                 )}
             </Card>

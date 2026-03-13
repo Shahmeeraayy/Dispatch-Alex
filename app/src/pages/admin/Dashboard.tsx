@@ -468,7 +468,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="relative mx-auto max-w-[1700px] pb-10" style={bodyFontStyle}>
+    <div className="relative w-full pb-10" style={bodyFontStyle}>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] rounded-[34px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_34%),radial-gradient(circle_at_top_right,rgba(52,211,153,0.1),rgba(52,211,153,0)_28%)]" />
       <div className="pointer-events-none absolute left-10 top-10 h-48 w-48 rounded-full bg-cyan-400/8 blur-3xl" />
       <div className="pointer-events-none absolute right-10 top-20 h-56 w-56 rounded-full bg-emerald-400/8 blur-3xl" />

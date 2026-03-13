@@ -7,7 +7,10 @@ import {
     Calendar,
     User,
     AlertCircle,
-    ArrowRight
+    ArrowRight,
+    Sparkles,
+    Send,
+    RadioTower,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -138,16 +141,15 @@ function JobCard({
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-            {/* Card Header */}
+        <div className="overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.98))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
             <div className="p-5 pb-4 space-y-3">
                 {/* Job Code & Time */}
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
+                        <h3 className="text-lg font-bold tracking-tight text-white">
                             {job.job_code}
                         </h3>
-                        <OverflowText text={job.service_name} as="p" className="mt-0.5 max-w-[18rem] text-sm font-medium text-gray-600 dark:text-gray-400" />
+                        <OverflowText text={job.service_name} as="p" className="mt-0.5 max-w-[20rem] text-sm font-medium text-slate-400" />
                     </div>
                     <div className="flex flex-col items-end gap-2">
                         <Badge variant="outline" className={cn('text-xs font-semibold border', statusStyles[job.status])}>
@@ -159,14 +161,14 @@ function JobCard({
 
                 {/* Dealership */}
                 <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                    <OverflowText text={job.dealership_name} className="max-w-[16rem] text-base font-semibold text-gray-900 dark:text-gray-100" />
+                    <Briefcase className="h-4 w-4 flex-shrink-0 text-slate-500" />
+                    <OverflowText text={job.dealership_name} className="max-w-[18rem] text-base font-semibold text-slate-100" />
                 </div>
 
                 {/* Zone & Time */}
                 <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                        <MapPin className="w-4 h-4 text-[#2F8E92] dark:text-teal-400" />
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                        <MapPin className="h-4 w-4 text-cyan-300" />
                         <span className="font-medium">{job.zone}</span>
                     </div>
                     <TimeAgo timestamp={job.created_at} />
@@ -174,13 +176,13 @@ function JobCard({
 
                 {/* Note Preview (if exists) */}
                 {job.note_preview && (
-                    <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                        <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                    <div className="border-t border-white/8 pt-2">
+                        <p className="text-sm leading-relaxed text-slate-300">
                             <span className="inline-flex items-center gap-1.5">
-                                <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+                                <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-amber-400" />
                                 <span className="font-medium">Note:</span>
                             </span>{' '}
-                            <OverflowText text={job.note_preview} lines={2} className="inline max-w-[16rem]" />
+                            <OverflowText text={job.note_preview} lines={2} className="inline max-w-[18rem]" />
                         </p>
                     </div>
                 )}
@@ -193,7 +195,7 @@ function JobCard({
                         onClick={onOpenCurrentJob}
                         className={cn(
                             "h-12 text-base font-semibold rounded-xl transition-all duration-200",
-                            "bg-[#2F8E92] hover:bg-[#267276] text-white",
+                            "bg-[#2F8E92] text-white hover:bg-[#267276]",
                             "shadow-sm hover:shadow-md active:scale-[0.98]"
                         )}
                     >
@@ -297,6 +299,12 @@ export default function AvailableJobsPage() {
     const isPreviewMode = Boolean(previewTechId);
     const routeBase = isPreviewMode ? `/admin/tech-preview/${currentTechId}` : '/tech';
     const currentJobPath = `${routeBase}/current-job`;
+    const jobsByStatus = useMemo(() => ({
+        total: jobs.length,
+        pending: jobs.filter((job) => job.status === 'pending').length,
+        active: jobs.filter((job) => job.status === 'scheduled' || job.status === 'in_progress' || job.status === 'delayed').length,
+        zones: new Set(jobs.map((job) => job.zone).filter(Boolean)).size,
+    }), [jobs]);
 
     const fetchJobs = async () => {
         setLoading(true);
@@ -368,68 +376,144 @@ export default function AvailableJobsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
-            {/* Top Navigation Bar */}
-            <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                            Jobs
-                        </h1>
-                        {lastUpdated && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                Updated {lastUpdated.toLocaleTimeString()}
-                            </p>
-                        )}
-                        <p className="text-xs text-[#2F8E92] dark:text-teal-400 mt-0.5 font-medium">
-                            Viewing as {currentTech.name} ({currentTechCode})
-                        </p>
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleRefresh}
-                        className="h-9 gap-2 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
-                        disabled={loading}
-                    >
-                        <RefreshCw className={cn("w-4 h-4 text-gray-600 dark:text-gray-400", loading && "animate-spin")} />
-                        Refresh
-                    </Button>
-                </div>
-            </div>
+        <div className="min-h-screen bg-[#020817] pb-24 text-white">
+            <div className="relative w-full pb-8">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_32%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),rgba(16,185,129,0)_28%)]" />
+                <div className="relative mx-auto w-full max-w-[1500px] space-y-6 px-4 pt-4 sm:px-6 lg:px-8">
+                    <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
+                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                        <div className="relative flex flex-col gap-5 p-5 lg:flex-row lg:items-end lg:justify-between lg:p-7">
+                            <div className="max-w-3xl">
+                                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    Technician Queue
+                                </div>
+                                <h1 className="mt-5 text-[clamp(2rem,3.4vw,3.15rem)] font-semibold leading-[0.94] tracking-[-0.07em] text-white">
+                                    Assigned jobs
+                                    <br />
+                                    with live dispatch context.
+                                </h1>
+                                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                                    Review incoming assignments, open your current job, and keep field work moving from one focused technician workspace.
+                                </p>
+                                <div className="mt-5 flex flex-wrap items-center gap-2">
+                                    <Badge variant="outline" className="rounded-full border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-cyan-100">
+                                        {jobsByStatus.total} jobs
+                                    </Badge>
+                                    <Badge variant="outline" className="rounded-full border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-amber-100">
+                                        {jobsByStatus.pending} pending
+                                    </Badge>
+                                    <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                        {jobsByStatus.zones} zones
+                                    </Badge>
+                                </div>
+                                <p className="mt-3 text-xs font-medium text-cyan-300">
+                                    Viewing as {currentTech.name} ({currentTechCode})
+                                </p>
+                                {lastUpdated ? (
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Updated {lastUpdated.toLocaleTimeString()}
+                                    </p>
+                                ) : null}
+                            </div>
+                            <div className="flex items-center gap-3 self-start lg:self-end">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleRefresh}
+                                    className="h-11 gap-2 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-slate-100 hover:bg-white/[0.08]"
+                                    disabled={loading}
+                                >
+                                    <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+                                    Refresh
+                                </Button>
+                            </div>
+                        </div>
+                    </section>
 
-            {/* Job List */}
-            <div className="max-w-2xl mx-auto px-4 py-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="overflow-hidden rounded-[24px] border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                            <div className="flex items-start justify-between p-5">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Jobs Sent</p>
+                                    <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{jobsByStatus.total}</p>
+                                    <p className="mt-2 text-sm text-slate-300">Admin-confirmed assignments visible to you.</p>
+                                </div>
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
+                                    <Send className="h-5 w-5" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="overflow-hidden rounded-[24px] border border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                            <div className="flex items-start justify-between p-5">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pending Review</p>
+                                    <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{jobsByStatus.pending}</p>
+                                    <p className="mt-2 text-sm text-slate-300">Jobs waiting for your next action.</p>
+                                </div>
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-100">
+                                    <RadioTower className="h-5 w-5" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="overflow-hidden rounded-[24px] border border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                            <div className="flex items-start justify-between p-5">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active Pipeline</p>
+                                    <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{jobsByStatus.active}</p>
+                                    <p className="mt-2 text-sm text-slate-300">Scheduled or live field work in progress.</p>
+                                </div>
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-100">
+                                    <Briefcase className="h-5 w-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                        <div className="border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-5 py-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician Board</div>
+                                    <div className="text-sm text-slate-200">Assignments sent from dispatch and ready for action in the field.</div>
+                                </div>
+                                <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                    {jobsByStatus.total} visible
+                                </Badge>
+                            </div>
+                        </div>
+                        <div className="p-4 sm:p-5">
                 {loading ? (
                     // Loading State
                     <div className="space-y-4">
                         {Array.from({ length: 3 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 animate-pulse"
+                                className="animate-pulse rounded-[24px] border border-white/10 bg-white/[0.03] p-5"
                             >
-                                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3"></div>
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4"></div>
-                                <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                                <div className="mb-3 h-6 w-1/3 rounded bg-white/10"></div>
+                                <div className="mb-4 h-4 w-2/3 rounded bg-white/10"></div>
+                                <div className="h-12 rounded bg-white/10"></div>
                             </div>
                         ))}
                     </div>
                 ) : jobs.length === 0 ? (
                     // Empty State
-                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-5">
-                            <Briefcase className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+                    <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
+                        <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.05]">
+                            <Briefcase className="h-10 w-10 text-slate-500" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                        <h3 className="mb-2 text-xl font-bold text-white">
                             No Jobs Sent Yet
                         </h3>
-                        <p className="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+                        <p className="max-w-sm leading-relaxed text-slate-400">
                             Admin-confirmed jobs assigned to this technician will appear here.
                         </p>
                     </div>
                 ) : (
                     // Job Cards
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                         {jobs.map((job) => (
                             <JobCard
                                 key={job.job_id}
@@ -439,6 +523,9 @@ export default function AvailableJobsPage() {
                         ))}
                     </div>
                 )}
+                        </div>
+                    </section>
+                </div>
             </div>
 
             {/* Bottom Navigation */}

@@ -1142,82 +1142,102 @@ export default function DealershipsPage() {
                         <Button variant="outline" className="mt-4 border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterCity('all'); }}>Clear Filters</Button>
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
-                    <Table>
-                        <TableHeader className="bg-white/[0.04] sticky top-0 z-10">
-                            <TableRow>
-                                <TableHead className="pl-6 w-[220px] text-slate-400">Dealership Name</TableHead>
-                                <TableHead className="w-[220px] text-slate-400">Contact Info</TableHead>
-                                <TableHead className="w-[300px] text-slate-400">Location</TableHead>
-                                <TableHead className="w-[100px] text-slate-400">Status</TableHead>
-                                <TableHead className="w-[80px] text-center text-slate-400">Notes</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredDealerships.map((dealer) => (
-                                <TableRow
-                                    key={dealer.id}
-                                    className="group border-white/6 hover:bg-white/[0.03] cursor-pointer transition-colors"
-                                    onClick={() => handleOpenDrawer(dealer)}
-                                >
-                                    <TableCell className="pl-6">
-                                        <OverflowText text={dealer.name} className="max-w-[13rem] font-medium text-white group-hover:text-cyan-100" />
-                                        <div className="text-xs text-slate-500 font-mono">ID: {dealer.id}</div>
-                                        <div className="text-xs text-slate-500 font-mono">QB: {dealer.qb_customer_id || '-'}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2 text-sm text-slate-200">
-                                            <Phone className="h-3.5 w-3.5 text-slate-500" />
-                                            <span>{formatPhoneForDisplay(dealer.phone) || '-'}</span>
-                                        </div>
-                                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
-                                            <Mail className="h-3.5 w-3.5 text-slate-500" />
-                                            <OverflowText text={dealer.email || '-'} className="max-w-[10rem]" />
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2 text-sm text-slate-200 capitalize">
-                                            <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                                            <span>{dealer.city || '-'}</span>
-                                        </div>
-                                        <OverflowText text={`${dealer.address || ''} ${dealer.postal_code || ''}`.trim() || '-'} className="mt-1 max-w-[14rem] text-xs text-slate-500" />
-                                    </TableCell>
-                                    <TableCell>
-                                        <StatusBadge status={dealer.status} />
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        {dealer.notes && <AlertCircle className="w-4 h-4 text-amber-300 mx-auto" />}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-white/0 hover:border-white/10 hover:bg-white/[0.04]">
-                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
-                                                    <DropdownMenuItem onClick={() => handleOpenDrawer(dealer)}>View Details</DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleOpenDrawer(dealer)}>Edit</DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className={dealer.status === 'active' ? 'text-rose-200' : ''}
-                                                        onClick={() => {
-                                                            handleOpenDrawer(dealer);
-                                                            setConfirmStatusModalOpen(true);
-                                                        }}
-                                                    >
-                                                        {dealer.status === 'active' ? 'Deactivate' : 'Activate'}
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <div className="overflow-hidden">
+                        <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-6 py-5">
+                            <div className="space-y-2">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Partner Board</div>
+                                <div className="text-sm text-slate-200">Dealership records with contact routing, QuickBooks linkage, and availability status.</div>
+                            </div>
+                            <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                {filteredDealerships.length} visible
+                            </Badge>
+                        </div>
+                        <div className="overflow-auto">
+                            <Table className="min-w-[1180px]">
+                                <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+                                    <TableRow className="border-white/0 hover:bg-transparent">
+                                        <TableHead className="pl-6 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Dealership Name</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Contact Info</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Location</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Status</TableHead>
+                                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Notes</TableHead>
+                                        <TableHead className="w-[64px] pr-6 text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Open</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredDealerships.map((dealer, index) => (
+                                        <TableRow
+                                            key={dealer.id}
+                                            className={cn(
+                                                'group cursor-pointer border-b border-white/6 transition-colors hover:bg-white/[0.045]',
+                                                index % 2 === 1 && 'bg-white/[0.015]',
+                                            )}
+                                            onClick={() => handleOpenDrawer(dealer)}
+                                        >
+                                            <TableCell className="pl-6 py-4">
+                                                <div className="space-y-1.5">
+                                                    <OverflowText text={dealer.name} className="max-w-[16rem] text-sm font-semibold text-white group-hover:text-cyan-100" />
+                                                    <div className="text-xs font-mono text-slate-500">ID: {dealer.id}</div>
+                                                    <div className="text-xs font-mono text-slate-500">QB: {dealer.qb_customer_id || '-'}</div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1.5">
+                                                    <div className="flex items-center gap-2 text-sm text-slate-200">
+                                                        <Phone className="h-3.5 w-3.5 text-slate-500" />
+                                                        <span>{formatPhoneForDisplay(dealer.phone) || '-'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                                                        <Mail className="h-3.5 w-3.5 text-slate-500" />
+                                                        <OverflowText text={dealer.email || '-'} className="max-w-[12rem]" />
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1.5">
+                                                    <div className="flex items-center gap-2 text-sm text-slate-200 capitalize">
+                                                        <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                                                        <span>{dealer.city || '-'}</span>
+                                                    </div>
+                                                    <OverflowText text={`${dealer.address || ''} ${dealer.postal_code || ''}`.trim() || '-'} className="max-w-[16rem] text-xs text-slate-500" />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <StatusBadge status={dealer.status} />
+                                            </TableCell>
+                                            <TableCell className="py-4 text-center">
+                                                {dealer.notes ? <AlertCircle className="mx-auto h-4 w-4 text-amber-300" /> : null}
+                                            </TableCell>
+                                            <TableCell className="pr-6 text-right">
+                                                <div onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl border border-white/10 bg-white/[0.03] text-slate-300 opacity-0 transition-all hover:bg-white/[0.08] hover:text-white group-hover:opacity-100">
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
+                                                            <DropdownMenuItem onClick={() => handleOpenDrawer(dealer)}>View Details</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleOpenDrawer(dealer)}>Edit</DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className={dealer.status === 'active' ? 'text-rose-200' : ''}
+                                                                onClick={() => {
+                                                                    handleOpenDrawer(dealer);
+                                                                    setConfirmStatusModalOpen(true);
+                                                                }}
+                                                            >
+                                                                {dealer.status === 'active' ? 'Deactivate' : 'Activate'}
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
                 )}
             </Card>

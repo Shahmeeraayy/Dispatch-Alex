@@ -518,17 +518,26 @@ export default function ReportsPage() {
                 </div>
               ) : overview?.invoice_performance.length ? (
                 <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+                  <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-5 py-4">
+                    <div className="space-y-1.5">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Invoice States</div>
+                      <div className="text-sm text-slate-200">Lifecycle counts and billed totals for the selected report window.</div>
+                    </div>
+                    <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                      {overview.invoice_performance.length} states
+                    </Badge>
+                  </div>
                   <Table>
-                    <TableHeader className="bg-white/[0.04]">
-                      <TableRow>
-                        <TableHead className="text-slate-400">State</TableHead>
-                        <TableHead className="text-right text-slate-400">Count</TableHead>
-                        <TableHead className="text-right text-slate-400">Amount</TableHead>
+                    <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+                      <TableRow className="border-white/0 hover:bg-transparent">
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">State</TableHead>
+                        <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Count</TableHead>
+                        <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {overview.invoice_performance.map((row) => (
-                        <TableRow key={row.state} className="border-white/6">
+                      {overview.invoice_performance.map((row, index) => (
+                        <TableRow key={row.state} className={cn('border-b border-white/6', index % 2 === 1 && 'bg-white/[0.015]')}>
                           <TableCell>
                             <Badge variant="outline" className={cn(statusBadgeTone(row), 'border text-xs dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100')}>{row.state}</Badge>
                           </TableCell>
@@ -570,21 +579,30 @@ export default function ReportsPage() {
               </div>
             ) : filteredTechnicianRows.length ? (
               <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+                <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-5 py-4">
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician Performance Board</div>
+                    <div className="text-sm text-slate-200">Assignment, completion, delay, and revenue metrics by technician.</div>
+                  </div>
+                  <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                    {filteredTechnicianRows.length} visible
+                  </Badge>
+                </div>
                 <Table>
-                  <TableHeader className="bg-white/[0.04]">
-                    <TableRow>
-                      <TableHead className="text-slate-400">Technician</TableHead>
-                      <TableHead className="text-right text-slate-400">Assigned</TableHead>
-                      <TableHead className="text-right text-slate-400">Completed</TableHead>
-                      <TableHead className="text-right text-slate-400">Avg Time</TableHead>
-                      <TableHead className="text-right text-slate-400">Delays</TableHead>
-                      <TableHead className="text-right text-slate-400">Refusals</TableHead>
-                      <TableHead className="text-right text-slate-400">Revenue</TableHead>
+                  <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+                    <TableRow className="border-white/0 hover:bg-transparent">
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Assigned</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Completed</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Avg Time</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Delays</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Refusals</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Revenue</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTechnicianRows.map((row) => (
-                      <TableRow key={row.id} className="border-white/6">
+                    {filteredTechnicianRows.map((row, index) => (
+                      <TableRow key={row.id} className={cn('border-b border-white/6', index % 2 === 1 && 'bg-white/[0.015]')}>
                         <TableCell className="font-medium text-white">{row.name}</TableCell>
                         <TableCell className="text-right text-slate-200">{numberFmt.format(row.jobs_assigned)}</TableCell>
                         <TableCell className="text-right text-slate-200">{numberFmt.format(row.jobs_completed)}</TableCell>
@@ -629,20 +647,29 @@ export default function ReportsPage() {
               </div>
             ) : filteredDealershipRows.length ? (
               <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+                <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-5 py-4">
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Dealership Performance Board</div>
+                    <div className="text-sm text-slate-200">Created, completed, flagged, and invoiced volume by dealership.</div>
+                  </div>
+                  <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                    {filteredDealershipRows.length} visible
+                  </Badge>
+                </div>
                 <Table>
-                  <TableHeader className="bg-white/[0.04]">
-                    <TableRow>
-                      <TableHead className="text-slate-400">Dealership</TableHead>
-                      <TableHead className="text-right text-slate-400">Created</TableHead>
-                      <TableHead className="text-right text-slate-400">Completed</TableHead>
-                      <TableHead className="text-right text-slate-400">Avg Res. Time</TableHead>
-                      <TableHead className="text-right text-slate-400">Flags</TableHead>
-                      <TableHead className="text-right text-slate-400">Total Invoiced</TableHead>
+                  <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+                    <TableRow className="border-white/0 hover:bg-transparent">
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Dealership</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Created</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Completed</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Avg Res. Time</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Flags</TableHead>
+                      <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Total Invoiced</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredDealershipRows.map((row) => (
-                      <TableRow key={row.id} className="border-white/6">
+                    {filteredDealershipRows.map((row, index) => (
+                      <TableRow key={row.id} className={cn('border-b border-white/6', index % 2 === 1 && 'bg-white/[0.015]')}>
                         <TableCell className="font-medium text-white">{row.name}</TableCell>
                         <TableCell className="text-right text-slate-200">{numberFmt.format(row.jobs_created)}</TableCell>
                         <TableCell className="text-right text-slate-200">{numberFmt.format(row.jobs_completed)}</TableCell>

@@ -479,13 +479,22 @@ export default function TechnicianAccountsPage() {
           </p>
         </div>
         <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+        <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-6 py-5">
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Reset Queue</div>
+            <div className="text-sm text-slate-200">Admin-managed password reset requests waiting for action.</div>
+          </div>
+          <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+            {filteredPendingPasswordResetRequests.length} visible
+          </Badge>
+        </div>
         <Table>
-          <TableHeader className="bg-white/[0.04]">
-            <TableRow>
-              <TableHead className="pl-6 w-[220px] text-slate-400">Technician</TableHead>
-              <TableHead className="w-[260px] text-slate-400">Contact</TableHead>
-              <TableHead className="w-[220px] text-slate-400">Requested At</TableHead>
-              <TableHead className="text-right pr-6 text-slate-400">Actions</TableHead>
+          <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+            <TableRow className="border-white/0 hover:bg-transparent">
+              <TableHead className="pl-6 w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician</TableHead>
+              <TableHead className="w-[260px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Contact</TableHead>
+              <TableHead className="w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Requested At</TableHead>
+              <TableHead className="text-right pr-6 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -497,7 +506,7 @@ export default function TechnicianAccountsPage() {
               </TableRow>
             ) : (
               filteredPendingPasswordResetRequests.map((request) => (
-                <TableRow key={request.id} className="border-white/6 hover:bg-white/[0.03]">
+                <TableRow key={request.id} className="border-white/6 hover:bg-white/[0.045]">
                   <TableCell className="pl-6">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-rose-300/12 text-rose-100 flex items-center justify-center">
@@ -572,13 +581,22 @@ export default function TechnicianAccountsPage() {
           </p>
         </div>
         <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+        <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-6 py-5">
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Signup Queue</div>
+            <div className="text-sm text-slate-200">Pending technician account requests awaiting approval or rejection.</div>
+          </div>
+          <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+            {filteredPendingRequests.length} visible
+          </Badge>
+        </div>
         <Table>
-          <TableHeader className="bg-white/[0.04]">
-            <TableRow>
-              <TableHead className="pl-6 w-[220px] text-slate-400">Technician</TableHead>
-              <TableHead className="w-[260px] text-slate-400">Contact</TableHead>
-              <TableHead className="w-[220px] text-slate-400">Requested At</TableHead>
-              <TableHead className="text-right pr-6 text-slate-400">Actions</TableHead>
+          <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+            <TableRow className="border-white/0 hover:bg-transparent">
+              <TableHead className="pl-6 w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Technician</TableHead>
+              <TableHead className="w-[260px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Contact</TableHead>
+              <TableHead className="w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Requested At</TableHead>
+              <TableHead className="text-right pr-6 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -590,7 +608,7 @@ export default function TechnicianAccountsPage() {
               </TableRow>
             ) : (
               filteredPendingRequests.map((request) => (
-                <TableRow key={request.id} className="border-white/6 hover:bg-white/[0.03]">
+                <TableRow key={request.id} className="border-white/6 hover:bg-white/[0.045]">
                   <TableCell className="pl-6">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-amber-300/12 text-amber-100 flex items-center justify-center">
@@ -661,14 +679,23 @@ export default function TechnicianAccountsPage() {
           </h2>
         </div>
         <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
+        <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-6 py-5">
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Account Board</div>
+            <div className="text-sm text-slate-200">Live technician accounts with contact identity and activation state.</div>
+          </div>
+          <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+            {filteredAccounts.length} visible
+          </Badge>
+        </div>
         <Table>
-          <TableHeader className="bg-white/[0.04]">
-            <TableRow>
-              <TableHead className="pl-6 w-[220px] text-slate-400">Account</TableHead>
-              <TableHead className="w-[260px] text-slate-400">Contact</TableHead>
-              <TableHead className="w-[110px] text-slate-400">Status</TableHead>
-              <TableHead className="w-[220px] text-slate-400">Last Updated</TableHead>
-              <TableHead className="text-right pr-6 text-slate-400">Actions</TableHead>
+          <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+            <TableRow className="border-white/0 hover:bg-transparent">
+              <TableHead className="pl-6 w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Account</TableHead>
+              <TableHead className="w-[260px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Contact</TableHead>
+              <TableHead className="w-[110px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Status</TableHead>
+              <TableHead className="w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Last Updated</TableHead>
+              <TableHead className="text-right pr-6 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -680,7 +707,7 @@ export default function TechnicianAccountsPage() {
               </TableRow>
             ) : (
               filteredAccounts.map((account) => (
-                <TableRow key={account.id} className="border-white/6 hover:bg-white/[0.03]">
+                <TableRow key={account.id} className="border-white/6 hover:bg-white/[0.045]">
                   <TableCell className="pl-6">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-cyan-300/12 text-cyan-100 flex items-center justify-center">

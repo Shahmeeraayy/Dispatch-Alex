@@ -847,72 +847,82 @@ export default function ServicesPage() {
                         <Button variant="outline" className="mt-4 border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => { setSearchQuery(''); setFilterQuickBooksType('all'); setFilterCategory('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</Button>
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
-                        <Table>
-                            <TableHeader className="sticky top-0 z-10 bg-white/[0.04]">
-                                <TableRow>
-                                    <TableHead className="pl-6 w-[150px] text-slate-400">Service Code</TableHead>
-                                    <TableHead className="min-w-[260px] text-slate-400">Service Name</TableHead>
-                                    <TableHead className="w-[150px] text-slate-400">QB ID</TableHead>
-                                    <TableHead className="w-[140px] text-slate-400">SKU</TableHead>
-                                    <TableHead className="w-[120px] text-slate-400">Category</TableHead>
-                                    <TableHead className="w-[120px] text-right pr-6 text-slate-400">Default Price</TableHead>
-                                    <TableHead className="w-[100px] text-center text-slate-400">Status</TableHead>
-                                    <TableHead className="w-[180px] text-right text-slate-400">Last Updated</TableHead>
-                                    <TableHead className="w-[50px]"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredServices.map((service) => (
-                                    <TableRow
-                                        key={service.id}
-                                        className="group cursor-pointer border-white/6 transition-colors hover:bg-white/[0.03]"
-                                        onClick={() => handleOpenDrawer(service)}
-                                    >
-                                        <TableCell className="pl-6 font-semibold text-white">{service.code}</TableCell>
-                                        <TableCell className="font-medium text-slate-200">
-                                            <OverflowText text={service.name} className="max-w-[28rem]" />
-                                        </TableCell>
-                                        <TableCell className="font-mono text-xs text-slate-400">{service.qb_item_id || '-'}</TableCell>
-                                        <TableCell className="font-mono text-xs text-slate-400">{service.sku || '-'}</TableCell>
-                                        <TableCell className="text-slate-300">{service.category}</TableCell>
-                                        <TableCell className="text-right pr-6 font-mono text-slate-300">
-                                            ${service.default_price.toFixed(2)}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <StatusBadge status={service.status} />
-                                        </TableCell>
-                                        <TableCell className="text-right text-xs text-slate-400 font-mono">
-                                            {new Date(service.updated_at).toLocaleDateString()}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div onClick={(e) => e.stopPropagation()}>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                            <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
-                                                        <DropdownMenuItem onClick={() => handleOpenEditModal(service)}>
-                                                            <Edit2 className="w-4 h-4 mr-2" /> Edit Service
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={() => handleArchiveToggle(service)} className={service.status === 'active' ? "text-rose-200" : ""}>
-                                                            {service.status === 'active' ? (
-                                                                <><Archive className="w-4 h-4 mr-2" /> Archive</>
-                                                            ) : (
-                                                                <><CheckCircle2 className="w-4 h-4 mr-2" /> Unarchive</>
-                                                            )}
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        </TableCell>
+                    <div className="overflow-hidden">
+                        <div className="flex items-start justify-between gap-3 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-6 py-5">
+                            <div className="space-y-2">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Catalog Board</div>
+                                <div className="text-sm text-slate-200">Service records with pricing, QuickBooks linkage, and archive status.</div>
+                            </div>
+                            <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                {filteredServices.length} visible
+                            </Badge>
+                        </div>
+                        <div className="overflow-auto">
+                            <Table className="min-w-[1220px]">
+                                <TableHeader className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(11,25,42,0.98),rgba(10,20,35,0.92))] backdrop-blur-xl">
+                                    <TableRow className="border-white/0 hover:bg-transparent">
+                                        <TableHead className="pl-6 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Service Code</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Service Name</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">QB ID</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">SKU</TableHead>
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Category</TableHead>
+                                        <TableHead className="pr-6 text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Default Price</TableHead>
+                                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Status</TableHead>
+                                        <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Last Updated</TableHead>
+                                        <TableHead className="w-[64px] pr-6 text-right text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Open</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredServices.map((service, index) => (
+                                        <TableRow
+                                            key={service.id}
+                                            className={cn(
+                                                'group cursor-pointer border-b border-white/6 transition-colors hover:bg-white/[0.045]',
+                                                index % 2 === 1 && 'bg-white/[0.015]',
+                                            )}
+                                            onClick={() => handleOpenDrawer(service)}
+                                        >
+                                            <TableCell className="pl-6 py-4 text-sm font-semibold text-white">{service.code}</TableCell>
+                                            <TableCell className="py-4">
+                                                <OverflowText text={service.name} className="max-w-[28rem] text-sm font-medium text-slate-100" />
+                                            </TableCell>
+                                            <TableCell className="py-4 font-mono text-xs text-slate-400">{service.qb_item_id || '-'}</TableCell>
+                                            <TableCell className="py-4 font-mono text-xs text-slate-400">{service.sku || '-'}</TableCell>
+                                            <TableCell className="py-4 text-slate-300">{service.category}</TableCell>
+                                            <TableCell className="py-4 pr-6 text-right font-mono text-sm text-amber-100">${service.default_price.toFixed(2)}</TableCell>
+                                            <TableCell className="py-4 text-center">
+                                                <StatusBadge status={service.status} />
+                                            </TableCell>
+                                            <TableCell className="py-4 text-right font-mono text-xs text-slate-400">{new Date(service.updated_at).toLocaleDateString()}</TableCell>
+                                            <TableCell className="pr-6 text-right">
+                                                <div onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl border border-white/10 bg-white/[0.03] text-slate-300 opacity-0 transition-all hover:bg-white/[0.08] hover:text-white group-hover:opacity-100">
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
+                                                            <DropdownMenuItem onClick={() => handleOpenEditModal(service)}>
+                                                                <Edit2 className="mr-2 h-4 w-4" /> Edit Service
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem onClick={() => handleArchiveToggle(service)} className={service.status === 'active' ? 'text-rose-200' : ''}>
+                                                                {service.status === 'active' ? (
+                                                                    <><Archive className="mr-2 h-4 w-4" /> Archive</>
+                                                                ) : (
+                                                                    <><CheckCircle2 className="mr-2 h-4 w-4" /> Unarchive</>
+                                                                )}
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
                 )}
                 </Card>

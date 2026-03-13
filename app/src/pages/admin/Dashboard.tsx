@@ -481,7 +481,7 @@ export default function Dashboard() {
           <div className="relative grid gap-6 p-6 xl:grid-cols-[1.2fr_0.85fr] xl:p-8">
             <div>
               <div
-                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100"
+                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100"
                 style={displayFontStyle}
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -537,7 +537,7 @@ export default function Dashboard() {
                       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
                         {tile.label}
                       </p>
-                      <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white" style={displayFontStyle}>
+                      <div className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white" style={displayFontStyle}>
                         {tile.value}
                       </div>
                     </div>

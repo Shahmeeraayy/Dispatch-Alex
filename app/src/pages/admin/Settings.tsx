@@ -585,11 +585,11 @@ export default function SettingsPage() {
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
                     <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
                         <div className="max-w-3xl">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100">
                                 <Monitor className="h-3.5 w-3.5" />
                                 Admin Controls
                             </div>
-                            <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                            <h1 className="mt-5 text-[2.35rem] font-semibold leading-none tracking-[-0.06em] text-white md:text-[2.8rem]">
                                 Settings
                                 <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
                                     command center
@@ -618,8 +618,8 @@ export default function SettingsPage() {
                         <CardContent className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Dispatch Rules</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{priorityRules.length}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Dispatch Rules</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{priorityRules.length}</p>
                                     <p className="text-sm text-slate-300">Ranking rules configured</p>
                                 </div>
                                 <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
@@ -632,8 +632,8 @@ export default function SettingsPage() {
                         <CardContent className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active Rules</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{priorityRules.filter((rule) => rule.isActive).length}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Active Rules</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{priorityRules.filter((rule) => rule.isActive).length}</p>
                                     <p className="text-sm text-slate-300">Rules affecting queue ranking</p>
                                 </div>
                                 <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3 text-emerald-100">
@@ -646,8 +646,8 @@ export default function SettingsPage() {
                         <CardContent className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Dealership Coverage</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{dealershipOptions.length}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Dealership Coverage</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{dealershipOptions.length}</p>
                                     <p className="text-sm text-slate-300">Partners available for rule targeting</p>
                                 </div>
                                 <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-3 text-amber-100">
@@ -660,8 +660,8 @@ export default function SettingsPage() {
                         <CardContent className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">CRM Theme</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">CRM Theme</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">
                                         {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'}
                                     </p>
                                     <p className="text-sm text-slate-300">Current interface appearance</p>

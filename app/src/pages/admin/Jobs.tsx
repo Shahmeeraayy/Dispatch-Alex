@@ -1887,7 +1887,7 @@ export default function JobsPage() {
                 <div className="relative grid gap-6 p-6 xl:grid-cols-[1.25fr_0.9fr] xl:p-8">
                     <div>
                         <div
-                            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100"
+                            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100"
                             style={displayFontStyle}
                         >
                             <Sparkles className="h-3.5 w-3.5" />
@@ -1895,7 +1895,7 @@ export default function JobsPage() {
                         </div>
 
                         <h1
-                            className="mt-5 text-[clamp(2rem,3.5vw,3.8rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white"
+                            className="mt-5 text-[2.35rem] font-semibold leading-none tracking-[-0.06em] text-white md:text-[2.8rem]"
                             style={displayFontStyle}
                         >
                             Jobs

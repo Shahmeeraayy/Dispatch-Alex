@@ -913,11 +913,11 @@ export default function DealershipsPage() {
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
                     <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
                         <div className="max-w-3xl">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100">
                                 <Building2 className="h-3.5 w-3.5" />
                                 Partner Directory
                             </div>
-                            <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                            <h1 className="mt-5 text-[2.35rem] font-semibold leading-none tracking-[-0.06em] text-white md:text-[2.8rem]">
                                 Dealerships
                                 <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
                                     network console
@@ -1001,8 +1001,8 @@ export default function DealershipsPage() {
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Partner Accounts</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{dealerships.length}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Partner Accounts</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{dealerships.length}</p>
                                     <p className="text-sm text-slate-300">Total dealership profiles tracked</p>
                                 </div>
                                 <div className={metricIconClass('cyan')}>
@@ -1015,8 +1015,8 @@ export default function DealershipsPage() {
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active Partners</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{activeCount}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Active Partners</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{activeCount}</p>
                                     <p className="text-sm text-slate-300">Currently available for dispatch intake</p>
                                 </div>
                                 <div className={metricIconClass('emerald')}>
@@ -1029,8 +1029,8 @@ export default function DealershipsPage() {
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">QuickBooks Linked</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{mappedCount}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">QuickBooks Linked</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{mappedCount}</p>
                                     <p className="text-sm text-slate-300">Profiles mapped to customer records</p>
                                 </div>
                                 <div className={metricIconClass('amber')}>
@@ -1043,8 +1043,8 @@ export default function DealershipsPage() {
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Operational Notes</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{withNotesCount}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Operational Notes</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{withNotesCount}</p>
                                     <p className="text-sm text-slate-300">Locations with special dispatch instructions</p>
                                 </div>
                                 <div className={metricIconClass('violet')}>

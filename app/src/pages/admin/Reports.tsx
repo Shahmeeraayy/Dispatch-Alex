@@ -278,11 +278,11 @@ export default function ReportsPage() {
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
           <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100">
                 <Briefcase className="h-3.5 w-3.5" />
                 Operational Analytics
               </div>
-              <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+              <h1 className="mt-5 text-[2.35rem] font-semibold leading-none tracking-[-0.06em] text-white md:text-[2.8rem]">
                 Reports
                 <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
                   command deck
@@ -393,8 +393,8 @@ export default function ReportsPage() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Jobs Created</p>
-                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{numberFmt.format(kpis?.jobs_created ?? 0)}</div>}
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Jobs Created</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{numberFmt.format(kpis?.jobs_created ?? 0)}</div>}
                   <p className="text-sm text-slate-300">New work orders in range</p>
                 </div>
                 <div className={metricIconClass('cyan')}>
@@ -408,8 +408,8 @@ export default function ReportsPage() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Jobs Completed</p>
-                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{numberFmt.format(kpis?.jobs_completed ?? 0)}</div>}
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Jobs Completed</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{numberFmt.format(kpis?.jobs_completed ?? 0)}</div>}
                   <p className="text-sm text-slate-300">Closed successfully in range</p>
                 </div>
                 <div className={metricIconClass('emerald')}>
@@ -423,8 +423,8 @@ export default function ReportsPage() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Technician Utilization</p>
-                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{percentFmt.format(kpis?.technician_utilization ?? 0)}%</div>}
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Technician Utilization</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{percentFmt.format(kpis?.technician_utilization ?? 0)}%</div>}
                   <p className="text-sm text-slate-300">Field capacity actively used</p>
                 </div>
                 <div className={metricIconClass('violet')}>
@@ -438,8 +438,8 @@ export default function ReportsPage() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Invoice Total</p>
-                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{currencyFmt.format(kpis?.invoice_total ?? 0)}</div>}
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Invoice Total</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{currencyFmt.format(kpis?.invoice_total ?? 0)}</div>}
                   <p className="text-sm text-slate-300">Gross invoiced in selected range</p>
                 </div>
                 <div className={metricIconClass('amber')}>
@@ -453,8 +453,8 @@ export default function ReportsPage() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pending Approvals</p>
-                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="text-3xl font-semibold tracking-[-0.05em] text-white">{numberFmt.format(kpis?.pending_approvals ?? 0)}</div>}
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Pending Approvals</p>
+                  {loading ? <Skeleton className="mt-3 h-8 w-20 bg-white/10" /> : <div className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{numberFmt.format(kpis?.pending_approvals ?? 0)}</div>}
                   <p className="text-sm text-slate-300">Invoices still requiring action</p>
                 </div>
                 <div className={metricIconClass('rose')}>

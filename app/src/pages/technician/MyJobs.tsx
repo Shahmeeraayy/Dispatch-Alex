@@ -538,8 +538,8 @@ function BottomNav({
     ] as const;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-2xl z-50 safe-area-bottom">
-            <div className="max-w-2xl mx-auto px-2 py-2">
+        <div className="safe-area-bottom fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#08111f]/95 shadow-2xl backdrop-blur-xl">
+            <div className="mx-auto w-full px-3 py-2 sm:px-4">
                 <div className="flex items-center justify-around gap-1">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
@@ -550,14 +550,14 @@ function BottomNav({
                                 key={tab.id}
                                 onClick={() => navigate(tab.path)}
                                 className={cn(
-                                    "flex flex-col items-center justify-center gap-1 px-4 py-2.5 rounded-xl transition-all duration-200 flex-1",
+                                    "flex flex-1 flex-col items-center justify-center gap-1 rounded-xl px-3 py-2.5 transition-all duration-200 min-h-[60px]",
                                     isActive
-                                        ? "bg-[#2F8E92]/10 dark:bg-[#2F8E92]/20 text-[#2F8E92] dark:text-teal-400"
-                                        : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                        ? "bg-[#2F8E92]/15 text-cyan-200"
+                                        : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"
                                 )}
                             >
-                                <Icon className={cn("w-5 h-5", isActive && "scale-110")} />
-                                <span className={cn("text-xs font-semibold", isActive && "font-bold")}>
+                                <Icon className={cn("h-5 w-5", isActive && "scale-110")} />
+                                <span className={cn("text-[11px] font-semibold", isActive && "font-bold")}>
                                     {tab.label}
                                 </span>
                             </button>
@@ -1086,15 +1086,15 @@ export default function MyJobsPage({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
+        <div className="min-h-screen bg-[#020817] pb-28 text-white">
             {/* Top Navigation Bar */}
-            <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between gap-3">
+            <div className="sticky top-0 z-40 border-b border-white/10 bg-[#08111f]/95 backdrop-blur-xl">
+                <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-3 px-3 py-4 sm:px-4 lg:px-6">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                        <h1 className="text-xl font-bold tracking-tight text-white">
                             {isHistoryMode ? 'Job History' : 'Current Job'}
                         </h1>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        <p className="mt-0.5 text-xs text-slate-400">
                             {isHistoryMode ? `${completedJobs.length} completed` : `${activeJobs.length} active`}
                         </p>
                     </div>
@@ -1102,7 +1102,7 @@ export default function MyJobsPage({
                         variant="outline"
                         size="sm"
                         onClick={() => void fetchJobs()}
-                        className="h-9 gap-2 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                        className="h-10 gap-2 rounded-2xl border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]"
                         disabled={loading}
                     >
                         <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
@@ -1112,18 +1112,18 @@ export default function MyJobsPage({
             </div>
 
             {/* Job List */}
-            <div className="max-w-2xl mx-auto px-4 py-5 space-y-6">
+            <div className="mx-auto w-full max-w-[1500px] space-y-6 px-3 py-5 sm:px-4 lg:px-6">
                 {loading ? (
                     // Loading State
                     <div className="space-y-4">
                         {Array.from({ length: 3 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 animate-pulse"
+                                className="animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-5"
                             >
-                                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3"></div>
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4"></div>
-                                <div className="h-11 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                                <div className="mb-3 h-6 w-1/3 rounded bg-white/10"></div>
+                                <div className="mb-4 h-4 w-2/3 rounded bg-white/10"></div>
+                                <div className="h-11 rounded bg-white/10"></div>
                             </div>
                         ))}
                     </div>
@@ -1157,14 +1157,14 @@ export default function MyJobsPage({
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-5">
-                                            <Clock className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+                                    <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                                        <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.05]">
+                                            <Clock className="h-10 w-10 text-slate-500" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                        <h3 className="mb-2 text-xl font-bold text-white">
                                             No Job History Yet
                                         </h3>
-                                        <p className="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+                                        <p className="max-w-sm leading-relaxed text-slate-400">
                                             Completed jobs will appear here after you finish them.
                                         </p>
                                     </div>
@@ -1175,7 +1175,7 @@ export default function MyJobsPage({
                                 {/* Active Jobs */}
                                 {activeJobs.length > 0 && (
                                     <div className="space-y-3">
-                                        <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
+                                        <h2 className="px-1 text-sm font-bold uppercase tracking-wider text-slate-500">
                                             Active
                                         </h2>
                                         {activeJobs.map((job) => (
@@ -1205,14 +1205,14 @@ export default function MyJobsPage({
 
                                 {/* Empty State */}
                                 {activeJobs.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-5">
-                                            <Calendar className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+                                    <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                                        <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.05]">
+                                            <Calendar className="h-10 w-10 text-slate-500" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                        <h3 className="mb-2 text-xl font-bold text-white">
                                             No Current Jobs
                                         </h3>
-                                        <p className="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+                                        <p className="max-w-sm leading-relaxed text-slate-400">
                                             New confirmed jobs from admin will appear in the Jobs tab.
                                         </p>
                                     </div>
@@ -1225,7 +1225,7 @@ export default function MyJobsPage({
 
             {/* Delay Modal */}
             <Dialog open={addServiceModalOpen} onOpenChange={setAddServiceModalOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-[24px] border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.98),rgba(6,17,29,0.98))] text-slate-100 sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>{editingServiceId ? 'Edit Service' : 'Add Service'}</DialogTitle>
                         <DialogDescription>
@@ -1311,7 +1311,7 @@ export default function MyJobsPage({
 
             {/* Delay Modal */}
             <Dialog open={delayModalOpen} onOpenChange={setDelayModalOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-[24px] border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.98),rgba(6,17,29,0.98))] text-slate-100 sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Delay Job</DialogTitle>
                         <DialogDescription>
@@ -1388,7 +1388,7 @@ export default function MyJobsPage({
 
             {/* Refuse Modal */}
             <Dialog open={refuseModalOpen} onOpenChange={setRefuseModalOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-[24px] border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.98),rgba(6,17,29,0.98))] text-slate-100 sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Refuse Job</DialogTitle>
                         <DialogDescription>
@@ -1451,7 +1451,7 @@ export default function MyJobsPage({
 
             {/* Done Confirmation Modal */}
             <Dialog open={doneModalOpen} onOpenChange={setDoneModalOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-[24px] border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.98),rgba(6,17,29,0.98))] text-slate-100 sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Complete Job</DialogTitle>
                         <DialogDescription>

@@ -621,11 +621,11 @@ export default function ServicesPage() {
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
                     <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
                         <div className="max-w-3xl">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100">
                                 <FileText className="h-3.5 w-3.5" />
                                 Catalog Controls
                             </div>
-                            <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                            <h1 className="mt-5 text-[2.35rem] font-semibold leading-none tracking-[-0.06em] text-white md:text-[2.8rem]">
                                 Services
                                 <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
                                     pricing console
@@ -657,8 +657,8 @@ export default function ServicesPage() {
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Catalog Items</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{services.length}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Catalog Items</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{services.length}</p>
                                     <p className="text-sm text-slate-300">Services available in catalog</p>
                                 </div>
                                 <div className={metricIconClass('cyan')}>
@@ -671,8 +671,8 @@ export default function ServicesPage() {
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active Services</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{activeServicesCount}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Active Services</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{activeServicesCount}</p>
                                     <p className="text-sm text-slate-300">Live items available for jobs</p>
                                 </div>
                                 <div className={metricIconClass('emerald')}>
@@ -685,8 +685,8 @@ export default function ServicesPage() {
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approval Flags</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{approvalRequiredCount}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Approval Flags</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{approvalRequiredCount}</p>
                                     <p className="text-sm text-slate-300">Services requiring invoice review</p>
                                 </div>
                                 <div className={metricIconClass('amber')}>
@@ -699,8 +699,8 @@ export default function ServicesPage() {
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Archived</p>
-                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{archivedServicesCount}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Archived</p>
+                                    <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{archivedServicesCount}</p>
                                     <p className="text-sm text-slate-300">Inactive catalog entries retained</p>
                                 </div>
                                 <div className={metricIconClass('violet')}>

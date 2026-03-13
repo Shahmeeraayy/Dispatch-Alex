@@ -371,8 +371,8 @@ function BottomNav({
     ] as const;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-2xl z-50 safe-area-bottom">
-            <div className="max-w-2xl mx-auto px-2 py-2">
+        <div className="safe-area-bottom fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#08111f]/95 shadow-2xl backdrop-blur-xl">
+            <div className="mx-auto w-full px-3 py-2 sm:px-4">
                 <div className="flex items-center justify-around gap-1">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
@@ -383,14 +383,14 @@ function BottomNav({
                                 key={tab.id}
                                 onClick={() => navigate(tab.path)}
                                 className={cn(
-                                    'flex flex-col items-center justify-center gap-1 px-4 py-2.5 rounded-xl transition-all duration-200 flex-1',
+                                    'flex flex-1 flex-col items-center justify-center gap-1 rounded-xl px-3 py-2.5 transition-all duration-200 min-h-[60px]',
                                     isActive
-                                        ? 'bg-[#2F8E92]/10 dark:bg-[#2F8E92]/20 text-[#2F8E92] dark:text-teal-400'
-                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
+                                        ? 'bg-[#2F8E92]/15 text-cyan-200'
+                                        : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200',
                                 )}
                             >
                                 <Icon className={cn('w-5 h-5', isActive && 'scale-110')} />
-                                <span className={cn('text-xs font-semibold', isActive && 'font-bold')}>{tab.label}</span>
+                                <span className={cn('text-[11px] font-semibold', isActive && 'font-bold')}>{tab.label}</span>
                             </button>
                         );
                     })}
@@ -529,13 +529,13 @@ export default function SchedulePage() {
     const activeJobsCount = jobs.filter((job) => ['scheduled', 'in_progress', 'delayed', 'unknown'].includes(job.status)).length;
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
-            <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="max-w-2xl mx-auto px-5 py-4">
+        <div className="min-h-screen bg-[#020817] pb-28 text-white">
+            <div className="sticky top-0 z-40 border-b border-white/10 bg-[#08111f]/95 backdrop-blur-xl">
+                <div className="mx-auto w-full max-w-[1500px] px-3 py-4 sm:px-4 lg:px-6">
                     <div className="flex items-center justify-between gap-3">
                         <div>
-                            <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Schedule</h1>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            <h1 className="text-xl font-bold tracking-tight text-white">Schedule</h1>
+                            <p className="mt-0.5 text-xs text-slate-400">
                                 {activeJobsCount} upcoming jobs
                                 {lastUpdated
                                     ? ` • updated ${lastUpdated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
@@ -546,7 +546,7 @@ export default function SchedulePage() {
                             variant="outline"
                             size="icon"
                             onClick={fetchSchedule}
-                            className="rounded-xl shrink-0"
+                            className="h-10 shrink-0 rounded-2xl border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]"
                             aria-label="Refresh schedule"
                         >
                             <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
@@ -556,18 +556,18 @@ export default function SchedulePage() {
             </div>
 
             {error && (
-                <div className="max-w-2xl mx-auto px-4 pt-4">
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3">
+                <div className="mx-auto w-full max-w-[1500px] px-3 pt-4 sm:px-4 lg:px-6">
+                    <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
-                                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                                <span className="text-sm font-medium text-red-800 dark:text-red-300">
+                                <AlertCircle className="h-5 w-5 text-red-300" />
+                                <span className="text-sm font-medium text-red-100">
                                     Could not load schedule.
                                 </span>
                             </div>
                             <button
                                 onClick={fetchSchedule}
-                                className="text-sm font-semibold text-red-700 dark:text-red-400 hover:underline"
+                                className="text-sm font-semibold text-red-200 hover:underline"
                             >
                                 Retry
                             </button>
@@ -576,27 +576,27 @@ export default function SchedulePage() {
                 </div>
             )}
 
-            <div className="max-w-2xl mx-auto px-4 py-5 space-y-6">
+            <div className="mx-auto w-full max-w-[1500px] space-y-6 px-3 py-5 sm:px-4 lg:px-6">
                 {loading ? (
                     <div className="space-y-4">
                         {Array.from({ length: 3 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 animate-pulse"
+                                className="animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-5"
                             >
-                                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3"></div>
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4"></div>
-                                <div className="h-11 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                                <div className="mb-3 h-6 w-1/3 rounded bg-white/10"></div>
+                                <div className="mb-4 h-4 w-2/3 rounded bg-white/10"></div>
+                                <div className="h-11 rounded bg-white/10"></div>
                             </div>
                         ))}
                     </div>
                 ) : dateGroups.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-5">
-                            <CalendarDays className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+                    <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                        <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.05]">
+                            <CalendarDays className="h-10 w-10 text-slate-500" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Scheduled Jobs</h3>
-                        <p className="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+                        <h3 className="mb-2 text-xl font-bold text-white">No Scheduled Jobs</h3>
+                        <p className="max-w-sm leading-relaxed text-slate-400">
                             New assignments will appear here once they are scheduled.
                         </p>
                     </div>
@@ -604,7 +604,7 @@ export default function SchedulePage() {
                     <>
                         {dateGroups.map((group) => (
                             <div key={group.date} className="space-y-3">
-                                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
+                                <h2 className="px-1 text-sm font-bold uppercase tracking-wider text-slate-500">
                                     {group.label}
                                 </h2>
                                 <div className="space-y-3">

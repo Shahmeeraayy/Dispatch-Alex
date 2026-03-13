@@ -889,11 +889,11 @@ export default function TechniciansPage() {
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
                 <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
                     <div className="max-w-3xl">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100">
                             <User className="h-3.5 w-3.5" />
                             Field Workforce
                         </div>
-                        <h1 className="mt-5 text-[clamp(2rem,3.4vw,3.2rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                        <h1 className="mt-5 text-[2.35rem] font-semibold leading-none tracking-[-0.06em] text-white md:text-[2.8rem]">
                             Technicians
                             <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
                                 workforce board
@@ -974,29 +974,29 @@ export default function TechniciansPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Card className="overflow-hidden rounded-[24px] border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                     <div className="p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total Technicians</p>
-                        <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{totalTechCount}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Total Technicians</p>
+                        <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{totalTechCount}</p>
                         <p className="mt-2 text-sm text-slate-300">Visible workforce profiles</p>
                     </div>
                 </Card>
                 <Card className="overflow-hidden rounded-[24px] border border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                     <div className="p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active</p>
-                        <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{activeTechCount}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Active</p>
+                        <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{activeTechCount}</p>
                         <p className="mt-2 text-sm text-slate-300">Ready for dispatch</p>
                     </div>
                 </Card>
                 <Card className="overflow-hidden rounded-[24px] border border-violet-400/15 bg-[linear-gradient(180deg,rgba(30,23,49,0.96),rgba(18,16,33,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                     <div className="p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Inactive</p>
-                        <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{inactiveTechCount}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Inactive</p>
+                        <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{inactiveTechCount}</p>
                         <p className="mt-2 text-sm text-slate-300">Profiles temporarily unavailable</p>
                     </div>
                 </Card>
                 <Card className="overflow-hidden rounded-[24px] border border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                     <div className="p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Assigned Jobs</p>
-                        <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{assignedJobsCount}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Assigned Jobs</p>
+                        <p className="mt-3 text-[2.15rem] font-semibold leading-none tracking-[-0.06em] text-white">{assignedJobsCount}</p>
                         <p className="mt-2 text-sm text-slate-300">{busyTechniciansCount} technicians currently assigned</p>
                     </div>
                 </Card>

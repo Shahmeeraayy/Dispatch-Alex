@@ -11,6 +11,7 @@ import {
     RefreshCw,
     Save,
     Settings,
+    Sparkles,
     Trash2,
     User,
 } from 'lucide-react';
@@ -408,33 +409,107 @@ export default function ProfilePage() {
         .filter((day) => workingDays.includes(day.value))
         .map((day) => day.label)
         .join(', ');
+    const heroEyebrow = isSettingsView ? 'Account Settings' : 'Technician Identity';
+    const heroTitle = isSettingsView ? 'Profile settings\nwith account control.' : 'Profile\nwith field identity.';
+    const heroDescription = isSettingsView
+        ? 'Manage your account details, availability settings, and password updates from one mobile-first control surface.'
+        : 'Review your technician identity, contact details, and settings access from one field-ready profile workspace.';
+    const availabilityLabel = workingDayLabels || 'Not configured';
+    const summaryCards = [
+        {
+            label: 'Account',
+            value: isPreviewMode ? 'Preview' : 'Live',
+            description: isPreviewMode ? 'Read-only technician preview mode.' : 'Signed-in technician portal account.',
+            tone: 'border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))]',
+            iconTone: 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+            icon: User,
+        },
+        {
+            label: 'Availability',
+            value: afterHoursEnabled ? 'Open' : 'Standard',
+            description: afterHoursEnabled ? 'After-hours assignments currently enabled.' : 'Working normal shift settings only.',
+            tone: 'border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))]',
+            iconTone: 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+            icon: Clock,
+        },
+        {
+            label: 'Work Days',
+            value: String(workingDays.length),
+            description: availabilityLabel,
+            tone: 'border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))]',
+            iconTone: 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
+            icon: Calendar,
+        },
+    ] as const;
 
     return (
         <div className="min-h-screen bg-[#020817] pb-28 text-white">
-            <div className="sticky top-0 z-40 border-b border-white/10 bg-[#08111f]/95 backdrop-blur-xl">
-                <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-3 px-3 py-4 sm:px-4 lg:px-6">
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-white">
-                            {isSettingsView ? 'Profile Settings' : 'Profile'}
-                        </h1>
-                        <p className="mt-0.5 text-xs text-slate-400">
-                            {isSettingsView ? 'Manage your account and availability settings' : 'Manage your account'}
-                        </p>
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void handleRefresh()}
-                        className="h-10 gap-2 rounded-2xl border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]"
-                        disabled={loading}
-                    >
-                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-                        Refresh
-                    </Button>
-                </div>
-            </div>
+            <div className="relative w-full pb-8">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_32%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),rgba(16,185,129,0)_28%)]" />
+                <div className="relative mx-auto w-full max-w-[1500px] space-y-6 px-3 pt-4 sm:px-4 lg:px-6">
+                    <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
+                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                        <div className="relative flex flex-col gap-5 p-5 lg:flex-row lg:items-end lg:justify-between lg:p-7">
+                            <div className="max-w-3xl">
+                                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    {heroEyebrow}
+                                </div>
+                                <h1 className="mt-5 whitespace-pre-line text-[clamp(2rem,3.4vw,3.15rem)] font-semibold leading-[0.94] tracking-[-0.07em] text-white">
+                                    {heroTitle}
+                                </h1>
+                                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                                    {heroDescription}
+                                </p>
+                                <div className="mt-5 flex flex-wrap items-center gap-2">
+                                    <Badge variant="outline" className="rounded-full border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-cyan-100">
+                                        {userName}
+                                    </Badge>
+                                    <Badge variant="outline" className="rounded-full border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-amber-100">
+                                        {isPreviewMode ? 'preview mode' : 'technician portal'}
+                                    </Badge>
+                                    <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                        {workingDays.length} work days
+                                    </Badge>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 self-start lg:self-end">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => void handleRefresh()}
+                                    className="h-11 gap-2 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-slate-100 hover:bg-white/[0.08]"
+                                    disabled={loading}
+                                >
+                                    <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+                                    Refresh
+                                </Button>
+                            </div>
+                        </div>
+                    </section>
 
-            <div className="mx-auto w-full max-w-[1500px] space-y-4 px-3 py-5 sm:px-4 lg:px-6">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {summaryCards.map((card) => {
+                            const Icon = card.icon;
+                            return (
+                                <div key={card.label} className={cn('overflow-hidden rounded-[24px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]', card.tone)}>
+                                    <div className="flex items-start justify-between p-5">
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{card.label}</p>
+                                            <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{card.value}</p>
+                                            <p className="mt-2 text-sm text-slate-300">{card.description}</p>
+                                        </div>
+                                        <div className={cn('flex h-11 w-11 items-center justify-center rounded-2xl border', card.iconTone)}>
+                                            <Icon className="h-5 w-5" />
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="space-y-4">
                 {loading ? <Card className="border-white/10 bg-white/[0.03] p-6 text-slate-200">Loading profile...</Card> : null}
                 {error ? <Card className="border-red-500/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</Card> : null}
 
@@ -444,46 +519,46 @@ export default function ProfilePage() {
                             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Profile
                         </Button>
 
-                        <Card className="p-6 border-gray-200 dark:border-gray-800 dark:bg-gray-900">
+                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
                             <div className="flex items-center gap-4 mb-6">
                                 {profilePictureUrl ? (
-                                    <img src={profilePictureUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
+                                    <img src={profilePictureUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-white/10" />
                                 ) : (
                                     <div className="w-16 h-16 rounded-full bg-[#2F8E92] flex items-center justify-center text-white text-2xl font-bold">
                                         {initials}
                                     </div>
                                 )}
                                 <div>
-                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{userName}</h2>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{isPreviewMode ? 'Technician (Preview)' : 'Technician'}</p>
+                                    <h2 className="text-lg font-bold text-white">{userName}</h2>
+                                    <p className="text-sm text-slate-400">{isPreviewMode ? 'Technician (Preview)' : 'Technician'}</p>
                                 </div>
                             </div>
 
                             {isPreviewMode ? (
-                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/70">
+                                <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3">
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400">Full Name</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">{fullName || userName}</span>
+                                        <span className="text-slate-400">Full Name</span>
+                                        <span className="font-medium text-white">{fullName || userName}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400">Email</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">{userEmail}</span>
+                                        <span className="text-slate-400">Email</span>
+                                        <span className="font-medium text-white">{userEmail}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400">Phone</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">{userPhone}</span>
+                                        <span className="text-slate-400">Phone</span>
+                                        <span className="font-medium text-white">{userPhone}</span>
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Preview mode is read-only. Open technician portal to edit these values.</p>
+                                    <p className="text-xs text-slate-400">Preview mode is read-only. Open technician portal to edit these values.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     <div className="space-y-1">
-                                        <Label>Full Name</Label>
-                                        <Input value={fullName} onChange={(event) => setFullName(event.target.value)} />
+                                        <Label className="text-slate-300">Full Name</Label>
+                                        <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" value={fullName} onChange={(event) => setFullName(event.target.value)} />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label>Phone</Label>
-                                        <Input value={phone} onChange={(event) => setPhone(event.target.value)} />
+                                        <Label className="text-slate-300">Phone</Label>
+                                        <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" value={phone} onChange={(event) => setPhone(event.target.value)} />
                                     </div>
                                     <Button onClick={() => void saveProfile()} className="w-full bg-[#2F8E92] hover:bg-[#267276]" disabled={savingProfile}>
                                         <Save className="w-4 h-4 mr-2" />
@@ -493,45 +568,45 @@ export default function ProfilePage() {
                             )}
                         </Card>
 
-                        <Card className="p-6 border-gray-200 dark:border-gray-800 dark:bg-gray-900">
-                            <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Availability Settings</h3>
+                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                            <h3 className="mb-3 text-sm font-semibold text-white">Availability Settings</h3>
                             {isPreviewMode ? (
-                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/70">
+                                <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3">
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400">Working Days</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">{workingDayLabels || 'Not configured'}</span>
+                                        <span className="text-slate-400">Working Days</span>
+                                        <span className="font-medium text-white">{workingDayLabels || 'Not configured'}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400">Working Hours</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">{workingHoursStart} - {workingHoursEnd}</span>
+                                        <span className="text-slate-400">Working Hours</span>
+                                        <span className="font-medium text-white">{workingHoursStart} - {workingHoursEnd}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400">After-hours Availability</span>
-                                        <span className={cn('font-medium', afterHoursEnabled ? 'text-emerald-600' : 'text-gray-700')}>
+                                        <span className="text-slate-400">After-hours Availability</span>
+                                        <span className={cn('font-medium', afterHoursEnabled ? 'text-emerald-300' : 'text-slate-300')}>
                                             {afterHoursEnabled ? 'Enabled' : 'Disabled'}
                                         </span>
                                     </div>
-                                    <div className="border-t border-gray-200 pt-1 dark:border-gray-700">
-                                        <div className="mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">Out-of-office ranges</div>
+                                    <div className="border-t border-white/10 pt-1">
+                                        <div className="mb-2 text-xs font-medium text-slate-300">Out-of-office ranges</div>
                                         {outOfOfficeRanges.length === 0 ? (
-                                            <div className="text-xs text-gray-500 dark:text-gray-400">No out-of-office ranges configured.</div>
+                                            <div className="text-xs text-slate-400">No out-of-office ranges configured.</div>
                                         ) : (
                                             <div className="space-y-2">
                                                 {outOfOfficeRanges.map((range, index) => (
-                                                    <div key={`${range.start_date}-${range.end_date}-${index}`} className="rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700">
-                                                        <div className="text-xs font-medium text-gray-800 dark:text-white">{range.start_date} - {range.end_date}</div>
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400">{range.note || 'Out of office'}</div>
+                                                    <div key={`${range.start_date}-${range.end_date}-${index}`} className="rounded-md border border-white/10 px-3 py-2">
+                                                        <div className="text-xs font-medium text-white">{range.start_date} - {range.end_date}</div>
+                                                        <div className="text-xs text-slate-400">{range.note || 'Out of office'}</div>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Preview mode is read-only. Open technician portal to update availability.</p>
+                                    <p className="text-xs text-slate-400">Preview mode is read-only. Open technician portal to update availability.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
                                     <div>
-                                        <Label className="mb-2 block">Working Days</Label>
+                                        <Label className="mb-2 block text-slate-300">Working Days</Label>
                                         <div className="flex flex-wrap gap-2">
                                             {DAY_OPTIONS.map((day) => {
                                                 const selected = workingDays.includes(day.value);
@@ -544,7 +619,7 @@ export default function ProfilePage() {
                                                             'h-9 px-3 rounded-lg border text-sm font-medium',
                                                             selected
                                                                 ? 'bg-[#2F8E92]/10 border-[#2F8E92] text-[#2F8E92]'
-                                                                : 'bg-white border-gray-200 text-gray-600',
+                                                                : 'border-white/10 bg-white/[0.03] text-slate-300',
                                                         )}
                                                     >
                                                         {day.label}
@@ -556,44 +631,44 @@ export default function ProfilePage() {
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
-                                            <Label>Start Time</Label>
-                                            <Input type="time" value={workingHoursStart} onChange={(event) => setWorkingHoursStart(event.target.value)} />
+                                            <Label className="text-slate-300">Start Time</Label>
+                                            <Input className="border-white/10 bg-white/[0.04] text-white" type="time" value={workingHoursStart} onChange={(event) => setWorkingHoursStart(event.target.value)} />
                                         </div>
                                         <div className="space-y-1">
-                                            <Label>End Time</Label>
-                                            <Input type="time" value={workingHoursEnd} onChange={(event) => setWorkingHoursEnd(event.target.value)} />
+                                            <Label className="text-slate-300">End Time</Label>
+                                            <Input className="border-white/10 bg-white/[0.04] text-white" type="time" value={workingHoursEnd} onChange={(event) => setWorkingHoursEnd(event.target.value)} />
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
+                                    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
                                         <div>
-                                            <div className="text-sm font-medium text-gray-900">After-hours availability</div>
-                                            <div className="text-xs text-gray-500">Allow assignment requests after normal shift</div>
+                                            <div className="text-sm font-medium text-white">After-hours availability</div>
+                                            <div className="text-xs text-slate-400">Allow assignment requests after normal shift</div>
                                         </div>
                                         <Switch checked={afterHoursEnabled} onCheckedChange={setAfterHoursEnabled} />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Out-of-office ranges</Label>
+                                        <Label className="text-slate-300">Out-of-office ranges</Label>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                            <Input type="date" value={newRange.start_date} onChange={(event) => setNewRange((prev) => ({ ...prev, start_date: event.target.value }))} />
-                                            <Input type="date" value={newRange.end_date} onChange={(event) => setNewRange((prev) => ({ ...prev, end_date: event.target.value }))} />
-                                            <Input value={newRange.note || ''} onChange={(event) => setNewRange((prev) => ({ ...prev, note: event.target.value }))} placeholder="Note (optional)" />
+                                            <Input className="border-white/10 bg-white/[0.04] text-white" type="date" value={newRange.start_date} onChange={(event) => setNewRange((prev) => ({ ...prev, start_date: event.target.value }))} />
+                                            <Input className="border-white/10 bg-white/[0.04] text-white" type="date" value={newRange.end_date} onChange={(event) => setNewRange((prev) => ({ ...prev, end_date: event.target.value }))} />
+                                            <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" value={newRange.note || ''} onChange={(event) => setNewRange((prev) => ({ ...prev, note: event.target.value }))} placeholder="Note (optional)" />
                                         </div>
-                                        <Button type="button" variant="outline" onClick={addOutOfOfficeRange} className="w-full">
+                                        <Button type="button" variant="outline" onClick={addOutOfOfficeRange} className="w-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]">
                                             <Plus className="w-4 h-4 mr-2" /> Add Range
                                         </Button>
                                         <div className="space-y-2">
                                             {outOfOfficeRanges.length === 0 ? (
-                                                <div className="text-xs text-gray-500">No out-of-office ranges configured.</div>
+                                                <div className="text-xs text-slate-400">No out-of-office ranges configured.</div>
                                             ) : outOfOfficeRanges.map((range, index) => (
-                                                <div key={`${range.start_date}-${range.end_date}-${index}`} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
+                                                <div key={`${range.start_date}-${range.end_date}-${index}`} className="flex items-center justify-between rounded-md border border-white/10 px-3 py-2">
                                                     <div className="text-xs">
-                                                        <div className="font-medium text-gray-800">{range.start_date} - {range.end_date}</div>
-                                                        <div className="text-gray-500">{range.note || 'Out of office'}</div>
+                                                        <div className="font-medium text-white">{range.start_date} - {range.end_date}</div>
+                                                        <div className="text-slate-400">{range.note || 'Out of office'}</div>
                                                     </div>
                                                     <Button type="button" variant="ghost" size="icon" onClick={() => setOutOfOfficeRanges((prev) => prev.filter((_, i) => i !== index))}>
-                                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                                        <Trash2 className="w-4 h-4 text-red-400" />
                                                     </Button>
                                                 </div>
                                             ))}
@@ -608,20 +683,21 @@ export default function ProfilePage() {
                             )}
                         </Card>
 
-                        <Card className="p-6 border-gray-200 dark:border-gray-800 dark:bg-gray-900">
-                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
                                 <KeyRound className="w-4 h-4 text-[#2F8E92]" />
                                 Reset Password
                             </h3>
                             {isPreviewMode ? (
-                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
+                                <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3 text-xs text-slate-400">
                                     Preview mode is read-only. Open technician portal to update password.
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     <div className="space-y-1">
-                                        <Label htmlFor="technician_current_password">Current Password</Label>
+                                        <Label htmlFor="technician_current_password" className="text-slate-300">Current Password</Label>
                                         <Input
+                                            className="border-white/10 bg-white/[0.04] text-white"
                                             id="technician_current_password"
                                             type="password"
                                             autoComplete="current-password"
@@ -630,8 +706,9 @@ export default function ProfilePage() {
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label htmlFor="technician_new_password">New Password</Label>
+                                        <Label htmlFor="technician_new_password" className="text-slate-300">New Password</Label>
                                         <Input
+                                            className="border-white/10 bg-white/[0.04] text-white"
                                             id="technician_new_password"
                                             type="password"
                                             autoComplete="new-password"
@@ -640,8 +717,9 @@ export default function ProfilePage() {
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label htmlFor="technician_confirm_password">Confirm New Password</Label>
+                                        <Label htmlFor="technician_confirm_password" className="text-slate-300">Confirm New Password</Label>
                                         <Input
+                                            className="border-white/10 bg-white/[0.04] text-white"
                                             id="technician_confirm_password"
                                             type="password"
                                             autoComplete="new-password"
@@ -649,7 +727,7 @@ export default function ProfilePage() {
                                             onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
                                         />
                                     </div>
-                                    {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
+                                    {passwordError ? <p className="text-sm text-red-400">{passwordError}</p> : null}
                                     <Button
                                         onClick={() => void savePassword()}
                                         className="w-full bg-[#2F8E92] hover:bg-[#267276]"
@@ -664,44 +742,44 @@ export default function ProfilePage() {
                     </>
                 ) : (
                     <>
-                        <Card className="p-6 border-gray-200 dark:border-gray-800 dark:bg-gray-900">
+                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
                             <div className="flex items-center gap-4">
                                 {profilePictureUrl ? (
-                                    <img src={profilePictureUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
+                                    <img src={profilePictureUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-white/10" />
                                 ) : (
                                     <div className="w-16 h-16 rounded-full bg-[#2F8E92] flex items-center justify-center text-white text-2xl font-bold">
                                         {initials}
                                     </div>
                                 )}
                                 <div>
-                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{userName}</h2>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{isPreviewMode ? 'Technician (Preview)' : 'Technician'}</p>
+                                    <h2 className="text-lg font-bold text-white">{userName}</h2>
+                                    <p className="text-sm text-slate-400">{isPreviewMode ? 'Technician (Preview)' : 'Technician'}</p>
                                 </div>
                             </div>
 
-                            <div className="mt-6 divide-y divide-gray-100 dark:divide-gray-800">
+                            <div className="mt-6 divide-y divide-white/10">
                                 <div className="flex items-center justify-between py-3 text-sm">
-                                    <span className="text-gray-500 dark:text-gray-400">Email</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">{userEmail}</span>
+                                    <span className="text-slate-400">Email</span>
+                                    <span className="font-medium text-white">{userEmail}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-3 text-sm">
-                                    <span className="text-gray-500 dark:text-gray-400">Phone</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">{userPhone}</span>
+                                    <span className="text-slate-400">Phone</span>
+                                    <span className="font-medium text-white">{userPhone}</span>
                                 </div>
                             </div>
                         </Card>
 
-                        <Card className="overflow-hidden border-gray-200 p-0 dark:border-gray-800 dark:bg-gray-900">
+                        <Card className="overflow-hidden border-white/10 bg-white/[0.03] p-0">
                             <button
                                 type="button"
-                                className="flex w-full items-center justify-between px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800"
+                                className="flex w-full items-center justify-between px-4 py-4 text-left hover:bg-white/[0.04]"
                                 onClick={openSettingsView}
                             >
-                                <span className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
-                                    <Settings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                <span className="flex items-center gap-2 text-sm font-medium text-white">
+                                    <Settings className="w-4 h-4 text-slate-400" />
                                     Settings
                                 </span>
-                                <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                                <ChevronRight className="w-4 h-4 text-slate-500" />
                             </button>
                         </Card>
                     </>
@@ -715,6 +793,8 @@ export default function ProfilePage() {
                     <LogOut className="w-5 h-5 mr-2" />
                     {isPreviewMode ? 'Exit Preview' : 'Logout'}
                 </Button>
+                    </div>
+                </div>
             </div>
 
             <BottomNav activeTab="profile" routeBase={routeBase} />

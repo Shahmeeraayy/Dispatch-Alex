@@ -599,7 +599,7 @@ export default function InvoiceHistoryPage() {
         <div className="flex h-full flex-col gap-6">
             <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,24,41,0.98),rgba(5,15,29,0.98))] px-6 py-6 shadow-[0_32px_110px_rgba(0,0,0,0.32)]">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(47,142,146,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.12),transparent_26%)]" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(47,142,146,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(245,158,11,0.12),transparent_26%)]" />
                 <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
                     <div className="max-w-3xl space-y-4">
                         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">

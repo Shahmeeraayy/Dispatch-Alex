@@ -1883,6 +1883,7 @@ export default function JobsPage() {
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
                 <div className="pointer-events-none absolute left-8 top-8 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
                 <div className="pointer-events-none absolute right-10 top-10 h-44 w-44 rounded-full bg-blue-400/8 blur-3xl" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(47,142,146,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(245,158,11,0.12),transparent_26%)]" />
 
                 <div className="relative flex flex-col gap-6 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
                     <div>

@@ -487,7 +487,15 @@ export default function ProfilePage() {
                             <div className="text-xs uppercase tracking-[0.24em] text-slate-500">Settings workspace</div>
                         </div>
 
-                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                            <div className="border-b border-white/10 px-6 py-5">
+                                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                                    <User className="h-3.5 w-3.5 text-cyan-200" />
+                                    Profile Board
+                                </div>
+                                <div className="mt-2 text-sm text-slate-300">Keep your technician identity and contact details current for dispatch visibility.</div>
+                            </div>
+                            <div className="p-6">
                             <div className="flex items-center gap-4 mb-6">
                                 {profilePictureUrl ? (
                                     <img src={profilePictureUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-white/10" />
@@ -519,25 +527,35 @@ export default function ProfilePage() {
                                     <p className="text-xs text-slate-400">Preview mode is read-only. Open technician portal to edit these values.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-slate-300">Full Name</Label>
-                                        <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" value={fullName} onChange={(event) => setFullName(event.target.value)} />
+                                    <div className="space-y-3">
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        <div className="space-y-1">
+                                            <Label className="text-slate-300">Full Name</Label>
+                                            <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" value={fullName} onChange={(event) => setFullName(event.target.value)} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-slate-300">Phone</Label>
+                                            <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                                        </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-slate-300">Phone</Label>
-                                        <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" value={phone} onChange={(event) => setPhone(event.target.value)} />
-                                    </div>
-                                    <Button onClick={() => void saveProfile()} className="w-full bg-[#2F8E92] hover:bg-[#267276]" disabled={savingProfile}>
+                                    <Button onClick={() => void saveProfile()} className="h-11 w-full bg-[#2F8E92] hover:bg-[#267276]" disabled={savingProfile}>
                                         <Save className="w-4 h-4 mr-2" />
                                         {savingProfile ? 'Saving...' : 'Save Profile'}
                                     </Button>
                                 </div>
                             )}
+                            </div>
                         </Card>
 
-                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-                            <h3 className="mb-3 text-sm font-semibold text-white">Availability Settings</h3>
+                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                            <div className="border-b border-white/10 px-6 py-5">
+                                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                                    <Calendar className="h-3.5 w-3.5 text-cyan-200" />
+                                    Availability Board
+                                </div>
+                                <div className="mt-2 text-sm text-slate-300">Configure work days, shift windows, and out-of-office ranges for field routing.</div>
+                            </div>
+                            <div className="p-6">
                             {isPreviewMode ? (
                                 <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3">
                                     <div className="flex items-center justify-between text-sm">
@@ -597,7 +615,7 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div className="space-y-1">
                                             <Label className="text-slate-300">Start Time</Label>
                                             <Input className="border-white/10 bg-white/[0.04] text-white" type="time" value={workingHoursStart} onChange={(event) => setWorkingHoursStart(event.target.value)} />
@@ -618,12 +636,12 @@ export default function ProfilePage() {
 
                                     <div className="space-y-2">
                                         <Label className="text-slate-300">Out-of-office ranges</Label>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                                             <Input className="border-white/10 bg-white/[0.04] text-white" type="date" value={newRange.start_date} onChange={(event) => setNewRange((prev) => ({ ...prev, start_date: event.target.value }))} />
                                             <Input className="border-white/10 bg-white/[0.04] text-white" type="date" value={newRange.end_date} onChange={(event) => setNewRange((prev) => ({ ...prev, end_date: event.target.value }))} />
                                             <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" value={newRange.note || ''} onChange={(event) => setNewRange((prev) => ({ ...prev, note: event.target.value }))} placeholder="Note (optional)" />
                                         </div>
-                                        <Button type="button" variant="outline" onClick={addOutOfOfficeRange} className="w-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]">
+                                        <Button type="button" variant="outline" onClick={addOutOfOfficeRange} className="h-10 w-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]">
                                             <Plus className="w-4 h-4 mr-2" /> Add Range
                                         </Button>
                                         <div className="space-y-2">
@@ -643,19 +661,24 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
 
-                                    <Button onClick={() => void saveAvailability()} className="w-full bg-[#2F8E92] hover:bg-[#267276]" disabled={savingAvailability}>
+                                    <Button onClick={() => void saveAvailability()} className="h-11 w-full bg-[#2F8E92] hover:bg-[#267276]" disabled={savingAvailability}>
                                         <Save className="w-4 h-4 mr-2" />
                                         {savingAvailability ? 'Saving...' : 'Save Availability'}
                                     </Button>
                                 </div>
                             )}
+                            </div>
                         </Card>
 
-                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-                                <KeyRound className="w-4 h-4 text-[#2F8E92]" />
-                                Reset Password
-                            </h3>
+                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                            <div className="border-b border-white/10 px-6 py-5">
+                                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                                    <KeyRound className="h-3.5 w-3.5 text-cyan-200" />
+                                    Security Board
+                                </div>
+                                <div className="mt-2 text-sm text-slate-300">Update your password and keep technician account access secure.</div>
+                            </div>
+                            <div className="p-6">
                             {isPreviewMode ? (
                                 <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3 text-xs text-slate-400">
                                     Preview mode is read-only. Open technician portal to update password.
@@ -698,7 +721,7 @@ export default function ProfilePage() {
                                     {passwordError ? <p className="text-sm text-red-400">{passwordError}</p> : null}
                                     <Button
                                         onClick={() => void savePassword()}
-                                        className="w-full bg-[#2F8E92] hover:bg-[#267276]"
+                                        className="h-11 w-full bg-[#2F8E92] hover:bg-[#267276]"
                                         disabled={savingPassword}
                                     >
                                         <Save className="w-4 h-4 mr-2" />
@@ -706,11 +729,37 @@ export default function ProfilePage() {
                                     </Button>
                                 </div>
                             )}
+                            </div>
+                        </Card>
+
+                        <Card className="overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.92),rgba(6,17,29,0.94))] shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+                            <div className="flex items-center justify-between gap-3 px-6 py-4">
+                                <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Session Actions</div>
+                                    <div className="mt-1 text-sm text-slate-300">{isPreviewMode ? 'Exit technician preview when finished reviewing.' : 'End this technician session safely.'}</div>
+                                </div>
+                                <Button
+                                    onClick={handleLogout}
+                                    variant="outline"
+                                    className="h-11 min-w-[150px] border-red-500/25 text-red-200 hover:bg-red-500/10 hover:text-red-100"
+                                >
+                                    <LogOut className="w-5 h-5 mr-2" />
+                                    {isPreviewMode ? 'Exit Preview' : 'Logout'}
+                                </Button>
+                            </div>
                         </Card>
                     </>
                 ) : (
                     <>
-                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                        <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                            <div className="border-b border-white/10 px-6 py-5">
+                                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                                    <User className="h-3.5 w-3.5 text-cyan-200" />
+                                    Identity Board
+                                </div>
+                                <div className="mt-2 text-sm text-slate-300">Review your technician identity, contact channel, and workspace access.</div>
+                            </div>
+                            <div className="p-6">
                             <div className="flex items-center gap-4">
                                 {profilePictureUrl ? (
                                     <img src={profilePictureUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-white/10" />
@@ -735,32 +784,50 @@ export default function ProfilePage() {
                                     <span className="font-medium text-white">{userPhone}</span>
                                 </div>
                             </div>
+                            </div>
                         </Card>
 
-                        <Card className="overflow-hidden border-white/10 bg-white/[0.03] p-0">
+                        <Card className="overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.92),rgba(6,17,29,0.94))] shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+                            <div className="border-b border-white/10 px-6 py-5">
+                                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                                    <Settings className="h-3.5 w-3.5 text-cyan-200" />
+                                    Settings Access
+                                </div>
+                                <div className="mt-2 text-sm text-slate-300">Open account settings, availability controls, and password updates.</div>
+                            </div>
                             <button
                                 type="button"
-                                className="flex w-full items-center justify-between px-4 py-4 text-left hover:bg-white/[0.04]"
+                                className="flex w-full items-center justify-between px-6 py-5 text-left transition hover:bg-white/[0.04]"
                                 onClick={openSettingsView}
                             >
-                                <span className="flex items-center gap-2 text-sm font-medium text-white">
-                                    <Settings className="w-4 h-4 text-slate-400" />
-                                    Settings
-                                </span>
-                                <ChevronRight className="w-4 h-4 text-slate-500" />
+                                <div>
+                                    <div className="text-sm font-semibold text-white">Open Settings Workspace</div>
+                                    <div className="mt-1 text-sm text-slate-400">Manage profile details, work days, after-hours availability, and security.</div>
+                                </div>
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                                </div>
                             </button>
+                        </Card>
+
+                        <Card className="overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.92),rgba(6,17,29,0.94))] shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+                            <div className="flex items-center justify-between gap-3 px-6 py-4">
+                                <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Session Actions</div>
+                                    <div className="mt-1 text-sm text-slate-300">{isPreviewMode ? 'Exit technician preview when finished reviewing.' : 'End this technician session safely.'}</div>
+                                </div>
+                                <Button
+                                    onClick={handleLogout}
+                                    variant="outline"
+                                    className="h-11 min-w-[150px] border-red-500/25 text-red-200 hover:bg-red-500/10 hover:text-red-100"
+                                >
+                                    <LogOut className="w-5 h-5 mr-2" />
+                                    {isPreviewMode ? 'Exit Preview' : 'Logout'}
+                                </Button>
+                            </div>
                         </Card>
                     </>
                 )}
-
-                <Button
-                    onClick={handleLogout}
-                    variant="outline"
-                    className="h-12 w-full border-red-500/25 text-red-200 hover:bg-red-500/10 hover:text-red-100"
-                >
-                    <LogOut className="w-5 h-5 mr-2" />
-                    {isPreviewMode ? 'Exit Preview' : 'Logout'}
-                </Button>
                     </div>
                 </div>
             </div>

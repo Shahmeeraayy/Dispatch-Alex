@@ -15,6 +15,7 @@ import {
     Plus,
     Pencil,
     Trash2,
+    Sparkles,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -1085,45 +1086,161 @@ export default function MyJobsPage({
         setSelectedJobId(null);
     };
 
+    const heroEyebrow = isHistoryMode ? 'Field Archive' : 'Field Execution';
+    const heroTitle = isHistoryMode ? 'Job history\nwith verified field outcomes.' : 'Current jobs\nwith field-ready control.';
+    const heroDescription = isHistoryMode
+        ? 'Review completed work, technician-added services, and final field outcomes from one mobile archive surface.'
+        : 'Track active assignments, manage service updates, and move jobs from accepted to completed without leaving the field workspace.';
+    const metricCards = isHistoryMode
+        ? [
+            {
+                label: 'Completed Jobs',
+                value: completedJobs.length,
+                description: 'Finished assignments stored in your history.',
+                tone: 'border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))] text-cyan-100',
+                iconTone: 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+                icon: CheckCircle2,
+            },
+            {
+                label: 'Active Records',
+                value: jobs.length,
+                description: 'History records currently loaded in your technician archive.',
+                tone: 'border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))] text-amber-100',
+                iconTone: 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+                icon: Briefcase,
+            },
+            {
+                label: 'Zones Covered',
+                value: new Set(jobs.map((job) => job.zone).filter(Boolean)).size,
+                description: 'Dispatch zones represented in your recorded jobs.',
+                tone: 'border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))] text-emerald-100',
+                iconTone: 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
+                icon: MapPin,
+            },
+        ]
+        : [
+            {
+                label: 'Current Jobs',
+                value: activeJobs.length,
+                description: 'Assignments currently active in your field queue.',
+                tone: 'border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))] text-cyan-100',
+                iconTone: 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+                icon: Calendar,
+            },
+            {
+                label: 'Needs Action',
+                value: activeJobs.filter((job) => job.job_status === 'pending' || job.job_status === 'delayed').length,
+                description: 'Jobs waiting for acceptance, restart, or delay handling.',
+                tone: 'border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))] text-amber-100',
+                iconTone: 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+                icon: AlertTriangle,
+            },
+            {
+                label: 'In Progress',
+                value: activeJobs.filter((job) => job.job_status === 'in_progress' || job.job_status === 'scheduled').length,
+                description: 'Scheduled or actively executing field work.',
+                tone: 'border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))] text-emerald-100',
+                iconTone: 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
+                icon: Play,
+            },
+        ];
+    const boardTitle = isHistoryMode ? 'History Board' : 'Current Job Board';
+    const boardDescription = isHistoryMode
+        ? 'Completed technician records with service detail, technician changes, and final field actions.'
+        : 'Live assignments currently active for this technician, ready for field updates.';
+    const visibleCount = isHistoryMode ? completedJobs.length : activeJobs.length;
+    const historyRecordsWithServiceChanges = completedJobs.filter((job) => job.service_entries.some((entry) => entry.source === 'technician')).length;
+
     return (
         <div className="min-h-screen bg-[#020817] pb-28 text-white">
-            {/* Top Navigation Bar */}
-            <div className="sticky top-0 z-40 border-b border-white/10 bg-[#08111f]/95 backdrop-blur-xl">
-                <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-3 px-3 py-4 sm:px-4 lg:px-6">
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-white">
-                            {isHistoryMode ? 'Job History' : 'Current Job'}
-                        </h1>
-                        <p className="mt-0.5 text-xs text-slate-400">
-                            {isHistoryMode ? `${completedJobs.length} completed` : `${activeJobs.length} active`}
-                        </p>
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void fetchJobs()}
-                        className="h-10 gap-2 rounded-2xl border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]"
-                        disabled={loading}
-                    >
-                        <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-                        Refresh
-                    </Button>
-                </div>
-            </div>
+            <div className="relative w-full pb-8">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_32%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),rgba(16,185,129,0)_28%)]" />
+                <div className="relative mx-auto w-full max-w-[1500px] space-y-6 px-3 pt-4 sm:px-4 lg:px-6">
+                    <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
+                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                        <div className="relative flex flex-col gap-5 p-5 lg:flex-row lg:items-end lg:justify-between lg:p-7">
+                            <div className="max-w-3xl">
+                                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    {heroEyebrow}
+                                </div>
+                                <h1 className="mt-5 whitespace-pre-line text-[clamp(2rem,3.4vw,3.15rem)] font-semibold leading-[0.94] tracking-[-0.07em] text-white">
+                                    {heroTitle}
+                                </h1>
+                                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                                    {heroDescription}
+                                </p>
+                                <div className="mt-5 flex flex-wrap items-center gap-2">
+                                    <Badge variant="outline" className="rounded-full border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-cyan-100">
+                                        {visibleCount} visible
+                                    </Badge>
+                                    <Badge variant="outline" className="rounded-full border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-amber-100">
+                                        {isHistoryMode ? historyRecordsWithServiceChanges : activeJobs.filter((job) => job.job_status === 'pending' || job.job_status === 'delayed').length} {isHistoryMode ? 'service changes' : 'needs action'}
+                                    </Badge>
+                                    <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                        {new Set(jobs.map((job) => job.zone).filter(Boolean)).size} zones
+                                    </Badge>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 self-start lg:self-end">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => void fetchJobs()}
+                                    className="h-11 gap-2 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-slate-100 hover:bg-white/[0.08]"
+                                    disabled={loading}
+                                >
+                                    <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+                                    Refresh
+                                </Button>
+                            </div>
+                        </div>
+                    </section>
 
-            {/* Job List */}
-            <div className="mx-auto w-full max-w-[1500px] space-y-6 px-3 py-5 sm:px-4 lg:px-6">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {metricCards.map((card) => {
+                            const Icon = card.icon;
+                            return (
+                                <div key={card.label} className={cn('overflow-hidden rounded-[24px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]', card.tone)}>
+                                    <div className="flex items-start justify-between p-5">
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{card.label}</p>
+                                            <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">{card.value}</p>
+                                            <p className="mt-2 text-sm text-slate-300">{card.description}</p>
+                                        </div>
+                                        <div className={cn('flex h-11 w-11 items-center justify-center rounded-2xl border', card.iconTone)}>
+                                            <Icon className="h-5 w-5" />
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+                        <div className="border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-5 py-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{boardTitle}</div>
+                                    <div className="text-sm text-slate-200">{boardDescription}</div>
+                                </div>
+                                <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                                    {visibleCount} visible
+                                </Badge>
+                            </div>
+                        </div>
+                        <div className="p-4 sm:p-5">
                 {loading ? (
-                    // Loading State
                     <div className="space-y-4">
                         {Array.from({ length: 3 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                                className="animate-pulse rounded-[24px] border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <div className="mb-3 h-6 w-1/3 rounded bg-white/10"></div>
                                 <div className="mb-4 h-4 w-2/3 rounded bg-white/10"></div>
-                                <div className="h-11 rounded bg-white/10"></div>
+                                <div className="h-12 rounded bg-white/10"></div>
                             </div>
                         ))}
                     </div>
@@ -1157,7 +1274,7 @@ export default function MyJobsPage({
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                                    <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
                                         <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.05]">
                                             <Clock className="h-10 w-10 text-slate-500" />
                                         </div>
@@ -1165,7 +1282,7 @@ export default function MyJobsPage({
                                             No Job History Yet
                                         </h3>
                                         <p className="max-w-sm leading-relaxed text-slate-400">
-                                            Completed jobs will appear here after you finish them.
+                                            Completed jobs, service changes, and finished field work will appear here after you close them out.
                                         </p>
                                     </div>
                                 )}
@@ -1175,9 +1292,6 @@ export default function MyJobsPage({
                                 {/* Active Jobs */}
                                 {activeJobs.length > 0 && (
                                     <div className="space-y-3">
-                                        <h2 className="px-1 text-sm font-bold uppercase tracking-wider text-slate-500">
-                                            Active
-                                        </h2>
                                         {activeJobs.map((job) => (
                                             <JobCard
                                                 key={job.job_id}
@@ -1205,7 +1319,7 @@ export default function MyJobsPage({
 
                                 {/* Empty State */}
                                 {activeJobs.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                                    <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
                                         <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.05]">
                                             <Calendar className="h-10 w-10 text-slate-500" />
                                         </div>
@@ -1221,6 +1335,9 @@ export default function MyJobsPage({
                         )}
                     </>
                 )}
+                        </div>
+                    </section>
+                </div>
             </div>
 
             {/* Delay Modal */}

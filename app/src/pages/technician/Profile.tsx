@@ -367,7 +367,7 @@ export default function ProfilePage() {
         .map((day) => day.label)
         .join(', ');
     const heroEyebrow = isSettingsView ? 'Account Settings' : 'Technician Identity';
-    const heroTitle = isSettingsView ? 'Profile settings\nwith account control.' : 'Profile\nwith field identity.';
+    const heroTitle = isSettingsView ? 'Profile settings\nfor account control.' : 'Profile\nwith field identity.';
     const heroDescription = isSettingsView
         ? 'Manage your account details, availability settings, and password updates from one mobile-first control surface.'
         : 'Review your technician identity, contact details, and settings access from one field-ready profile workspace.';
@@ -403,18 +403,25 @@ export default function ProfilePage() {
         <div className="min-h-screen bg-[#020817] pb-28 text-white">
             <div className="relative w-full pb-8">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_32%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),rgba(16,185,129,0)_28%)]" />
-                <div className="relative mx-auto w-full max-w-[1500px] space-y-6 px-3 pt-4 sm:px-4 lg:px-6">
+                <div className="relative mx-auto w-full max-w-[1500px] space-y-6 px-3 pt-5 sm:px-4 sm:pt-6 lg:px-6 lg:pt-8">
                     <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
                         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
                         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
                         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(47,142,146,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(245,158,11,0.12),transparent_26%)]" />
-                        <div className="relative flex flex-col gap-5 p-5 lg:flex-row lg:items-end lg:justify-between lg:p-7">
+                        <div className="relative flex flex-col gap-5 p-6 lg:flex-row lg:items-end lg:justify-between lg:p-8">
                             <div className="max-w-3xl">
                                 <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
                                     <Sparkles className="h-3.5 w-3.5" />
                                     {heroEyebrow}
                                 </div>
-                                <h1 className="mt-5 whitespace-pre-line text-[clamp(2rem,3.4vw,3.15rem)] font-semibold leading-[0.94] tracking-[-0.07em] text-white">
+                                <h1
+                                    className={cn(
+                                        'mt-5 whitespace-pre-line font-semibold text-white',
+                                        isSettingsView
+                                            ? 'text-[clamp(1.9rem,3vw,2.7rem)] leading-[1.02] tracking-[-0.055em]'
+                                            : 'text-[clamp(2rem,3.4vw,3.15rem)] leading-[0.94] tracking-[-0.07em]',
+                                    )}
+                                >
                                     {heroTitle}
                                 </h1>
                                 <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
@@ -447,7 +454,7 @@ export default function ProfilePage() {
                         </div>
                     </section>
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3', isSettingsView && 'xl:grid-cols-3')}>
                         {summaryCards.map((card) => {
                             const Icon = card.icon;
                             return (
@@ -473,9 +480,12 @@ export default function ProfilePage() {
 
                 {isSettingsView ? (
                     <>
-                        <Button type="button" variant="ghost" onClick={openProfileView} className="justify-start px-1 text-slate-300 hover:text-white">
-                            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Profile
-                        </Button>
+                        <div className="flex items-center justify-between gap-3 px-1">
+                            <Button type="button" variant="ghost" onClick={openProfileView} className="justify-start px-1 text-slate-300 hover:text-white">
+                                <ArrowLeft className="w-4 h-4 mr-2" /> Back to Profile
+                            </Button>
+                            <div className="text-xs uppercase tracking-[0.24em] text-slate-500">Settings workspace</div>
+                        </div>
 
                         <Card className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
                             <div className="flex items-center gap-4 mb-6">

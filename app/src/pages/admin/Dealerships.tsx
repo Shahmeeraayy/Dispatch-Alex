@@ -7,7 +7,11 @@ import {
     AlertCircle,
     Building2,
     Power,
-    FileDown
+    FileDown,
+    MapPin,
+    Mail,
+    Phone,
+    Clock3,
 } from 'lucide-react';
 import { exportArrayData, selectColumnsForExport, type ExportFormat } from '@/lib/export';
 import { cn } from '@/lib/utils';
@@ -49,6 +53,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ColumnExportDialog from '@/components/modals/ColumnExportDialog';
+import OverflowText from '@/components/common/overflow-text';
 import {
     formatPhoneForDisplay,
     formatUsPhoneInput,
@@ -617,8 +622,31 @@ export const MOCK_DEALERSHIPS: Dealership[] = [
 // --- Components ---
 
 function StatusBadge({ status }: { status: 'active' | 'inactive' }) {
-    if (status === 'active') return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 shadow-none">Active</Badge>;
-    return <Badge variant="outline" className="text-gray-500 border-gray-200">Inactive</Badge>;
+    if (status === 'active') return <Badge className="border border-emerald-300/20 bg-emerald-300/12 text-emerald-100 shadow-none hover:bg-emerald-300/12">Active</Badge>;
+    return <Badge variant="outline" className="border-white/10 bg-white/[0.03] text-slate-400">Inactive</Badge>;
+}
+
+const sectionCardClass = 'overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.96),rgba(6,17,29,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.28)]';
+const sectionHeaderClass = 'border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] p-6';
+
+function metricCardClass(tone: 'cyan' | 'emerald' | 'amber' | 'violet'): string {
+    return cn(
+        'overflow-hidden rounded-[24px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+        tone === 'cyan' && 'border-cyan-400/15 bg-[linear-gradient(180deg,rgba(12,36,55,0.96),rgba(8,24,39,0.96))]',
+        tone === 'emerald' && 'border-emerald-400/15 bg-[linear-gradient(180deg,rgba(10,37,45,0.96),rgba(7,25,31,0.96))]',
+        tone === 'amber' && 'border-amber-400/15 bg-[linear-gradient(180deg,rgba(41,28,15,0.94),rgba(27,18,10,0.96))]',
+        tone === 'violet' && 'border-violet-400/15 bg-[linear-gradient(180deg,rgba(30,23,49,0.96),rgba(18,16,33,0.96))]',
+    );
+}
+
+function metricIconClass(tone: 'cyan' | 'emerald' | 'amber' | 'violet'): string {
+    return cn(
+        'rounded-2xl border p-3',
+        tone === 'cyan' && 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+        tone === 'emerald' && 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
+        tone === 'amber' && 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+        tone === 'violet' && 'border-violet-300/20 bg-violet-300/10 text-violet-100',
+    );
 }
 
 const DEALERSHIP_EXPORT_COLUMNS = [
@@ -868,96 +896,195 @@ export default function DealershipsPage() {
         exportArrayData(exportData, 'dealerships_export', format);
     };
 
+    const activeCount = dealerships.filter(d => d.status === 'active').length;
+    const inactiveCount = dealerships.filter(d => d.status === 'inactive').length;
+    const mappedCount = dealerships.filter(d => Boolean(d.qb_customer_id)).length;
+    const withNotesCount = dealerships.filter(d => Boolean(d.notes?.trim())).length;
+
     return (
-        <div className="flex flex-col h-full space-y-6">
-            {/* 1. Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Dealerships</h1>
-                    <p className="text-sm text-muted-foreground font-medium">Manage dealership contacts and status</p>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                    <div className="hidden sm:flex items-center text-xs text-muted-foreground font-medium mr-2">
-                        Last updated: {lastSuccessfulFetchAt ? lastSuccessfulFetchAt.toLocaleTimeString() : 'Never'}
-                    </div>
-                    <Button variant="outline" size="sm" onClick={fetchDealerships} disabled={loading} className="h-9 gap-2">
-                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                        Refresh
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-9 gap-2">
-                        <FileDown className="w-4 h-4" /> Export
-                    </Button>
-                    <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
-                        <DialogTrigger asChild>
-                            <Button size="sm" className="h-9 gap-2 bg-[#2F8E92] hover:bg-[#267276]">
-                                <Plus className="w-4 h-4" /> Add Dealership
+        <div className="relative mx-auto max-w-[1700px] pb-10">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-[380px] rounded-[34px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(34,211,238,0)_34%),radial-gradient(circle_at_top_right,rgba(52,211,153,0.08),rgba(52,211,153,0)_30%)]" />
+            <div className="pointer-events-none absolute left-8 top-8 h-40 w-40 rounded-full bg-cyan-400/8 blur-3xl" />
+            <div className="pointer-events-none absolute right-10 top-20 h-48 w-48 rounded-full bg-emerald-400/8 blur-3xl" />
+
+            <div className="relative space-y-6">
+                <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(7,25,42,0.98),rgba(6,18,32,0.98))] shadow-[0_34px_120px_rgba(0,0,0,0.34)]">
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:120px_120px] opacity-20" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                    <div className="relative flex flex-col gap-5 p-6 xl:flex-row xl:items-end xl:justify-between xl:p-8">
+                        <div className="max-w-3xl">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                                <Building2 className="h-3.5 w-3.5" />
+                                Partner Directory
+                            </div>
+                            <h1 className="mt-5 text-[clamp(2rem,3.8vw,3.7rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-white">
+                                Dealerships
+                                <span className="block bg-gradient-to-r from-white via-cyan-100 to-emerald-100 bg-clip-text text-transparent">
+                                    network console
+                                </span>
+                            </h1>
+                            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-[15px]">
+                                Maintain partner profiles, billing contacts, operational notes, and QuickBooks mappings from one centralized control surface.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
+                                Last updated: {lastSuccessfulFetchAt ? lastSuccessfulFetchAt.toLocaleTimeString() : 'Never'}
+                            </span>
+                            <Button variant="outline" size="sm" onClick={fetchDealerships} disabled={loading} className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]">
+                                <RefreshCw className={cn("w-4 h-4 text-cyan-200", loading && "animate-spin")} />
+                                Refresh
                             </Button>
-                        </DialogTrigger>
-                        <DialogContent>
+                            <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="h-10 gap-2 rounded-full border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]">
+                                <FileDown className="w-4 h-4" /> Export
+                            </Button>
+                            <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" className="h-10 gap-2 rounded-full bg-[#2F8E92] px-5 text-white shadow-[0_12px_30px_rgba(47,142,146,0.28)] hover:bg-[#267276]">
+                                        <Plus className="w-4 h-4" /> Add Dealership
+                                    </Button>
+                                </DialogTrigger>
+                        <DialogContent className="sm:max-w-xl border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.98),rgba(6,17,29,0.98))] text-slate-100">
                             <DialogHeader>
-                                <DialogTitle>Add New Dealership</DialogTitle>
-                                <DialogDescription>Create a new dealership profile for dispatch.</DialogDescription>
+                                <DialogTitle className="text-white">Add New Dealership</DialogTitle>
+                                <DialogDescription className="text-slate-300">Create a new dealership profile for dispatch and billing workflows.</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-2">
                                 <div className="space-y-2">
-                                    <Label>Dealership Name <span className="text-red-500">*</span></Label>
-                                    <Input placeholder="e.g. Metro Ford" value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} />
+                                    <Label className="text-slate-200">Dealership Name <span className="text-rose-300">*</span></Label>
+                                    <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" placeholder="e.g. Metro Ford" value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Phone <span className="text-red-500">*</span></Label>
+                                    <Label className="text-slate-200">Phone <span className="text-rose-300">*</span></Label>
                                     <Input
+                                        className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                         placeholder={phoneExampleFormat}
                                         value={addForm.phone}
                                         onChange={e => setAddForm({ ...addForm, phone: formatUsPhoneInput(e.target.value) })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Domain Email <span className="text-red-500">*</span></Label>
-                                    <Input placeholder="e.g. info@dealership.com" value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} />
+                                    <Label className="text-slate-200">Domain Email <span className="text-rose-300">*</span></Label>
+                                    <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" placeholder="e.g. info@dealership.com" value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>City/Ville</Label>
-                                        <Input placeholder="e.g. Quebec" value={addForm.city} onChange={e => setAddForm({ ...addForm, city: e.target.value })} />
+                                        <Label className="text-slate-200">City/Ville</Label>
+                                        <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" placeholder="e.g. Quebec" value={addForm.city} onChange={e => setAddForm({ ...addForm, city: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Postal Code (Code)</Label>
-                                        <Input placeholder="e.g. G1X 3X4" value={addForm.postal_code} onChange={e => setAddForm({ ...addForm, postal_code: e.target.value })} />
+                                        <Label className="text-slate-200">Postal Code (Code)</Label>
+                                        <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" placeholder="e.g. G1X 3X4" value={addForm.postal_code} onChange={e => setAddForm({ ...addForm, postal_code: e.target.value })} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Address</Label>
-                                    <Input placeholder="e.g. 123 Main St" value={addForm.address} onChange={e => setAddForm({ ...addForm, address: e.target.value })} />
+                                    <Label className="text-slate-200">Address</Label>
+                                    <Input className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" placeholder="e.g. 123 Main St" value={addForm.address} onChange={e => setAddForm({ ...addForm, address: e.target.value })} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Notes</Label>
-                                    <Textarea placeholder="Access codes, preferred hours, etc." value={addForm.notes} onChange={e => setAddForm({ ...addForm, notes: e.target.value })} />
+                                    <Label className="text-slate-200">Notes</Label>
+                                    <Textarea className="border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" placeholder="Access codes, preferred hours, etc." value={addForm.notes} onChange={e => setAddForm({ ...addForm, notes: e.target.value })} />
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancel</Button>
+                                <Button variant="outline" className="border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => setAddModalOpen(false)}>Cancel</Button>
                                 <Button onClick={handleAddDealership} className="bg-[#2F8E92] hover:bg-[#267276]">Add Dealership</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                        </div>
+                    </div>
+                </section>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <Card className={metricCardClass('cyan')}>
+                        <div className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Partner Accounts</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{dealerships.length}</p>
+                                    <p className="text-sm text-slate-300">Total dealership profiles tracked</p>
+                                </div>
+                                <div className={metricIconClass('cyan')}>
+                                    <Building2 className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                    <Card className={metricCardClass('emerald')}>
+                        <div className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active Partners</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{activeCount}</p>
+                                    <p className="text-sm text-slate-300">Currently available for dispatch intake</p>
+                                </div>
+                                <div className={metricIconClass('emerald')}>
+                                    <Power className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                    <Card className={metricCardClass('amber')}>
+                        <div className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">QuickBooks Linked</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{mappedCount}</p>
+                                    <p className="text-sm text-slate-300">Profiles mapped to customer records</p>
+                                </div>
+                                <div className={metricIconClass('amber')}>
+                                    <FileDown className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                    <Card className={metricCardClass('violet')}>
+                        <div className="p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Operational Notes</p>
+                                    <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{withNotesCount}</p>
+                                    <p className="text-sm text-slate-300">Locations with special dispatch instructions</p>
+                                </div>
+                                <div className={metricIconClass('violet')}>
+                                    <AlertCircle className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
                 </div>
-            </div>
 
             {/* 2. Filter Bar */}
-            <Card className="p-4 border-border shadow-sm space-y-4 bg-card">
-                <div className="flex flex-col lg:flex-row gap-4 items-center">
+            <Card className={sectionCardClass}>
+                <div className={sectionHeaderClass}>
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        <h2 className="text-base font-semibold text-white">Partner Filters</h2>
+                        <p className="mt-1 text-sm text-slate-300">Search partner accounts by name, city, phone, and current operational status.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-emerald-100">
+                            Active {activeCount}
+                        </Badge>
+                        <Badge variant="outline" className="border-white/10 bg-white/[0.04] px-3 py-1 text-slate-300">
+                            Inactive {inactiveCount}
+                        </Badge>
+                    </div>
+                </div>
+                <div className="mt-5 flex flex-col lg:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full lg:w-auto min-w-0 lg:min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
                             placeholder="Search by dealership name, phone, or city/ville..."
-                            className="pl-9 bg-muted/30 border-border focus:bg-background transition-all"
+                            className="h-11 rounded-full border-white/10 bg-white/[0.04] pl-9 text-slate-100 placeholder:text-slate-500 transition-all focus:bg-white/[0.06]"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className="w-full sm:w-[140px]">
+                            <SelectTrigger className="h-11 w-full sm:w-[140px] border-white/10 bg-white/[0.04] text-slate-100">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -968,7 +1095,7 @@ export default function DealershipsPage() {
                         </Select>
 
                         <Select value={filterCity} onValueChange={setFilterCity}>
-                            <SelectTrigger className="w-full sm:w-[180px] border-dashed text-muted-foreground bg-background">
+                            <SelectTrigger className="h-11 w-full sm:w-[180px] border-white/10 bg-white/[0.04] text-slate-100">
                                 <div className="flex items-center gap-2">
                                     <Building2 className="w-4 h-4" />
                                     <SelectValue placeholder="City/Ville" />
@@ -983,45 +1110,47 @@ export default function DealershipsPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-
-                        <div className="h-6 w-px bg-border mx-2" />
-
-                        <Badge variant="secondary" className="cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200">
-                            Active ({dealerships.filter(d => d.status === 'active').length})
-                        </Badge>
-                        <Badge variant="secondary" className="cursor-pointer bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200">
-                            Inactive ({dealerships.filter(d => d.status === 'inactive').length})
-                        </Badge>
                     </div>
+                </div>
                 </div>
             </Card>
 
             {/* 3. Dealerships Table */}
-            <div className="flex-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <Card className={cn(sectionCardClass, 'flex-1 flex flex-col')}>
+                <div className={cn(sectionHeaderClass, 'flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between')}>
+                    <div>
+                        <h2 className="text-base font-semibold text-white">Dealership Directory</h2>
+                        <p className="mt-1 text-sm text-slate-300">Review contact data, billing identifiers, and partner availability from the live directory.</p>
+                    </div>
+                    <Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-cyan-100">
+                        {filteredDealerships.length} visible
+                    </Badge>
+                </div>
                 {loading ? (
                     <div className="p-4 space-y-4">
                         {Array.from({ length: 5 }).map((_, i) => (
-                            <Skeleton key={i} className="h-12 w-full" />
+                            <Skeleton key={i} className="h-12 w-full bg-white/10" />
                         ))}
                     </div>
                 ) : filteredDealerships.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-muted-foreground">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                            <Building2 className="w-8 h-8 text-muted-foreground" />
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-400">
+                        <div className="w-16 h-16 bg-white/[0.05] rounded-full flex items-center justify-center mb-4">
+                            <Building2 className="w-8 h-8 text-slate-400" />
                         </div>
-                        <h3 className="text-lg font-semibold text-foreground">No dealerships found</h3>
+                        <h3 className="text-lg font-semibold text-white">No dealerships found</h3>
                         <p className="text-sm mt-1">Try adjusting your filters or search query.</p>
-                        <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterCity('all'); }}>Clear Filters</Button>
+                        <Button variant="outline" className="mt-4 border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterCity('all'); }}>Clear Filters</Button>
                     </div>
                 ) : (
+                    <div className="overflow-hidden rounded-[20px] border border-white/8 bg-black/10">
                     <Table>
-                        <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                        <TableHeader className="bg-white/[0.04] sticky top-0 z-10">
                             <TableRow>
-                                <TableHead className="pl-6 w-[200px]">Dealership Name</TableHead>
-                                <TableHead className="w-[180px]">Contact Info</TableHead>
-                                <TableHead className="w-[260px]">Location</TableHead>
-                                <TableHead className="w-[100px]">Status</TableHead>
-                                <TableHead className="w-[80px] text-center">Notes</TableHead>
+                                <TableHead className="pl-6 w-[220px] text-slate-400">Dealership Name</TableHead>
+                                <TableHead className="w-[220px] text-slate-400">Contact Info</TableHead>
+                                <TableHead className="w-[300px] text-slate-400">Location</TableHead>
+                                <TableHead className="w-[100px] text-slate-400">Status</TableHead>
+                                <TableHead className="w-[80px] text-center text-slate-400">Notes</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -1029,42 +1158,51 @@ export default function DealershipsPage() {
                             {filteredDealerships.map((dealer) => (
                                 <TableRow
                                     key={dealer.id}
-                                    className="group hover:bg-gray-50 cursor-pointer transition-colors"
+                                    className="group border-white/6 hover:bg-white/[0.03] cursor-pointer transition-colors"
                                     onClick={() => handleOpenDrawer(dealer)}
                                 >
                                     <TableCell className="pl-6">
-                                        <div className="font-medium text-gray-900 group-hover:text-[#2F8E92]">{dealer.name}</div>
-                                        <div className="text-xs text-gray-400 font-mono">ID: {dealer.id}</div>
-                                        <div className="text-xs text-gray-400 font-mono">QB: {dealer.qb_customer_id || '-'}</div>
+                                        <OverflowText text={dealer.name} className="max-w-[13rem] font-medium text-white group-hover:text-cyan-100" />
+                                        <div className="text-xs text-slate-500 font-mono">ID: {dealer.id}</div>
+                                        <div className="text-xs text-slate-500 font-mono">QB: {dealer.qb_customer_id || '-'}</div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="text-sm text-gray-900">{formatPhoneForDisplay(dealer.phone)}</div>
-                                        <div className="text-xs text-gray-400 underline decoration-gray-200">{dealer.email}</div>
+                                        <div className="flex items-center gap-2 text-sm text-slate-200">
+                                            <Phone className="h-3.5 w-3.5 text-slate-500" />
+                                            <span>{formatPhoneForDisplay(dealer.phone) || '-'}</span>
+                                        </div>
+                                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                                            <Mail className="h-3.5 w-3.5 text-slate-500" />
+                                            <OverflowText text={dealer.email || '-'} className="max-w-[10rem]" />
+                                        </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="text-sm text-gray-900 capitalize">{dealer.city || '-'}</div>
-                                        <div className="text-xs text-gray-500">{dealer.address} {dealer.postal_code}</div>
+                                        <div className="flex items-center gap-2 text-sm text-slate-200 capitalize">
+                                            <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                                            <span>{dealer.city || '-'}</span>
+                                        </div>
+                                        <OverflowText text={`${dealer.address || ''} ${dealer.postal_code || ''}`.trim() || '-'} className="mt-1 max-w-[14rem] text-xs text-slate-500" />
                                     </TableCell>
                                     <TableCell>
                                         <StatusBadge status={dealer.status} />
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        {dealer.notes && <AlertCircle className="w-4 h-4 text-amber-500 mx-auto" />}
+                                        {dealer.notes && <AlertCircle className="w-4 h-4 text-amber-300 mx-auto" />}
                                     </TableCell>
                                     <TableCell>
                                         <div onClick={(e) => e.stopPropagation()}>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="w-4 h-4 text-gray-400" />
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-white/0 hover:border-white/10 hover:bg-white/[0.04]">
+                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
+                                                <DropdownMenuContent align="end" className="border-white/10 bg-[#091827] text-slate-100">
                                                     <DropdownMenuItem onClick={() => handleOpenDrawer(dealer)}>View Details</DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleOpenDrawer(dealer)}>Edit</DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem
-                                                        className={dealer.status === 'active' ? 'text-red-600' : ''}
+                                                        className={dealer.status === 'active' ? 'text-rose-200' : ''}
                                                         onClick={() => {
                                                             handleOpenDrawer(dealer);
                                                             setConfirmStatusModalOpen(true);
@@ -1080,25 +1218,26 @@ export default function DealershipsPage() {
                             ))}
                         </TableBody>
                     </Table>
+                    </div>
                 )}
-            </div>
+            </Card>
 
             {/* 4. Dealership Drawer */}
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                <SheetContent className="sm:max-w-2xl w-full p-0 flex flex-col gap-0 bg-slate-50">
+                <SheetContent className="sm:max-w-2xl w-full p-0 flex flex-col gap-0 border-white/10 bg-[linear-gradient(180deg,rgba(7,21,37,0.99),rgba(4,13,24,1))] text-slate-100">
                     {selectedDealership && editForm && (
                         <>
-                            <div className="bg-white px-6 py-5 border-b border-gray-200">
+                            <div className="border-b border-white/10 bg-white/[0.03] px-6 py-5">
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                                        <h2 className="text-xl font-bold text-gray-900">{selectedDealership.name}</h2>
+                                        <OverflowText text={selectedDealership.name} as="h2" className="max-w-[18rem] text-xl font-bold text-white" />
                                         <StatusBadge status={selectedDealership.status} />
                                     </div>
-                                    <div className="text-sm text-gray-500">
+                                    <div className="text-sm text-slate-400">
                                         {selectedDealership.city || 'No city/ville provided'}
                                     </div>
-                                    <div className="text-xs text-gray-400 font-mono">
+                                    <div className="text-xs text-slate-500 font-mono">
                                         QuickBooks ID: {selectedDealership.qb_customer_id || '-'}
                                     </div>
                                     </div>
@@ -1106,7 +1245,7 @@ export default function DealershipsPage() {
                                         <Button
                                             variant={selectedDealership.status === 'active' ? "outline" : "default"}
                                             size="sm"
-                                            className="min-w-[112px]"
+                                            className="min-w-[112px] border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]"
                                             onClick={handleToggleStatus}
                                         >
                                             {selectedDealership.status === 'active' ? 'Deactivate' : 'Activate'}
@@ -1119,57 +1258,57 @@ export default function DealershipsPage() {
                                 <div className="p-6 space-y-5">
 
                                     {/* A) Contact Info (Editable) */}
-                                    <Card className="border-gray-200 shadow-sm">
-                                        <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                                            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 leading-none">
+                                    <Card className="border-white/10 bg-white/[0.03] shadow-none">
+                                        <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                            <h3 className="text-sm font-bold text-white flex items-center gap-2 leading-none">
                                                 <Building2 className="w-4 h-4" /> Contact Information
                                             </h3>
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-xs text-gray-600 hover:text-gray-700" onClick={handleCancelEdit}>
+                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-xs text-slate-400 hover:text-slate-200" onClick={handleCancelEdit}>
                                                     Cancel
                                                 </Button>
-                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700" onClick={handleSaveEdit}>
+                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-xs text-cyan-200 hover:text-cyan-100" onClick={handleSaveEdit}>
                                                     Save Changes
                                                 </Button>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-2">
                                             <div className="space-y-2">
-                                                <Label className="text-xs text-gray-500">Dealership Name</Label>
-                                                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="h-9" />
+                                                <Label className="text-xs text-slate-400">Dealership Name</Label>
+                                                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="h-9 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs text-gray-500">Phone</Label>
+                                                <Label className="text-xs text-slate-400">Phone</Label>
                                                 <Input
                                                     placeholder={phoneExampleFormat}
                                                     value={editForm.phone}
                                                     onChange={e => setEditForm({ ...editForm, phone: formatUsPhoneInput(e.target.value) })}
-                                                    className="h-9"
+                                                    className="h-9 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                                 />
                                             </div>
                                             <div className="space-y-2 md:col-span-2">
-                                                <Label className="text-xs text-gray-500">Domain Email</Label>
-                                                <Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="h-9" />
+                                                <Label className="text-xs text-slate-400">Domain Email</Label>
+                                                <Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="h-9 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs text-gray-500">City/Ville</Label>
-                                                <Input value={editForm.city} onChange={e => setEditForm({ ...editForm, city: e.target.value })} className="h-9" />
+                                                <Label className="text-xs text-slate-400">City/Ville</Label>
+                                                <Input value={editForm.city} onChange={e => setEditForm({ ...editForm, city: e.target.value })} className="h-9 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs text-gray-500">Postal Code (Code)</Label>
-                                                <Input value={editForm.postal_code} onChange={e => setEditForm({ ...editForm, postal_code: e.target.value })} className="h-9" />
+                                                <Label className="text-xs text-slate-400">Postal Code (Code)</Label>
+                                                <Input value={editForm.postal_code} onChange={e => setEditForm({ ...editForm, postal_code: e.target.value })} className="h-9 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" />
                                             </div>
                                             <div className="space-y-2 md:col-span-2">
-                                                <Label className="text-xs text-gray-500">Address</Label>
-                                                <Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className="h-9" />
+                                                <Label className="text-xs text-slate-400">Address</Label>
+                                                <Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className="h-9 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500" />
                                             </div>
                                         </div>
                                     </Card>
 
                                     {/* B) Operational Notes */}
-                                    <Card className="border-gray-200 shadow-sm">
-                                        <div className="border-b border-gray-100 px-5 py-4">
-                                            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 leading-none">
+                                    <Card className="border-white/10 bg-white/[0.03] shadow-none">
+                                        <div className="border-b border-white/10 px-5 py-4">
+                                            <h3 className="text-sm font-bold text-white flex items-center gap-2 leading-none">
                                                 <AlertCircle className="w-4 h-4" /> Operational Notes
                                             </h3>
                                         </div>
@@ -1177,7 +1316,7 @@ export default function DealershipsPage() {
                                             <Textarea
                                                 value={editForm.notes || ''}
                                                 onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
-                                                className="min-h-[120px]"
+                                                className="min-h-[120px] border-white/10 bg-white/[0.04] text-white placeholder:text-slate-500"
                                                 placeholder="Gate codes, special instructions, preferred technicians..."
                                             />
                                         </div>
@@ -1200,24 +1339,25 @@ export default function DealershipsPage() {
 
             {/* 5. Confirm Status Modal */}
             <Dialog open={confirmStatusModalOpen} onOpenChange={setConfirmStatusModalOpen}>
-                <DialogContent>
+                <DialogContent className="border-white/10 bg-[linear-gradient(180deg,rgba(9,24,39,0.98),rgba(6,17,29,0.98))] text-slate-100">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <Power className="w-5 h-5 text-gray-600" /> Confirm Status Change
+                            <Power className="w-5 h-5 text-cyan-200" /> Confirm Status Change
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-slate-300">
                             Are you sure you want to change the status of <strong>{selectedDealership?.name}</strong> to <strong>{selectedDealership?.status === 'active' ? 'Inactive' : 'Active'}</strong>?
                             <br /><br />
                             {selectedDealership?.status === 'active' ? 'Inactive dealerships cannot submit new service requests.' : 'Active dealerships will be able to submit requests immediately.'}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setConfirmStatusModalOpen(false)}>Cancel</Button>
+                        <Button variant="outline" className="border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]" onClick={() => setConfirmStatusModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleConfirmStatusChange} className="bg-[#2F8E92] hover:bg-[#267276]">Confirm Change</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
+            </div>
         </div>
     );
 }

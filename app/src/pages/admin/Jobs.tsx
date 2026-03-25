@@ -37,7 +37,7 @@ import {
     Check,
     ChevronsUpDown
 } from 'lucide-react';
-import { calculateJobRanking, sortJobsByRanking } from '@/lib/priority';
+import { calculateJobRanking } from '@/lib/priority';
 import { exportArrayData, selectColumnsForExport, type ExportFormat } from '@/lib/export';
 import { toast } from 'sonner';
 
@@ -192,6 +192,8 @@ type QuickFilterKey =
     | 'awaiting_tech_acceptance'
     | 'attention_required';
 
+type JobSortMode = 'rank' | 'newest' | 'oldest';
+
 type DealershipOption = {
     id: string;
     backendId: string;
@@ -339,6 +341,11 @@ const formatJobDate = (value: string) => {
 const formatJobTime = (value: string) => {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? 'N/A' : JOB_TIME_FORMATTER.format(parsed);
+};
+
+const getSortableTimestamp = (value: string) => {
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
 const toLocalDateFilterValue = (value: string) => {
@@ -844,6 +851,7 @@ export default function JobsPage() {
     const [newJobForm, setNewJobForm] = useState<NewJobFormState>(initialNewJobForm);
     const [quickFilterCounts, setQuickFilterCounts] = useState<QuickFilterCounts>(EMPTY_QUICK_FILTER_COUNTS);
     const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilterKey | null>(null);
+    const [jobSortMode, setJobSortMode] = useState<JobSortMode>('rank');
     const fetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const refreshInFlightRef = useRef(false);
     const lastRefreshStartedAtRef = useRef(0);
@@ -1131,8 +1139,19 @@ export default function JobsPage() {
             if (dateFilter) filtered = filtered.filter(j => toLocalDateFilterValue(j.created_at) === dateFilter);
             if (activeQuickFilter) filtered = filtered.filter(j => matchesQuickFilter(j, activeQuickFilter));
 
-            // Sort by priority score (descending)
-            filtered = [...filtered].sort((a, b) => (b.ranking_score || 0) - (a.ranking_score || 0));
+            if (jobSortMode === 'newest') {
+                filtered = [...filtered].sort((a, b) => getSortableTimestamp(b.created_at) - getSortableTimestamp(a.created_at));
+            } else if (jobSortMode === 'oldest') {
+                filtered = [...filtered].sort((a, b) => getSortableTimestamp(a.created_at) - getSortableTimestamp(b.created_at));
+            } else {
+                filtered = [...filtered].sort((a, b) => {
+                    const rankingDelta = (b.ranking_score || 0) - (a.ranking_score || 0);
+                    if (rankingDelta !== 0) {
+                        return rankingDelta;
+                    }
+                    return getSortableTimestamp(b.created_at) - getSortableTimestamp(a.created_at);
+                });
+            }
 
             const total = filtered.length;
             const computedTotalPages = Math.ceil(total / pagination.pageSize);
@@ -1173,7 +1192,7 @@ export default function JobsPage() {
 
     useEffect(() => {
         fetchData();
-    }, [pagination.page, pagination.pageSize, searchQuery, urgencyFilter, dateFilter, activeQuickFilter]);
+    }, [pagination.page, pagination.pageSize, searchQuery, urgencyFilter, dateFilter, activeQuickFilter, jobSortMode]);
 
     useEffect(() => {
         refreshJobs({ background: false });
@@ -1256,6 +1275,16 @@ export default function JobsPage() {
     const handleQuickFilterChipClick = (filterKey: QuickFilterKey) => {
         setPagination((prev) => ({ ...prev, page: 1 }));
         setActiveQuickFilter((prev) => (prev === filterKey ? null : filterKey));
+    };
+
+    const handleJobDetailsSortToggle = () => {
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        setJobSortMode((prev) => {
+            if (prev === 'rank') {
+                return 'newest';
+            }
+            return prev === 'newest' ? 'oldest' : 'newest';
+        });
     };
 
     const handleCreateJob = async () => {
@@ -1832,6 +1861,18 @@ export default function JobsPage() {
         Boolean(dateFilter),
         activeQuickFilter !== null,
     ].filter(Boolean).length;
+    const jobSortBadgeLabel =
+        jobSortMode === 'newest'
+            ? 'Newest jobs first'
+            : jobSortMode === 'oldest'
+                ? 'Oldest jobs first'
+                : 'Sorted by rank';
+    const JobDetailsSortIcon =
+        jobSortMode === 'newest'
+            ? ArrowDown
+            : jobSortMode === 'oldest'
+                ? ArrowUp
+                : ArrowUpDown;
     const summaryCards = [
         {
             key: 'visible',
@@ -2332,7 +2373,7 @@ export default function JobsPage() {
                         <div className="flex flex-wrap items-center gap-2 text-xs">
                             <Badge variant="outline" className="h-8 rounded-full border-white/10 bg-white/[0.03] text-slate-400">
                                 <TrendingUp className="mr-1.5 h-3 w-3" />
-                                Sorted by rank
+                                {jobSortBadgeLabel}
                             </Badge>
                             {activeFilterCount > 0 ? (
                                 <Badge variant="outline" className="h-8 rounded-full border-white/10 bg-white/[0.03] text-white">
@@ -2429,9 +2470,14 @@ export default function JobsPage() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="-ml-3 h-9 rounded-2xl px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                                            type="button"
+                                            onClick={handleJobDetailsSortToggle}
+                                            className={cn(
+                                                '-ml-3 h-9 rounded-2xl px-3 text-[11px] font-semibold uppercase tracking-[0.24em] hover:bg-white/[0.05] hover:text-white',
+                                                jobSortMode === 'rank' ? 'text-slate-400' : 'text-white',
+                                            )}
                                         >
-                                            Job Details <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
+                                            Job Details <JobDetailsSortIcon className="ml-2 h-3.5 w-3.5" />
                                         </Button>
                                     </TableHead>
                                     <TableHead className="w-[220px] text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Dealership</TableHead>

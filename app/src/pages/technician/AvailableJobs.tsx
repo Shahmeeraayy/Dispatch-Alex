@@ -44,6 +44,15 @@ interface AvailableJob {
     status: 'pending' | 'scheduled' | 'in_progress' | 'delayed' | 'unknown';
 }
 
+const getJobTimestamp = (value: string) => {
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const sortJobsByNewest = (jobs: AvailableJob[]) => (
+    [...jobs].sort((a, b) => getJobTimestamp(b.created_at) - getJobTimestamp(a.created_at))
+);
+
 const mapBackendPortalJobsItem = (item: BackendTechnicianJobFeedItem): AvailableJob => {
     const normalizedStatus = normalizeDispatchJobStatus(item.status);
     const status: AvailableJob['status'] =
@@ -60,7 +69,7 @@ const mapBackendPortalJobsItem = (item: BackendTechnicianJobFeedItem): Available
         service_name: item.service_name || 'Service Request',
         urgency: 'normal',
         zone: item.zone_name || 'Unspecified',
-        created_at: item.updated_at || item.created_at,
+        created_at: item.created_at || item.updated_at,
         status,
     };
 };
@@ -274,7 +283,7 @@ export default function AvailableJobsPage() {
                 const mergedJobs = [...feed.available_jobs, ...feed.my_jobs]
                     .map(mapBackendPortalJobsItem)
                     .filter((job) => job.status !== 'unknown');
-                setJobs(mergedJobs);
+                setJobs(sortJobsByNewest(mergedJobs));
             } catch {
                 setJobs([]);
             }
@@ -295,7 +304,7 @@ export default function AvailableJobsPage() {
             const mergedJobs = [...feed.available_jobs, ...feed.my_jobs]
                 .map(mapBackendPortalJobsItem)
                 .filter((job) => job.status !== 'unknown');
-            setJobs(mergedJobs);
+            setJobs(sortJobsByNewest(mergedJobs));
         } catch {
             setJobs([]);
         }

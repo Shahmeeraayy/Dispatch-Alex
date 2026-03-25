@@ -146,6 +146,8 @@ interface Job {
     attention_flag: boolean;
     created_at: string;
     updated_at: string;
+    source_system?: string | null;
+    source_metadata?: Record<string, unknown> | null;
     allowed_actions: string[];
     ranking_score?: number;
     applied_rules?: string[];
@@ -348,6 +350,38 @@ const getSortableTimestamp = (value: string) => {
     return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
+const normalizeSourceSystem = (value: string | null | undefined) => (value || '').trim().toLowerCase();
+
+const getBackendJobSourceSystem = (row: BackendAdminJob) => {
+    const directSource = normalizeSourceSystem(row.source_system);
+    if (directSource) {
+        return directSource;
+    }
+
+    const metadataSource = row.source_metadata && typeof row.source_metadata === 'object'
+        && typeof row.source_metadata.source === 'string'
+        ? normalizeSourceSystem(String(row.source_metadata.source))
+        : '';
+
+    return metadataSource;
+};
+
+const isMakeIntakeJob = (row: BackendAdminJob) => getBackendJobSourceSystem(row).includes('make');
+
+const formatNewMakeJobsDescription = (jobs: BackendAdminJob[]) => {
+    const preview = jobs
+        .slice(0, 2)
+        .map((job) => `${job.job_code} · ${(job.dealership_name || 'Unknown Dealership').trim()}`)
+        .join(' | ');
+
+    const remaining = jobs.length - Math.min(jobs.length, 2);
+    if (remaining <= 0) {
+        return preview;
+    }
+
+    return `${preview} | +${remaining} more`;
+};
+
 const toLocalDateFilterValue = (value: string) => {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) {
@@ -528,6 +562,8 @@ const mapBackendJobToUiJob = (
         attention_flag: false,
         created_at: displayDateTime,
         updated_at: row.updated_at || row.created_at,
+        source_system: getBackendJobSourceSystem(row) || null,
+        source_metadata: row.source_metadata ?? null,
         allowed_actions: (uiStatus === 'admin_preview' || uiStatus === 'pending_admin_confirmation')
             ? ['view', 'edit', 'cancel', 'assign', 'confirm']
             : ['view', 'edit', 'cancel', 'assign'],
@@ -855,6 +891,7 @@ export default function JobsPage() {
     const fetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const refreshInFlightRef = useRef(false);
     const lastRefreshStartedAtRef = useRef(0);
+    const hasCompletedInitialBackendSyncRef = useRef(false);
 
     // Filters
     const [searchQuery, setSearchQuery] = useState('');
@@ -1092,14 +1129,31 @@ export default function JobsPage() {
         }
 
         try {
+            const existingJobCodes = new Set(loadPersistedJobs().map((job) => job.job_code));
             const backendJobs = await fetchAdminJobs(token);
             const syncedBackendJobs = await syncLegacyConfirmedLocalJobsToBackend(token, backendJobs);
-            return mergeBackendJobsIntoLocalStore(
+            const newMakeJobs = hasCompletedInitialBackendSyncRef.current
+                ? syncedBackendJobs.filter((row) => isMakeIntakeJob(row) && !existingJobCodes.has(row.job_code))
+                : [];
+            const didMerge = mergeBackendJobsIntoLocalStore(
                 syncedBackendJobs,
                 dealershipOptions,
                 serviceCatalog,
                 dispatchRankingRules,
             );
+            if (didMerge) {
+                if (newMakeJobs.length > 0) {
+                    toast.info(
+                        newMakeJobs.length === 1 ? 'New Make.com job received' : `${newMakeJobs.length} new Make.com jobs received`,
+                        {
+                            description: formatNewMakeJobsDescription(newMakeJobs),
+                            duration: 10000,
+                        },
+                    );
+                }
+                hasCompletedInitialBackendSyncRef.current = true;
+            }
+            return didMerge;
         } catch (error) {
             if (showErrorToast) {
                 const message = error instanceof Error ? error.message : 'Failed to refresh jobs from backend';
@@ -1360,6 +1414,13 @@ export default function JobsPage() {
                 attention_flag: false,
                 created_at: nowIso,
                 updated_at: nowIso,
+                source_system: 'admin_ui',
+                source_metadata: {
+                    source: 'admin_ui',
+                    manual_entry: true,
+                    dealership_name_input: dealershipName,
+                    created_by_role: 'admin',
+                },
                 allowed_actions: ['view', 'edit', 'cancel', 'assign', 'confirm'],
                 ranking_score: priorityResult.score,
                 applied_rules: priorityResult.appliedRules,

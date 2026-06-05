@@ -27,7 +27,6 @@ const orbitalGlowStyle: CSSProperties = {
     'radial-gradient(circle at 50% 0%, rgba(56,189,248,0.32), rgba(56,189,248,0) 52%), radial-gradient(circle at 80% 20%, rgba(45,212,191,0.22), rgba(45,212,191,0) 38%)',
 };
 
-const accessTags = ['Dispatch', 'Approvals', 'Technicians'] as const;
 const displayFontStyle: CSSProperties = {
   fontFamily: '"Space Grotesk", "Sora", system-ui, sans-serif',
 };
@@ -115,17 +114,6 @@ export default function AdminLoginPage() {
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
                   Protected access
                 </div>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                {accessTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-slate-200"
-                  >
-                    {tag}
-                  </span>
-                ))}
               </div>
 
               <div className="mt-6 rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,27,43,0.92),rgba(7,23,37,0.92))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_24px_60px_rgba(3,12,24,0.34)] sm:p-6">

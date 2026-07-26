@@ -16,7 +16,7 @@ import {
   createTechnicianSignupRequest,
   fetchAdminToken,
   fetchAdminTechnicianPasswordResetRequests,
-  fetchDevTechnicianToken,
+  fetchTechnicianToken,
   fetchTechnicianMeProfile,
   fetchAdminTechnicianSignupRequests,
   fetchAdminTechnicians,
@@ -549,7 +549,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const tokenResponse = await fetchDevTechnicianToken({
+      const tokenResponse = await fetchTechnicianToken({
         email: normalizedEmail,
         password: normalizedPassword,
       });

@@ -22,7 +22,7 @@ class DevTokenResponse(BaseModel):
     role: UserRole
 
 
-class DevTechnicianTokenRequest(BaseModel):
+class TechnicianTokenRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=255)
     password: str = Field(..., min_length=1, max_length=255)
 
@@ -54,41 +54,9 @@ def _issue_admin_token(*, email: str, password: str, db: Session) -> DevTokenRes
     )
 
 
-@router.post("/admin-token", response_model=DevTokenResponse)
-def create_admin_token(
-    payload: AdminTokenRequest,
-    db: Session = Depends(deps.get_db),
-):
-    return _issue_admin_token(email=payload.email, password=payload.password, db=db)
-
-
-@router.post("/dev/admin-token", response_model=DevTokenResponse)
-def create_dev_admin_token(
-    payload: DevAdminTokenRequest,
-    db: Session = Depends(deps.get_db),
-):
-    if APP_ENV != "development":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not found",
-        )
-
-    return _issue_admin_token(email=payload.email, password=payload.password, db=db)
-
-
-@router.post("/dev/technician-token", response_model=DevTokenResponse)
-def create_dev_technician_token(
-    payload: DevTechnicianTokenRequest,
-    db: Session = Depends(deps.get_db),
-):
-    if APP_ENV != "development":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not found",
-        )
-
-    normalized_email = payload.email.strip().lower()
-    normalized_password = payload.password.strip()
+def _issue_technician_token(*, email: str, password: str, db: Session) -> DevTokenResponse:
+    normalized_email = email.strip().lower()
+    normalized_password = password.strip()
     repo = TechnicianRepository(db)
     technician = repo.get_technician_by_email(normalized_email)
     if technician is None:
@@ -117,3 +85,47 @@ def create_dev_technician_token(
         expires_at=expires_at,
         role=UserRole.TECHNICIAN,
     )
+
+
+@router.post("/admin-token", response_model=DevTokenResponse)
+def create_admin_token(
+    payload: AdminTokenRequest,
+    db: Session = Depends(deps.get_db),
+):
+    return _issue_admin_token(email=payload.email, password=payload.password, db=db)
+
+
+@router.post("/technician-token", response_model=DevTokenResponse)
+def create_technician_token(
+    payload: TechnicianTokenRequest,
+    db: Session = Depends(deps.get_db),
+):
+    return _issue_technician_token(email=payload.email, password=payload.password, db=db)
+
+
+@router.post("/dev/admin-token", response_model=DevTokenResponse)
+def create_dev_admin_token(
+    payload: DevAdminTokenRequest,
+    db: Session = Depends(deps.get_db),
+):
+    if APP_ENV != "development":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
+
+    return _issue_admin_token(email=payload.email, password=payload.password, db=db)
+
+
+@router.post("/dev/technician-token", response_model=DevTokenResponse)
+def create_dev_technician_token(
+    payload: TechnicianTokenRequest,
+    db: Session = Depends(deps.get_db),
+):
+    if APP_ENV != "development":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
+
+    return _issue_technician_token(email=payload.email, password=payload.password, db=db)

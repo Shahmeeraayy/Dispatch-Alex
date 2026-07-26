@@ -23,7 +23,7 @@ type AdminTokenResponse = {
   role: 'admin';
 };
 
-type DevTechnicianTokenResponse = {
+type TechnicianTokenResponse = {
   access_token: string;
   token_type: string;
   expires_at: string;
@@ -646,11 +646,11 @@ export async function fetchAdminToken(payload: {
   });
 }
 
-export async function fetchDevTechnicianToken(payload: {
+export async function fetchTechnicianToken(payload: {
   email: string;
   password: string;
-}): Promise<DevTechnicianTokenResponse> {
-  return requestJson<DevTechnicianTokenResponse>('/auth/dev/technician-token', {
+}): Promise<TechnicianTokenResponse> {
+  return requestJson<TechnicianTokenResponse>('/auth/technician-token', {
     method: 'POST',
     body: payload,
   });

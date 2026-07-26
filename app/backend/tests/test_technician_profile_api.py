@@ -83,6 +83,20 @@ class TechnicianProfileApiTests(unittest.TestCase):
         self.assertEqual(token_res.status_code, 200, token_res.text)
         return {"Authorization": f"Bearer {token_res.json()['access_token']}"}
 
+    def test_technician_token_route_works_without_dev_prefix(self):
+        tech = self._seed_technician(name="Dany", email="dany@sm2dispatch.com")
+
+        token_res = self.client.post(
+            "/auth/technician-token",
+            json={"email": tech.email.upper(), "password": "tech123"},
+        )
+
+        self.assertEqual(token_res.status_code, 200, token_res.text)
+        payload = token_res.json()
+        self.assertEqual(payload["role"], "technician")
+        self.assertEqual(payload["token_type"], "bearer")
+        self.assertTrue(payload["access_token"])
+
     def test_availability_validation_rules(self):
         with self.assertRaises(ValidationError):
             TechnicianAvailabilityUpdateRequest(

@@ -13,6 +13,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_FILE.replace(os.sep, '/')}"
 os.environ["QB_CLIENT_ID"] = "qb-client-id"
 os.environ["QB_CLIENT_SECRET"] = "qb-client-secret"
 os.environ["QB_REDIRECT_URI"] = "http://localhost:8000/integrations/quickbooks/callback"
+os.environ["QB_ENV"] = "sandbox"
 
 from app.api.deps import engine
 from app.api.endpoints import integrations_quickbooks_oauth
@@ -105,6 +106,44 @@ class QuickBooksTokenStorageApiTests(unittest.TestCase):
         self.assertTrue(status_body["has_access_token"])
         self.assertTrue(status_body["has_refresh_token"])
         self.assertEqual(status_body["realm_id"], "12345")
+
+    def test_callback_still_connects_when_post_connect_tax_sync_fails(self):
+        connect = self.client.get("/integrations/quickbooks/connect", follow_redirects=False)
+        state = connect.cookies.get("qb_oauth_state")
+        self.assertTrue(state)
+
+        mocked_response = Mock()
+        mocked_response.ok = True
+        mocked_response.json.return_value = {
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
+            "token_type": "bearer",
+            "expires_in": 3600,
+            "x_refresh_token_expires_in": 8726400,
+        }
+
+        with patch("app.api.endpoints.integrations_quickbooks_oauth.requests.post", return_value=mocked_response), patch(
+            "app.api.endpoints.integrations_quickbooks_oauth.QuickBooksTaxCodeSyncService.sync_tax_codes",
+            side_effect=RuntimeError("provider sync failed"),
+        ):
+            callback = self.client.get(
+                f"/integrations/quickbooks/callback?code=abc&realmId=12345&state={state}",
+            )
+
+        self.assertEqual(callback.status_code, 200, callback.text)
+        body = callback.json()
+        self.assertEqual(body["status"], "connected")
+        self.assertEqual(body["realmId"], "12345")
+        self.assertIn("tax_code_sync_error", body)
+
+        db = SessionLocal()
+        try:
+            row = db.query(QuickBooksConnection).filter(QuickBooksConnection.realm_id == "12345").first()
+            self.assertIsNotNone(row)
+            self.assertTrue(row.is_active)
+            self.assertEqual(row.refresh_token, "refresh-token")
+        finally:
+            db.close()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import base64
+import logging
 import secrets
 from urllib.parse import urlencode
 
@@ -13,6 +14,7 @@ from ...services.quickbooks_connection_service import QuickBooksConnectionServic
 from ...services.quickbooks_tax_code_sync_service import QuickBooksTaxCodeSyncService
 
 router = APIRouter(prefix="/integrations/quickbooks", tags=["integrations-quickbooks"])
+logger = logging.getLogger(__name__)
 
 AUTHORIZE_URL = "https://appcenter.intuit.com/connect/oauth2"
 TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
@@ -107,6 +109,9 @@ def qb_callback(
     except HTTPException as exc:
         detail = exc.detail
         tax_code_sync_error = detail if isinstance(detail, str) else str(detail)
+    except Exception:
+        logger.exception("QuickBooks tax code sync failed after OAuth callback.")
+        tax_code_sync_error = "QuickBooks connected, but the post-connect tax code sync failed. Retry sync from the admin QuickBooks tools."
 
     response = {
         "status": "connected",
